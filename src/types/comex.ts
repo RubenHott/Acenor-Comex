@@ -1,11 +1,14 @@
 // COMEX Application Types
 
+export type UserRole = 'admin' | 'manager' | 'operator' | 'viewer';
+
 export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'manager' | 'operator' | 'viewer';
+  role: UserRole;
   avatar?: string;
+  modules: string[]; // IDs de módulos permitidos
   createdAt: Date;
 }
 
