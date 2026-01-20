@@ -31,7 +31,7 @@ const allModules: ModuleCard[] = [
     icon: ClipboardList,
     path: '/work-orders',
     color: 'from-emerald-600 to-teal-500',
-    available: false,
+    available: true,
   },
   {
     id: 'production',
