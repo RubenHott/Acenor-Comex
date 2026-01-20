@@ -11,12 +11,12 @@ import {
 } from 'lucide-react';
 
 const pageConfig: Record<string, { title: string; subtitle: string; icon: React.ComponentType<{ className?: string }> }> = {
-  '/contracts': { title: 'Contratos', subtitle: 'Gestión y validación de contratos', icon: FileCheck },
-  '/payments': { title: 'Pagos', subtitle: 'Control de pagos y cartas de crédito', icon: CreditCard },
-  '/prices': { title: 'Lista de Precios', subtitle: 'Historial y gestión de precios de importación', icon: TrendingUp },
-  '/users': { title: 'Usuarios', subtitle: 'Administración de usuarios y permisos', icon: Users },
-  '/notifications': { title: 'Notificaciones', subtitle: 'Centro de notificaciones y alertas', icon: Bell },
-  '/settings': { title: 'Configuración', subtitle: 'Configuración del sistema', icon: Settings },
+  '/comex/contracts': { title: 'Contratos', subtitle: 'Gestión y validación de contratos', icon: FileCheck },
+  '/comex/payments': { title: 'Pagos', subtitle: 'Control de pagos y cartas de crédito', icon: CreditCard },
+  '/comex/prices': { title: 'Lista de Precios', subtitle: 'Historial y gestión de precios de importación', icon: TrendingUp },
+  '/comex/users': { title: 'Usuarios', subtitle: 'Administración de usuarios y permisos', icon: Users },
+  '/comex/notifications': { title: 'Notificaciones', subtitle: 'Centro de notificaciones y alertas', icon: Bell },
+  '/comex/settings': { title: 'Configuración', subtitle: 'Configuración del sistema', icon: Settings },
 };
 
 export default function ComingSoonPage() {

@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Package,
-  FileText,
   Ship,
   Users,
   Settings,
@@ -17,6 +16,7 @@ import {
   Bell,
   Building2,
   LogOut,
+  ArrowLeft,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -34,28 +34,29 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Requerimientos', href: '/requirements', icon: ClipboardList, badge: 2 },
-  { label: 'PIMs', href: '/pims', icon: Ship },
-  { label: 'Contratos', href: '/contracts', icon: FileCheck },
-  { label: 'Pagos', href: '/payments', icon: CreditCard },
+  { label: 'Dashboard', href: '/comex/dashboard', icon: LayoutDashboard },
+  { label: 'Requerimientos', href: '/comex/requirements', icon: ClipboardList, badge: 2 },
+  { label: 'PIMs', href: '/comex/pims', icon: Ship },
+  { label: 'Contratos', href: '/comex/contracts', icon: FileCheck },
+  { label: 'Pagos', href: '/comex/payments', icon: CreditCard },
 ];
 
 const catalogNavItems: NavItem[] = [
-  { label: 'Productos', href: '/products', icon: Package },
-  { label: 'Proveedores', href: '/suppliers', icon: Building2 },
-  { label: 'Precios', href: '/prices', icon: TrendingUp },
+  { label: 'Productos', href: '/comex/products', icon: Package },
+  { label: 'Proveedores', href: '/comex/suppliers', icon: Building2 },
+  { label: 'Precios', href: '/comex/prices', icon: TrendingUp },
 ];
 
 const systemNavItems: NavItem[] = [
-  { label: 'Usuarios', href: '/users', icon: Users },
-  { label: 'Notificaciones', href: '/notifications', icon: Bell, badge: 3 },
-  { label: 'Configuración', href: '/settings', icon: Settings },
+  { label: 'Usuarios', href: '/comex/users', icon: Users },
+  { label: 'Notificaciones', href: '/comex/notifications', icon: Bell, badge: 3 },
+  { label: 'Configuración', href: '/comex/settings', icon: Settings },
 ];
 
-export function Sidebar() {
+export function ComexSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const renderNavItem = (item: NavItem) => {
@@ -112,9 +113,9 @@ export function Sidebar() {
         collapsed ? 'w-16' : 'w-64'
       )}
     >
-      {/* Logo */}
+      {/* Logo & Back Button */}
       <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-accent shadow-md">
             <Ship className="h-5 w-5 text-white" />
           </div>
@@ -125,6 +126,21 @@ export function Sidebar() {
             </div>
           )}
         </div>
+        {!collapsed && (
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Volver a módulos</TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {/* Navigation */}
