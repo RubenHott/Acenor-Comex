@@ -1,8 +1,8 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
+import { ComexSidebar } from './ComexSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 
-export function MainLayout() {
+export function ComexLayout() {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
@@ -10,9 +10,9 @@ export function MainLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex h-screen bg-background overflow-hidden">
+      <ComexSidebar />
+      <main className="flex-1 overflow-y-auto">
         <Outlet />
       </main>
     </div>
