@@ -1,500 +1,311 @@
 
-# Plan: Migración de Cálculos Frontend a Edge Functions y SQL
+# Plan: Actualización de Documentación del Proyecto
 
-## Estado: ✅ COMPLETADO (26 Enero 2026)
+## Resumen
 
-Este plan convirtió todos los cálculos que se ejecutaban en el navegador (frontend) a funciones del servidor (Edge Functions) y reglas de base de datos (SQL).
-
----
-
-## Resumen de Implementación
-
-### 1. Estadísticas de PIMs (`usePIMs.ts` - líneas 109-137)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| `pimsActivos` | Frontend | Cuenta PIMs donde estado no es 'cerrado' ni 'entregado' |
-| `pimsPendientes` | Frontend | Cuenta PIMs en estados 'creado', 'en_negociacion', 'contrato_pendiente' |
-| `montoTotalUSD` | Frontend | Suma de total_usd de todos los PIMs |
-| `toneladasMes` | Frontend | Suma de total_toneladas de todos los PIMs |
-| `alertasSLA` | Frontend | Valor hardcodeado (2) |
-
-### 2. Estadísticas de SLA (`useSLAData.ts` - líneas 42-121)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| Promedio días negociación | Frontend | AVG de tiempo_negociacion_dias_reales |
-| Promedio días contrato | Frontend | AVG de tiempo_contrato_dias_reales |
-| Promedio días tránsito | Frontend | AVG de tiempo_transito_dias_reales |
-| Promedio días producción | Frontend | AVG de tiempo_produccion_dias_reales |
-| Promedio días aduana | Frontend | AVG de tiempo_aduana_dias_reales |
-| Cálculo de alerta | Frontend | Determina verde/amarillo/rojo según días reales vs estimados |
-
-### 3. Distribución por Estado (`DashboardPage.tsx` - líneas 51-64)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| `statusDistribution` | Frontend | Cuenta PIMs agrupados por estado |
-
-### 4. Tendencia Mensual (`DashboardPage.tsx` - líneas 67-92)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| `monthlyData` | Frontend | Agrupa PIMs por mes con conteo y suma de toneladas |
-
-### 5. PIM Crítico (`DashboardPage.tsx` - líneas 104-106)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| `criticalPIM` | Frontend | Encuentra primer PIM en estado crítico |
-
-### 6. Estadísticas de Work Orders (`useWorkOrders.ts` - líneas 90-108)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| `total` | Frontend | Total de órdenes |
-| `pendientes` | Frontend | Órdenes en estado 'pendiente' |
-| `enProgreso` | Frontend | Órdenes en estado 'en_progreso' |
-| `completadas` | Frontend | Órdenes en estado 'completada' |
-| `urgentes` | Frontend | Órdenes urgentes no completadas |
-
-### 7. Conteo de PIMs por Requerimiento (`RequirementsPage.tsx` - líneas 51-52)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| `countPIMsForRequirement` | Frontend | Cuenta PIMs asociados a un requerimiento |
-
-### 8. Totales de Requerimientos (`RequirementsPage.tsx` - líneas 76-77)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| `totalToneladas` | Frontend | Suma de toneladas de todos los requerimientos |
-| `totalUSD` | Frontend | Suma de USD de todos los requerimientos |
-
-### 9. Generación de Código y Fecha (`CreateWorkOrderPage.tsx` - líneas 14-32)
-
-| Cálculo | Ubicación | Descripción |
-|---------|-----------|-------------|
-| `generateWorkOrderCode` | Frontend | Genera código OT-YYYY-NNN |
-| `calculateDueDate` | Frontend | Calcula fecha límite según prioridad |
+Actualizar la documentación existente para reflejar los cambios realizados en la migración de cálculos del frontend a Edge Functions y SQL, así como la eliminación de datos mock y la integración real con Supabase.
 
 ---
 
-## Arquitectura Propuesta
+## Documentos a Actualizar
+
+### 1. `docs/README.md` (Principal)
+
+**Cambios necesarios:**
+
+| Sección | Estado Actual | Estado Nuevo |
+|---------|---------------|--------------|
+| Hallazgos Críticos | Dice "Datos Mock: La app usa datos hardcoded" | Eliminar - ya usa Supabase real |
+| Stack Tecnológico | Falta Edge Functions | Agregar Edge Functions (Deno) |
+| Última actualización | Enero 2025 | Enero 2026 |
+
+---
+
+### 2. `docs/architecture/README.md` (Arquitectura)
+
+**Cambios necesarios:**
+
+- Actualizar diagrama de arquitectura para incluir la capa de Edge Functions
+- Actualizar sección "Capa de Datos" eliminando referencias a Mock Data
+- Actualizar sección "Próximos Pasos" eliminando items completados
+- Agregar nueva sección describiendo la arquitectura de 3 capas (Frontend → Edge Functions → SQL)
+
+**Nuevo diagrama propuesto:**
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND                                 │
-│   React Components → React Query Hooks → Edge Functions          │
+│                        FRONTEND (React)                         │
+├─────────────────────────────────────────────────────────────────┤
+│  React Query Hooks → supabase.functions.invoke()                │
+│  useDashboardStats, useWorkOrders, usePIMs, etc.                │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      EDGE FUNCTIONS                              │
-│   ┌──────────────────┐  ┌──────────────────┐                    │
-│   │  get-dashboard   │  │  get-pim-stats   │                    │
-│   │  -stats          │  │                  │                    │
-│   └────────┬─────────┘  └────────┬─────────┘                    │
-│            │                     │                               │
-│   ┌────────┴─────────┐  ┌───────┴──────────┐                    │
-│   │ get-work-order   │  │  get-sla-stats   │                    │
-│   │ -stats           │  │                  │                    │
-│   └────────┬─────────┘  └────────┬─────────┘                    │
-│            │                     │                               │
-│   ┌────────┴─────────────────────┴─────────┐                    │
-│   │        create-work-order                │                    │
-│   └────────────────────┬────────────────────┘                   │
-└────────────────────────┼────────────────────────────────────────┘
-                         │
-                         ▼
+│                     EDGE FUNCTIONS (Deno)                        │
+├─────────────────────────────────────────────────────────────────┤
+│  get-dashboard-stats  │  get-work-order-stats  │ create-work-order│
+│  Orquesta funciones SQL y retorna JSON consolidado               │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    POSTGRESQL (SQL)                              │
-│                                                                  │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                  FUNCIONES SQL                           │   │
-│   │                                                          │   │
-│   │  fn_pim_stats()           → Estadísticas de PIMs         │   │
-│   │  fn_pim_status_distribution() → Distribución por estado  │   │
-│   │  fn_pim_monthly_trend()   → Tendencia mensual            │   │
-│   │  fn_sla_global_stats()    → Promedios SLA globales       │   │
-│   │  fn_work_order_stats()    → Estadísticas de OTs          │   │
-│   │  fn_requirement_summary() → Totales de requerimientos    │   │
-│   │  fn_generate_wo_code()    → Genera código de OT          │   │
-│   │  fn_calculate_due_date()  → Calcula fecha límite         │   │
-│   └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                   TRIGGERS                               │   │
-│   │                                                          │   │
-│   │  trg_auto_calculate_sla_alert → Auto-calcula alertas SLA │   │
-│   │  trg_update_requirement_totals → Actualiza totales req   │   │
-│   └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                    VIEWS                                 │   │
-│   │                                                          │   │
-│   │  v_pim_dashboard      → Vista consolidada para dashboard │   │
-│   │  v_work_order_summary → Vista resumida de OTs            │   │
-│   └─────────────────────────────────────────────────────────┘   │
+│                      SUPABASE (PostgreSQL)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  Funciones SQL: fn_pim_stats, fn_sla_global_stats, etc.         │
+│  Triggers: trg_calculate_sla_alerts                              │
+│  Tablas: pims, work_orders, sla_data, notificaciones, etc.      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Plan de Implementación
+### 3. `docs/backend/api-integration.md` (Integración API)
 
-### Fase 1: Funciones SQL para Estadísticas
+**Cambios necesarios:**
 
-Crear funciones SQL que ejecutan los cálculos directamente en la base de datos.
+- Agregar nueva sección "Edge Functions" explicando cómo invocarlas
+- Agregar sección "Funciones SQL (RPC)" con ejemplos de llamadas
+- Actualizar tabla "Estado Actual vs Ideal" para reflejar estado completado
+- Eliminar sección "Próximos Pasos" obsoleta
 
-#### 1.1 Función: Estadísticas de PIMs
-```sql
-CREATE OR REPLACE FUNCTION fn_pim_stats()
-RETURNS TABLE (
-  total_pims INTEGER,
-  pims_activos INTEGER,
-  pims_pendientes INTEGER,
-  alertas_sla INTEGER,
-  monto_total_usd NUMERIC,
-  toneladas_mes NUMERIC
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    COUNT(*)::INTEGER as total_pims,
-    COUNT(*) FILTER (WHERE estado NOT IN ('cerrado', 'entregado'))::INTEGER as pims_activos,
-    COUNT(*) FILTER (WHERE estado IN ('creado', 'en_negociacion', 'contrato_pendiente'))::INTEGER as pims_pendientes,
-    (SELECT COUNT(*) FROM sla_data WHERE tiempo_total_alerta IN ('amarillo', 'rojo'))::INTEGER as alertas_sla,
-    COALESCE(SUM(total_usd), 0) as monto_total_usd,
-    COALESCE(SUM(total_toneladas), 0) as toneladas_mes
-  FROM pims;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+**Nuevas secciones a agregar:**
 
-#### 1.2 Función: Distribución por Estado
-```sql
-CREATE OR REPLACE FUNCTION fn_pim_status_distribution()
-RETURNS TABLE (
-  estado TEXT,
-  cantidad INTEGER
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT p.estado, COUNT(*)::INTEGER as cantidad
-  FROM pims p
-  GROUP BY p.estado
-  ORDER BY cantidad DESC;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+```markdown
+## Edge Functions
 
-#### 1.3 Función: Tendencia Mensual
-```sql
-CREATE OR REPLACE FUNCTION fn_pim_monthly_trend(months_back INTEGER DEFAULT 4)
-RETURNS TABLE (
-  mes TEXT,
-  anio INTEGER,
-  total_pims INTEGER,
-  total_toneladas NUMERIC
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    TO_CHAR(fecha_creacion, 'Mon') as mes,
-    EXTRACT(YEAR FROM fecha_creacion)::INTEGER as anio,
-    COUNT(*)::INTEGER as total_pims,
-    COALESCE(SUM(total_toneladas), 0) as total_toneladas
-  FROM pims
-  WHERE fecha_creacion >= (CURRENT_DATE - (months_back || ' months')::INTERVAL)
-  GROUP BY TO_CHAR(fecha_creacion, 'Mon'), TO_CHAR(fecha_creacion, 'YYYY-MM'), EXTRACT(YEAR FROM fecha_creacion)
-  ORDER BY TO_CHAR(fecha_creacion, 'YYYY-MM');
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+### Invocar Edge Functions
 
-#### 1.4 Función: Estadísticas SLA Globales
-```sql
-CREATE OR REPLACE FUNCTION fn_sla_global_stats()
-RETURNS JSONB AS $$
-DECLARE
-  result JSONB;
-BEGIN
-  SELECT jsonb_build_object(
-    'negociacion', jsonb_build_object(
-      'estimados', ROUND(AVG(tiempo_negociacion_dias_estimados)),
-      'reales', ROUND(AVG(tiempo_negociacion_dias_reales)),
-      'alerta', CASE 
-        WHEN AVG(tiempo_negociacion_dias_reales) IS NULL THEN 'verde'
-        WHEN AVG(tiempo_negociacion_dias_reales) <= AVG(tiempo_negociacion_dias_estimados) THEN 'verde'
-        WHEN AVG(tiempo_negociacion_dias_reales) <= AVG(tiempo_negociacion_dias_estimados) * 1.2 THEN 'amarillo'
-        ELSE 'rojo'
-      END
-    ),
-    'contrato', jsonb_build_object(
-      'estimados', ROUND(AVG(tiempo_contrato_dias_estimados)),
-      'reales', ROUND(AVG(tiempo_contrato_dias_reales)),
-      'alerta', CASE 
-        WHEN AVG(tiempo_contrato_dias_reales) IS NULL THEN 'verde'
-        WHEN AVG(tiempo_contrato_dias_reales) <= AVG(tiempo_contrato_dias_estimados) THEN 'verde'
-        WHEN AVG(tiempo_contrato_dias_reales) <= AVG(tiempo_contrato_dias_estimados) * 1.2 THEN 'amarillo'
-        ELSE 'rojo'
-      END
-    ),
-    'transito', jsonb_build_object(
-      'estimados', ROUND(AVG(tiempo_transito_dias_estimados)),
-      'reales', ROUND(AVG(tiempo_transito_dias_reales)),
-      'alerta', CASE 
-        WHEN AVG(tiempo_transito_dias_reales) IS NULL THEN 'verde'
-        WHEN AVG(tiempo_transito_dias_reales) <= AVG(tiempo_transito_dias_estimados) THEN 'verde'
-        WHEN AVG(tiempo_transito_dias_reales) <= AVG(tiempo_transito_dias_estimados) * 1.2 THEN 'amarillo'
-        ELSE 'rojo'
-      END
-    ),
-    'produccion', jsonb_build_object(
-      'estimados', ROUND(AVG(tiempo_produccion_dias_estimados)),
-      'reales', ROUND(AVG(tiempo_produccion_dias_reales)),
-      'alerta', CASE 
-        WHEN AVG(tiempo_produccion_dias_reales) IS NULL THEN 'verde'
-        WHEN AVG(tiempo_produccion_dias_reales) <= AVG(tiempo_produccion_dias_estimados) THEN 'verde'
-        WHEN AVG(tiempo_produccion_dias_reales) <= AVG(tiempo_produccion_dias_estimados) * 1.2 THEN 'amarillo'
-        ELSE 'rojo'
-      END
-    ),
-    'aduana', jsonb_build_object(
-      'estimados', ROUND(AVG(tiempo_aduana_dias_estimados)),
-      'reales', ROUND(AVG(tiempo_aduana_dias_reales)),
-      'alerta', CASE 
-        WHEN AVG(tiempo_aduana_dias_reales) IS NULL THEN 'verde'
-        WHEN AVG(tiempo_aduana_dias_reales) <= AVG(tiempo_aduana_dias_estimados) THEN 'verde'
-        WHEN AVG(tiempo_aduana_dias_reales) <= AVG(tiempo_aduana_dias_estimados) * 1.2 THEN 'amarillo'
-        ELSE 'rojo'
-      END
-    ),
-    'total', jsonb_build_object(
-      'estimados', ROUND(AVG(tiempo_total_dias_estimados)),
-      'reales', ROUND(AVG(tiempo_total_dias_reales)),
-      'alerta', CASE 
-        WHEN AVG(tiempo_total_dias_reales) IS NULL THEN 'verde'
-        WHEN AVG(tiempo_total_dias_reales) <= AVG(tiempo_total_dias_estimados) THEN 'verde'
-        WHEN AVG(tiempo_total_dias_reales) <= AVG(tiempo_total_dias_estimados) * 1.2 THEN 'amarillo'
-        ELSE 'rojo'
-      END
-    )
-  ) INTO result
-  FROM sla_data;
-  
-  RETURN result;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-#### 1.5 Función: Estadísticas de Work Orders
-```sql
-CREATE OR REPLACE FUNCTION fn_work_order_stats()
-RETURNS TABLE (
-  total INTEGER,
-  pendientes INTEGER,
-  en_progreso INTEGER,
-  completadas INTEGER,
-  urgentes INTEGER
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    COUNT(*)::INTEGER as total,
-    COUNT(*) FILTER (WHERE estado = 'pendiente')::INTEGER as pendientes,
-    COUNT(*) FILTER (WHERE estado = 'en_progreso')::INTEGER as en_progreso,
-    COUNT(*) FILTER (WHERE estado = 'completada')::INTEGER as completadas,
-    COUNT(*) FILTER (WHERE prioridad = 'urgente' AND estado != 'completada')::INTEGER as urgentes
-  FROM work_orders;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-#### 1.6 Función: Generar Código de Work Order
-```sql
-CREATE OR REPLACE FUNCTION fn_generate_work_order_code()
-RETURNS TEXT AS $$
-DECLARE
-  current_year INTEGER;
-  next_sequence INTEGER;
-BEGIN
-  current_year := EXTRACT(YEAR FROM CURRENT_DATE);
-  
-  SELECT COALESCE(MAX(
-    CASE 
-      WHEN codigo ~ ('^OT-' || current_year || '-[0-9]+$')
-      THEN CAST(SUBSTRING(codigo FROM 'OT-[0-9]+-([0-9]+)$') AS INTEGER)
-      ELSE 0
-    END
-  ), 0) + 1 INTO next_sequence
-  FROM work_orders;
-  
-  RETURN 'OT-' || current_year || '-' || LPAD(next_sequence::TEXT, 3, '0');
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-#### 1.7 Función: Calcular Fecha Límite
-```sql
-CREATE OR REPLACE FUNCTION fn_calculate_due_date(priority TEXT)
-RETURNS TIMESTAMPTZ AS $$
-DECLARE
-  days_to_add INTEGER;
-BEGIN
-  days_to_add := CASE priority
-    WHEN 'urgente' THEN 1
-    WHEN 'alta' THEN 3
-    WHEN 'media' THEN 7
-    WHEN 'baja' THEN 14
-    ELSE 7
-  END;
-  
-  RETURN NOW() + (days_to_add || ' days')::INTERVAL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-#### 1.8 Función: Resumen de Requerimientos
-```sql
-CREATE OR REPLACE FUNCTION fn_requirement_pim_count(requirement_id TEXT)
-RETURNS INTEGER AS $$
-BEGIN
-  RETURN (SELECT COUNT(*) FROM pims WHERE requerimiento_id = requirement_id)::INTEGER;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
----
-
-### Fase 2: Edge Functions
-
-Crear edge functions que invocan las funciones SQL y retornan JSON.
-
-#### 2.1 Edge Function: `get-dashboard-stats`
-
-Consolidar todas las estadísticas del dashboard en una sola llamada.
-
-Archivo: `supabase/functions/get-dashboard-stats/index.ts`
+Las edge functions se llaman usando `supabase.functions.invoke()`:
 
 ```typescript
-// Devuelve:
-// - pimStats (de fn_pim_stats)
-// - statusDistribution (de fn_pim_status_distribution)
-// - monthlyTrend (de fn_pim_monthly_trend)
-// - slaStats (de fn_sla_global_stats)
-// - criticalPIM (primer PIM en estado crítico)
+const { data, error } = await supabase.functions.invoke('get-dashboard-stats');
 ```
 
-#### 2.2 Edge Function: `get-work-order-stats`
+### Edge Functions Disponibles
 
-Archivo: `supabase/functions/get-work-order-stats/index.ts`
+| Función | Propósito | Método |
+|---------|-----------|--------|
+| `get-dashboard-stats` | Estadísticas consolidadas del dashboard | GET |
+| `get-work-order-stats` | Estadísticas de órdenes de trabajo | GET |
+| `create-work-order` | Crear nueva orden de trabajo | POST |
+
+## Funciones SQL (RPC)
+
+Las funciones SQL se invocan con `supabase.rpc()`:
 
 ```typescript
-// Devuelve:
-// - total, pendientes, enProgreso, completadas, urgentes
+const { data, error } = await supabase.rpc('fn_pim_stats');
 ```
 
-#### 2.3 Edge Function: `create-work-order`
+### Funciones Disponibles
 
-Archivo: `supabase/functions/create-work-order/index.ts`
-
-```typescript
-// Recibe: titulo, descripcion, prioridad, tipo_trabajo, area, solicitante
-// Genera: codigo (usando fn_generate_work_order_code)
-// Calcula: fecha_limite (usando fn_calculate_due_date)
-// Inserta la orden y retorna el resultado
-```
-
----
-
-### Fase 3: Triggers para Cálculos Automáticos
-
-#### 3.1 Trigger: Auto-calcular Alertas SLA
-
-```sql
-CREATE OR REPLACE FUNCTION trg_calculate_sla_alerts()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Calcular alerta de negociación
-  NEW.tiempo_negociacion_alerta := CASE
-    WHEN NEW.tiempo_negociacion_dias_reales IS NULL THEN 'verde'
-    WHEN NEW.tiempo_negociacion_dias_reales <= NEW.tiempo_negociacion_dias_estimados THEN 'verde'
-    WHEN NEW.tiempo_negociacion_dias_reales <= NEW.tiempo_negociacion_dias_estimados * 1.2 THEN 'amarillo'
-    ELSE 'rojo'
-  END;
-  
-  -- (Repetir para contrato, producción, tránsito, aduana, total)
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_sla_auto_alerts
-  BEFORE INSERT OR UPDATE ON sla_data
-  FOR EACH ROW
-  EXECUTE FUNCTION trg_calculate_sla_alerts();
+| Función | Retorna | Descripción |
+|---------|---------|-------------|
+| `fn_pim_stats()` | TABLE | Estadísticas de PIMs |
+| `fn_pim_status_distribution()` | TABLE | Distribución por estado |
+| `fn_pim_monthly_trend(months_back)` | TABLE | Tendencia mensual |
+| `fn_sla_global_stats()` | JSONB | Estadísticas SLA globales |
+| `fn_work_order_stats()` | TABLE | Estadísticas de OTs |
+| `fn_generate_work_order_code()` | TEXT | Genera código OT |
+| `fn_calculate_due_date(priority)` | TIMESTAMPTZ | Calcula fecha límite |
+| `fn_requirement_pim_count(id)` | INTEGER | Cuenta PIMs por requerimiento |
+| `fn_get_critical_pim()` | TABLE | Obtiene PIM crítico |
 ```
 
 ---
 
-### Fase 4: Actualizar Hooks del Frontend
+### 4. `docs/frontend/state-management.md` (Manejo de Estado)
 
-Modificar los hooks para llamar a las edge functions en lugar de calcular localmente.
+**Cambios necesarios:**
 
-| Hook Actual | Cambio |
-|-------------|--------|
-| `usePIMStats()` | Llamar a `get-dashboard-stats` edge function |
-| `useSLAStats()` | Usar datos de `get-dashboard-stats` |
-| `useWorkOrderStats()` | Llamar a `get-work-order-stats` edge function |
-| `useCreateWorkOrder()` | Llamar a `create-work-order` edge function |
+- Actualizar sección "React Query" con ejemplos reales implementados
+- Actualizar tabla "Estado Actual vs Ideal" para reflejar estado completado
+- Agregar hook `useDashboardStats` como ejemplo principal
+- Agregar sección sobre hooks que consumen Edge Functions
 
 ---
 
-## Resumen de Archivos a Crear/Modificar
+### 5. `docs/backend/database-schema.md` (Esquema de BD)
 
-### Archivos Nuevos
+**Cambios necesarios:**
+
+- Agregar nueva sección "Funciones SQL" listando las 9 funciones creadas
+- Agregar nueva sección "Triggers" documentando el trigger de SLA
+- Agregar tabla `notificaciones` al esquema
+- Agregar tabla `work_orders` al esquema (módulo OTs)
+
+**Nueva sección propuesta:**
+
+```markdown
+## Funciones SQL
+
+El sistema utiliza funciones PL/pgSQL para ejecutar cálculos en el servidor:
+
+### Funciones de Estadísticas
+
+| Función | Tipo Retorno | Descripción |
+|---------|--------------|-------------|
+| `fn_pim_stats()` | TABLE | Estadísticas agregadas de PIMs |
+| `fn_pim_status_distribution()` | TABLE | Conteo por estado |
+| `fn_pim_monthly_trend(months)` | TABLE | Tendencia mensual |
+| `fn_sla_global_stats()` | JSONB | Promedios SLA con alertas |
+| `fn_work_order_stats()` | TABLE | Estadísticas de OTs |
+
+### Funciones Utilitarias
+
+| Función | Tipo Retorno | Descripción |
+|---------|--------------|-------------|
+| `fn_generate_work_order_code()` | TEXT | Genera código OT-YYYY-NNN |
+| `fn_calculate_due_date(priority)` | TIMESTAMPTZ | Fecha límite según prioridad |
+| `fn_requirement_pim_count(id)` | INTEGER | PIMs asociados a requerimiento |
+| `fn_get_critical_pim()` | TABLE | Primer PIM en estado crítico |
+
+## Triggers
+
+| Trigger | Tabla | Evento | Función |
+|---------|-------|--------|---------|
+| `trg_sla_auto_alerts` | sla_data | BEFORE INSERT/UPDATE | `trg_calculate_sla_alerts()` |
+
+Calcula automáticamente las alertas (verde/amarillo/rojo) cuando se insertan o actualizan datos de SLA.
+```
+
+---
+
+### 6. Nuevo Archivo: `docs/backend/edge-functions.md`
+
+**Crear nuevo documento** dedicado a Edge Functions:
+
+```markdown
+# Edge Functions
+
+Funciones serverless ejecutadas en Deno para lógica de negocio.
+
+## Configuración
+
+Archivo: `supabase/config.toml`
+
+## Funciones Disponibles
+
+### get-dashboard-stats
+
+Consolida todas las estadísticas del dashboard en una llamada.
+
+**Endpoint**: `supabase.functions.invoke('get-dashboard-stats')`
+
+**Respuesta**:
+- `pimStats`: Estadísticas de PIMs
+- `statusDistribution`: Distribución por estado
+- `monthlyTrend`: Tendencia mensual
+- `slaStats`: Estadísticas SLA
+- `criticalPim`: PIM crítico actual
+
+### get-work-order-stats
+
+Estadísticas de órdenes de trabajo.
+
+### create-work-order
+
+Crea una nueva orden de trabajo con código auto-generado.
+
+## Desarrollo Local
+
+Las edge functions se despliegan automáticamente al hacer push.
+
+## Debugging
+
+Ver logs en: Supabase Dashboard → Functions → [function] → Logs
+```
+
+---
+
+### 7. Actualizar `docs/guides/adding-supabase-table.md`
+
+**Agregar sección** sobre funciones SQL y Edge Functions:
+
+```markdown
+## Agregar Función SQL
+
+Para agregar cálculos que se ejecuten en el servidor:
+
+1. Crear migración con la función
+2. Llamar desde Edge Function o frontend con `supabase.rpc()`
+
+## Agregar Edge Function
+
+1. Crear carpeta en `supabase/functions/[nombre]/`
+2. Crear `index.ts` con la lógica
+3. Agregar configuración en `supabase/config.toml`
+4. Crear hook en frontend para consumirla
+```
+
+---
+
+### 8. Actualizar Hooks Documentation
+
+**Nuevo archivo sugerido**: `docs/frontend/hooks.md`
+
+Documentar todos los hooks disponibles:
+
+| Hook | Propósito | Fuente de Datos |
+|------|-----------|-----------------|
+| `useDashboardStats()` | Estadísticas consolidadas | Edge Function |
+| `usePIMs()` | Lista de PIMs | Supabase directo |
+| `useWorkOrders()` | Lista y stats de OTs | Supabase + Edge Function |
+| `useSLAData()` | Datos SLA (deprecated) | Supabase directo |
+| `useNotifications()` | Notificaciones del usuario | Supabase directo |
+| `useProducts()` | Catálogo de productos | Supabase directo |
+| `useSuppliers()` | Lista de proveedores | Supabase directo |
+| `useRequirements()` | Requerimientos mensuales | Supabase directo |
+
+---
+
+## Archivos a Crear
 
 | Archivo | Propósito |
 |---------|-----------|
-| `supabase/migrations/xxx_add_sql_functions.sql` | Todas las funciones SQL |
-| `supabase/functions/get-dashboard-stats/index.ts` | Edge function dashboard |
-| `supabase/functions/get-work-order-stats/index.ts` | Edge function work orders |
-| `supabase/functions/create-work-order/index.ts` | Edge function crear OT |
+| `docs/backend/edge-functions.md` | Documentación de Edge Functions |
+| `docs/frontend/hooks.md` | Documentación de React Query hooks |
 
-### Archivos a Modificar
+## Archivos a Modificar
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/hooks/usePIMs.ts` | Reemplazar `usePIMStats` para usar edge function |
-| `src/hooks/useSLAData.ts` | Simplificar `useSLAStats` |
-| `src/hooks/useWorkOrders.ts` | Reemplazar stats y create |
-| `src/pages/DashboardPage.tsx` | Remover cálculos useMemo |
-| `src/pages/RequirementsPage.tsx` | Usar función SQL para conteo |
-| `supabase/config.toml` | Agregar configuración de edge functions |
-
----
-
-## Beneficios de Esta Migración
-
-1. **Rendimiento**: Los cálculos se ejecutan en el servidor, no en el navegador
-2. **Consistencia**: Una sola fuente de verdad para todos los cálculos
-3. **Seguridad**: La lógica de negocio está protegida en el backend
-4. **Escalabilidad**: Los cálculos SQL son más eficientes que JavaScript
-5. **Mantenibilidad**: Lógica centralizada y fácil de modificar
-6. **Menos datos transferidos**: El frontend solo recibe los resultados
+| Archivo | Tipo de Cambio |
+|---------|----------------|
+| `docs/README.md` | Actualizar estado y fecha |
+| `docs/architecture/README.md` | Nuevo diagrama con Edge Functions |
+| `docs/backend/api-integration.md` | Agregar Edge Functions y RPC |
+| `docs/backend/database-schema.md` | Agregar funciones SQL y triggers |
+| `docs/frontend/state-management.md` | Ejemplos reales implementados |
+| `docs/guides/adding-supabase-table.md` | Agregar sección Edge Functions |
 
 ---
 
 ## Orden de Ejecución
 
-1. Crear migración SQL con todas las funciones
-2. Crear edge function `get-dashboard-stats`
-3. Crear edge function `get-work-order-stats`
-4. Crear edge function `create-work-order`
-5. Actualizar `supabase/config.toml`
-6. Actualizar hooks del frontend
-7. Actualizar componentes para usar nuevos hooks
-8. Probar todas las funcionalidades
-9. Eliminar código de cálculo obsoleto del frontend
+1. Crear `docs/backend/edge-functions.md`
+2. Crear `docs/frontend/hooks.md`
+3. Actualizar `docs/README.md`
+4. Actualizar `docs/architecture/README.md`
+5. Actualizar `docs/backend/api-integration.md`
+6. Actualizar `docs/backend/database-schema.md`
+7. Actualizar `docs/frontend/state-management.md`
+8. Actualizar `docs/guides/adding-supabase-table.md`
+
+---
+
+## Notas Técnicas
+
+### Cambios Arquitectónicos Documentados
+
+1. **Eliminación de Mock Data**: Los archivos `mockData.ts` y `workOrdersMock.ts` fueron eliminados
+2. **Nuevas Edge Functions**: 3 funciones desplegadas en Supabase
+3. **Nuevas Funciones SQL**: 9 funciones PL/pgSQL para cálculos
+4. **Nuevo Trigger**: Auto-cálculo de alertas SLA
+5. **Nueva Tabla**: `notificaciones` para sistema de alertas
+
+### Beneficios a Destacar
+
+- Cálculos ejecutados en servidor (mejor rendimiento)
+- Una sola fuente de verdad para lógica de negocio
+- Menor transferencia de datos al frontend
+- Código más mantenible y testeable
