@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
-import { mockPIMs, mockSuppliers } from '@/data/mockData';
+import { usePIMs } from '@/hooks/usePIMs';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { PIMStatusBadge } from '@/components/dashboard/PIMStatusBadge';
 import { SLAIndicator } from '@/components/dashboard/SLAIndicator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -27,16 +30,26 @@ import {
   DollarSign,
   Package,
   MoreHorizontal,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PIM } from '@/types/comex';
+import type { PIM } from '@/hooks/usePIMs';
+import type { PIMStatus } from '@/types/comex';
 
 export default function PIMsPage() {
-  const [selectedPIM, setSelectedPIM] = useState<PIM | null>(mockPIMs[0]);
+  const { data: pims, isLoading, error } = usePIMs();
+  const { data: suppliers } = useSuppliers();
+  
+  const [selectedPIM, setSelectedPIM] = useState<PIM | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredPIMs = mockPIMs.filter(pim => {
+  // Set first PIM as selected when data loads
+  if (pims && pims.length > 0 && !selectedPIM) {
+    setSelectedPIM(pims[0]);
+  }
+
+  const filteredPIMs = (pims || []).filter(pim => {
     const matchesSearch = 
       pim.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pim.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
@@ -45,7 +58,7 @@ export default function PIMsPage() {
   });
 
   const getSupplierName = (id: string) => {
-    return mockSuppliers.find(s => s.id === id)?.nombre ?? 'N/A';
+    return suppliers?.find(s => s.id === id)?.nombre ?? 'N/A';
   };
 
   const formatCurrency = (value: number) => {
@@ -56,14 +69,28 @@ export default function PIMsPage() {
     }).format(value);
   };
 
-  const formatDate = (date?: Date) => {
+  const formatDate = (date?: string | null) => {
     if (!date) return '-';
     return new Intl.DateTimeFormat('es-PE', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
-    }).format(date);
+    }).format(new Date(date));
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title="Gestión de PIMs" subtitle="Control y seguimiento de importaciones" />
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>Error al cargar PIMs: {error.message}</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background page-enter">
@@ -119,51 +146,47 @@ export default function PIMsPage() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
-                  {filteredPIMs.map((pim) => (
-                    <button
-                      key={pim.id}
-                      onClick={() => setSelectedPIM(pim)}
-                      className={cn(
-                        'w-full p-4 text-left transition-colors hover:bg-muted/50 flex items-start justify-between gap-3',
-                        selectedPIM?.id === pim.id && 'bg-muted'
-                      )}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-mono font-medium text-sm">{pim.codigo}</p>
-                          {pim.tipo === 'sub-pim' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                              Sub-PIM
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate mb-2">
-                          {pim.descripcion}
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <PIMStatusBadge status={pim.estado} size="sm" />
-                          <span className="text-xs text-muted-foreground">
-                            {formatCurrency(pim.totalUSD)}
-                          </span>
-                        </div>
+                  {isLoading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="p-4">
+                        <Skeleton className="h-4 w-24 mb-2" />
+                        <Skeleton className="h-3 w-full mb-2" />
+                        <Skeleton className="h-6 w-20" />
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex gap-0.5">
-                          {Object.entries(pim.slaData).slice(0, 4).map(([key, value]) => (
-                            <div
-                              key={key}
-                              className={cn(
-                                'h-1.5 w-1.5 rounded-full',
-                                value.alerta === 'verde' ? 'bg-success' :
-                                value.alerta === 'amarillo' ? 'bg-warning' : 'bg-destructive'
-                              )}
-                            />
-                          ))}
+                    ))
+                  ) : (
+                    filteredPIMs.map((pim) => (
+                      <button
+                        key={pim.id}
+                        onClick={() => setSelectedPIM(pim)}
+                        className={cn(
+                          'w-full p-4 text-left transition-colors hover:bg-muted/50 flex items-start justify-between gap-3',
+                          selectedPIM?.id === pim.id && 'bg-muted'
+                        )}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-mono font-medium text-sm">{pim.codigo}</p>
+                            {pim.tipo === 'sub-pim' && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                Sub-PIM
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate mb-2">
+                            {pim.descripcion}
+                          </p>
+                          <div className="flex items-center gap-3">
+                            <PIMStatusBadge status={pim.estado as PIMStatus} size="sm" />
+                            <span className="text-xs text-muted-foreground">
+                              {formatCurrency(pim.total_usd || 0)}
+                            </span>
+                          </div>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -179,7 +202,7 @@ export default function PIMsPage() {
                       <CardTitle className="text-xl font-bold font-mono">
                         {selectedPIM.codigo}
                       </CardTitle>
-                      <PIMStatusBadge status={selectedPIM.estado} />
+                      <PIMStatusBadge status={selectedPIM.estado as PIMStatus} />
                     </div>
                     <p className="text-muted-foreground">{selectedPIM.descripcion}</p>
                   </div>
@@ -204,28 +227,28 @@ export default function PIMsPage() {
                             <Building2 className="h-4 w-4" />
                             <span className="text-xs">Proveedor</span>
                           </div>
-                          <p className="font-medium">{getSupplierName(selectedPIM.proveedorId)}</p>
+                          <p className="font-medium">{selectedPIM.proveedor_nombre || getSupplierName(selectedPIM.proveedor_id)}</p>
                         </div>
                         <div className="p-4 rounded-lg bg-muted/50">
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
                             <Calendar className="h-4 w-4" />
                             <span className="text-xs">Fecha Creación</span>
                           </div>
-                          <p className="font-medium">{formatDate(selectedPIM.fechaCreacion)}</p>
+                          <p className="font-medium">{formatDate(selectedPIM.fecha_creacion)}</p>
                         </div>
                         <div className="p-4 rounded-lg bg-muted/50">
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
                             <DollarSign className="h-4 w-4" />
                             <span className="text-xs">Monto Total</span>
                           </div>
-                          <p className="font-medium text-lg">{formatCurrency(selectedPIM.totalUSD)}</p>
+                          <p className="font-medium text-lg">{formatCurrency(selectedPIM.total_usd || 0)}</p>
                         </div>
                         <div className="p-4 rounded-lg bg-muted/50">
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
                             <Package className="h-4 w-4" />
                             <span className="text-xs">Toneladas</span>
                           </div>
-                          <p className="font-medium text-lg">{selectedPIM.totalToneladas} t</p>
+                          <p className="font-medium text-lg">{selectedPIM.total_toneladas || 0} t</p>
                         </div>
                       </div>
 
@@ -236,11 +259,11 @@ export default function PIMsPage() {
                             <FileText className="h-4 w-4" />
                             Contrato
                           </h4>
-                          {selectedPIM.numeroContrato ? (
+                          {selectedPIM.numero_contrato ? (
                             <div className="space-y-2">
-                              <p className="font-mono text-sm">{selectedPIM.numeroContrato}</p>
+                              <p className="font-mono text-sm">{selectedPIM.numero_contrato}</p>
                               <p className="text-sm text-muted-foreground">
-                                Fecha: {formatDate(selectedPIM.fechaContrato)}
+                                Fecha: {formatDate(selectedPIM.fecha_contrato)}
                               </p>
                             </div>
                           ) : (
@@ -254,16 +277,16 @@ export default function PIMsPage() {
                           </h4>
                           <div className="space-y-2">
                             <p className="capitalize">
-                              {selectedPIM.modalidadPago.replace(/_/g, ' ')}
+                              {selectedPIM.modalidad_pago.replace(/_/g, ' ')}
                             </p>
-                            {selectedPIM.diasCredito && (
+                            {selectedPIM.dias_credito && (
                               <p className="text-sm text-muted-foreground">
-                                {selectedPIM.diasCredito} días de crédito
+                                {selectedPIM.dias_credito} días de crédito
                               </p>
                             )}
-                            {selectedPIM.porcentajeAnticipo && (
+                            {selectedPIM.porcentaje_anticipo && (
                               <p className="text-sm text-muted-foreground">
-                                {selectedPIM.porcentajeAnticipo}% anticipo
+                                {selectedPIM.porcentaje_anticipo}% anticipo
                               </p>
                             )}
                           </div>
@@ -273,15 +296,12 @@ export default function PIMsPage() {
 
                     <TabsContent value="sla" className="space-y-4">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {Object.entries(selectedPIM.slaData).map(([key, value]) => (
-                          <SLAIndicator
-                            key={key}
-                            label={key.replace(/tiempo/i, '').replace(/([A-Z])/g, ' $1').trim()}
-                            diasEstimados={value.diasEstimados}
-                            diasReales={value.diasReales}
-                            alerta={value.alerta}
-                          />
-                        ))}
+                        <SLAIndicator label="Negociación" diasEstimados={5} diasReales={4} alerta="verde" />
+                        <SLAIndicator label="Contrato" diasEstimados={3} diasReales={3} alerta="amarillo" />
+                        <SLAIndicator label="Producción" diasEstimados={30} alerta="verde" />
+                        <SLAIndicator label="Tránsito" diasEstimados={25} alerta="verde" />
+                        <SLAIndicator label="Aduana" diasEstimados={5} alerta="verde" />
+                        <SLAIndicator label="Total" diasEstimados={70} alerta="verde" />
                       </div>
                     </TabsContent>
 

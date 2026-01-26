@@ -791,6 +791,69 @@ export type Database = {
           },
         ]
       }
+      work_orders: {
+        Row: {
+          area: string
+          codigo: string
+          created_at: string | null
+          descripcion: string
+          equipo_id: string | null
+          estado: string
+          fecha_creacion: string
+          fecha_fin: string | null
+          fecha_inicio: string | null
+          fecha_limite: string
+          id: string
+          observaciones: string | null
+          prioridad: string
+          solicitante: string
+          tecnico_asignado: string | null
+          tipo_trabajo: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          area: string
+          codigo: string
+          created_at?: string | null
+          descripcion: string
+          equipo_id?: string | null
+          estado?: string
+          fecha_creacion?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          fecha_limite: string
+          id?: string
+          observaciones?: string | null
+          prioridad?: string
+          solicitante: string
+          tecnico_asignado?: string | null
+          tipo_trabajo: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          area?: string
+          codigo?: string
+          created_at?: string | null
+          descripcion?: string
+          equipo_id?: string | null
+          estado?: string
+          fecha_creacion?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          fecha_limite?: string
+          id?: string
+          observaciones?: string | null
+          prioridad?: string
+          solicitante?: string
+          tecnico_asignado?: string | null
+          tipo_trabajo?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

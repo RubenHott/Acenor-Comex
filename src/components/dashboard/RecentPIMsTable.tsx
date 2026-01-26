@@ -1,7 +1,8 @@
-import { mockPIMs, mockSuppliers } from '@/data/mockData';
+import { usePIMs } from '@/hooks/usePIMs';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { PIMStatusBadge } from './PIMStatusBadge';
-import { SLAIndicator } from './SLAIndicator';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Eye, MoreHorizontal } from 'lucide-react';
 import {
   Table,
@@ -17,10 +18,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import type { PIMStatus } from '@/types/comex';
 
 export function RecentPIMsTable() {
+  const { data: pims, isLoading } = usePIMs();
+  const { data: suppliers } = useSuppliers();
+
   const getSupplierName = (id: string) => {
-    return mockSuppliers.find(s => s.id === id)?.nombre ?? 'N/A';
+    return suppliers?.find(s => s.id === id)?.nombre ?? 'N/A';
   };
 
   const formatCurrency = (value: number) => {
@@ -47,58 +52,53 @@ export function RecentPIMsTable() {
             <TableHead className="text-right">Monto USD</TableHead>
             <TableHead className="text-right">Toneladas</TableHead>
             <TableHead>Estado</TableHead>
-            <TableHead>SLA</TableHead>
             <TableHead className="w-[80px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {mockPIMs.map((pim) => (
-            <TableRow key={pim.id} className="table-row-hover">
-              <TableCell className="font-mono text-sm font-medium">{pim.codigo}</TableCell>
-              <TableCell className="max-w-[200px] truncate">{pim.descripcion}</TableCell>
-              <TableCell>{getSupplierName(pim.proveedorId)}</TableCell>
-              <TableCell className="text-right font-medium">{formatCurrency(pim.totalUSD)}</TableCell>
-              <TableCell className="text-right">{pim.totalToneladas} t</TableCell>
-              <TableCell>
-                <PIMStatusBadge status={pim.estado} />
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  {Object.entries(pim.slaData).slice(0, 3).map(([key, value]) => (
-                    <div
-                      key={key}
-                      className={`h-2 w-2 rounded-full ${
-                        value.alerta === 'verde'
-                          ? 'bg-success'
-                          : value.alerta === 'amarillo'
-                          ? 'bg-warning'
-                          : 'bg-destructive'
-                      }`}
-                      title={`${key}: ${value.alerta}`}
-                    />
-                  ))}
-                </div>
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Eye className="h-4 w-4 mr-2" />
-                      Ver detalle
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>Editar PIM</DropdownMenuItem>
-                    <DropdownMenuItem>Ver contrato</DropdownMenuItem>
-                    <DropdownMenuItem>Historial SLA</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-12 ml-auto" /></TableCell>
+                <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+              </TableRow>
+            ))
+          ) : (
+            (pims || []).slice(0, 5).map((pim) => (
+              <TableRow key={pim.id} className="table-row-hover">
+                <TableCell className="font-mono text-sm font-medium">{pim.codigo}</TableCell>
+                <TableCell className="max-w-[200px] truncate">{pim.descripcion}</TableCell>
+                <TableCell>{pim.proveedor_nombre || getSupplierName(pim.proveedor_id)}</TableCell>
+                <TableCell className="text-right font-medium">{formatCurrency(pim.total_usd || 0)}</TableCell>
+                <TableCell className="text-right">{pim.total_toneladas || 0} t</TableCell>
+                <TableCell>
+                  <PIMStatusBadge status={pim.estado as PIMStatus} />
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver detalle
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>Editar PIM</DropdownMenuItem>
+                      <DropdownMenuItem>Ver contrato</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </div>
