@@ -1,388 +1,267 @@
 
-# Plan de Documentacion Exhaustiva del Sistema Plant Management
+# Plan: Eliminacion Completa de Datos Hardcodeados
 
-## Resumen del Proyecto
+## Resumen del Analisis
 
-Este es un **Sistema de Gestion de Planta** modular construido con React + TypeScript + Tailwind CSS + Supabase. Actualmente tiene dos modulos funcionales:
-- **COMEX**: Seguimiento de importaciones y PIMs
-- **Ordenes de Trabajo**: Gestion de OTs de mantenimiento/produccion
+Se realizo una revision exhaustiva del codigo y se encontraron **multiples instancias de datos hardcodeados** que deben ser reemplazados por datos reales de Supabase.
 
 ---
 
-## Seccion 1: Documentacion de Arquitectura General
+## Hallazgos Detallados
 
-### 1.1 Crear `docs/architecture/README.md`
+### 1. Archivos de Datos Mock (a eliminar)
 
-Contenido a documentar:
-- Diagrama de la arquitectura del sistema (modulos, capas, flujo de datos)
-- Tecnologias utilizadas: React 18, Vite, TypeScript, Tailwind CSS, Supabase, React Query, React Router
-- Estructura de carpetas del proyecto
-- Patron de navegacion: Login -> Seleccion de Modulos -> Dashboard del Modulo
-
-### 1.2 Crear `docs/architecture/module-system.md`
-
-Contenido a documentar:
-- Como funciona el sistema de modulos
-- Como agregar nuevos modulos
-- Configuracion de acceso por rol (`hasModuleAccess`)
-- Estructura de un modulo (Layout, Sidebar, Pages)
+| Archivo | Contenido | Estado |
+|---------|-----------|--------|
+| `src/data/mockData.ts` | mockProducts, mockSuppliers, mockPIMs, mockRequirements, mockNotifications, mockDashboardStats | **OBSOLETO** - Ya no se usa para productos, proveedores, PIMs, requerimientos |
+| `src/data/workOrdersMock.ts` | mockWorkOrders | **OBSOLETO** - La tabla work_orders ya existe en Supabase |
 
 ---
 
-## Seccion 2: Documentacion del Frontend
+### 2. Componentes con Datos Hardcodeados
 
-### 2.1 Crear `docs/frontend/routing.md`
-
-Documentar:
-- Estructura de rutas en `App.tsx`
-- Rutas protegidas y layouts anidados
-- Flujo de navegacion
-- Redireccionamientos automaticos
-
-**Rutas actuales:**
+#### 2.1 `src/components/layout/Header.tsx` (Lineas 12, 21, 60)
+**Problema**: Usa `mockNotifications` directamente
+```typescript
+import { mockNotifications } from '@/data/mockData';
+const unreadCount = mockNotifications.filter(n => !n.leido).length;
+{mockNotifications.slice(0, 5).map(...)}
 ```
-/ -> ModulesPage (requiere auth)
-/login -> LoginPage
-/comex/* -> ComexLayout
-  /comex/dashboard
-  /comex/requirements
-  /comex/pims
-  /comex/products
-  /comex/suppliers
-  /comex/contracts (Coming Soon)
-  /comex/payments (Coming Soon)
-  /comex/prices (Coming Soon)
-/work-orders/* -> WorkOrdersLayout
-  /work-orders/dashboard
-  /work-orders/orders
-  /work-orders/orders/:id
-  /work-orders/create
-  /work-orders/maintenance (Coming Soon)
+**Solucion**: Crear tabla `notificaciones` en Supabase y hook `useNotifications`
+
+---
+
+#### 2.2 `src/contexts/AuthContext.tsx` (Lineas 15-23, 37)
+**Problema**: Autenticacion completamente simulada
+```typescript
+const mockUser: User = {
+  id: 'user-1',
+  email: 'admin@planta.com',
+  name: 'Carlos Mendoza',
+  role: 'admin',
+  modules: [...],
+};
+```
+**Solucion**: Implementar Supabase Auth (fuera del alcance de este plan, pero documentado)
+
+---
+
+#### 2.3 `src/pages/DashboardPage.tsx` (Lineas 19-32, 215-232)
+**Problema #1**: Graficos con datos estaticos
+```typescript
+const statusDistribution = [
+  { name: 'En Negociación', value: 3, color: '...' },
+  { name: 'Contrato', value: 2, color: '...' },
+  // ...
+];
+
+const monthlyData = [
+  { month: 'Oct', pims: 8, toneladas: 320 },
+  // ...
+];
+```
+**Solucion**: Calcular desde datos reales de PIMs usando el hook `usePIMs`
+
+**Problema #2**: SLA Global hardcodeado
+```typescript
+<SLAIndicator label="Negociación" diasEstimados={5} diasReales={4} alerta="verde" />
+<SLAIndicator label="Contratos" diasEstimados={3} diasReales={3} alerta="amarillo" />
+```
+**Solucion**: Usar tabla `sla_data` existente y calcular promedios
+
+---
+
+#### 2.4 `src/pages/PIMsPage.tsx` (Lineas 299-304)
+**Problema**: Tab de SLA con valores estaticos
+```typescript
+<SLAIndicator label="Negociación" diasEstimados={5} diasReales={4} alerta="verde" />
+<SLAIndicator label="Contrato" diasEstimados={3} diasReales={3} alerta="amarillo" />
+```
+**Solucion**: Obtener datos de `sla_data` para el PIM seleccionado
+
+---
+
+#### 2.5 `src/pages/RequirementsPage.tsx` (Linea 131)
+**Problema**: Contador de PIMs generados hardcodeado
+```typescript
+<p className="text-2xl font-bold">5</p>
+```
+**Solucion**: Contar PIMs asociados al requerimiento seleccionado
+
+---
+
+#### 2.6 `src/pages/workOrders/CreateWorkOrderPage.tsx` (Lineas 28-32)
+**Problema**: Guardado simulado (no persiste en base de datos)
+```typescript
+// Mock save
+toast({
+  title: 'Orden de trabajo creada',
+  description: 'La OT se ha creado exitosamente.',
+});
+navigate('/work-orders/orders');
+```
+**Solucion**: Usar mutation `useCreateWorkOrder` existente
+
+---
+
+## Plan de Implementacion
+
+### Fase 1: Crear Tabla de Notificaciones
+1. Crear migracion SQL para tabla `notificaciones`
+2. Crear hook `useNotifications` con React Query
+3. Actualizar `Header.tsx` para usar datos reales
+
+### Fase 2: Actualizar Dashboard COMEX
+1. Calcular `statusDistribution` desde datos de PIMs
+2. Calcular `monthlyData` agrupando PIMs por mes
+3. Obtener SLA promedio desde tabla `sla_data`
+4. Crear hook `usePIMSLAStats` para metricas
+
+### Fase 3: Actualizar Pagina de PIMs
+1. Crear hook `usePIMSLA(pimId)` para obtener SLA de un PIM
+2. Reemplazar valores estaticos en tab SLA
+
+### Fase 4: Actualizar Pagina de Requerimientos
+1. Contar PIMs por requerimiento usando query
+2. Actualizar tarjeta "PIMs Generados" con valor dinamico
+
+### Fase 5: Actualizar Creacion de Work Orders
+1. Conectar formulario con mutation `useCreateWorkOrder`
+2. Generar codigo automatico (OT-YYYY-NNN)
+3. Agregar manejo de errores
+
+### Fase 6: Limpieza
+1. Eliminar `src/data/mockData.ts`
+2. Eliminar `src/data/workOrdersMock.ts`
+3. Remover imports no usados
+4. Actualizar documentacion
+
+---
+
+## Cambios en Base de Datos
+
+### Nueva Tabla: `notificaciones`
+```text
+Columnas:
+- id (text, PK)
+- tipo (text): alerta_sla, contrato, embarque, sistema
+- titulo (text)
+- mensaje (text)
+- destinatario_id (text)
+- pim_id (text, nullable)
+- leido (boolean, default false)
+- prioridad (text): baja, media, alta, urgente
+- fecha_creacion (timestamp)
+- created_at, updated_at
 ```
 
-### 2.2 Crear `docs/frontend/components.md`
-
-Documentar componentes reutilizables:
-
-| Componente | Ubicacion | Proposito |
-|------------|-----------|-----------|
-| `Header` | `layout/Header.tsx` | Encabezado con busqueda y notificaciones |
-| `ComexSidebar` | `layout/ComexSidebar.tsx` | Navegacion del modulo COMEX |
-| `WorkOrdersSidebar` | `layout/WorkOrdersSidebar.tsx` | Navegacion del modulo OTs |
-| `StatCard` | `dashboard/StatCard.tsx` | Tarjeta de estadisticas con variantes |
-| `PIMStatusBadge` | `dashboard/PIMStatusBadge.tsx` | Badge de estados de PIM |
-| `SLAIndicator` | `dashboard/SLAIndicator.tsx` | Indicador visual de SLA |
-| `RecentPIMsTable` | `dashboard/RecentPIMsTable.tsx` | Tabla de PIMs recientes |
-| `PriorityBadge` | `workOrders/PriorityBadge.tsx` | Badge de prioridad de OT |
-| `WorkOrderStatusBadge` | `workOrders/WorkOrderStatusBadge.tsx` | Badge de estado de OT |
-
-Para cada componente documentar:
-- Props (tipos, valores por defecto)
-- Variantes disponibles
-- Ejemplos de uso
-- Dependencias
-
-### 2.3 Crear `docs/frontend/ui-library.md`
-
-Documentar los 40+ componentes de shadcn/ui en `src/components/ui/`:
-- Button, Input, Card, Table, Badge, Dialog, Select, Tabs, etc.
-- Referencia a documentacion oficial de shadcn
-- Personalizaciones aplicadas via `tailwind.config.ts`
-
-### 2.4 Crear `docs/frontend/state-management.md`
-
-Documentar:
-- **AuthContext**: Manejo de autenticacion mock
-  - `User`, `UserRole`, `modules[]`
-  - Funciones: `login()`, `logout()`, `hasModuleAccess()`
-- **React Query**: Configuracion del QueryClient
-- **Estado local**: Uso de useState en componentes
-
-### 2.5 Crear `docs/frontend/styling.md`
-
-Documentar:
-- Sistema de colores (variables CSS en `index.css`)
-- Clases utilitarias personalizadas: `gradient-primary`, `gradient-accent`, `card-hover`, etc.
-- Responsive design patterns
-- Modo oscuro (configurado via `next-themes`)
-
 ---
 
-## Seccion 3: Documentacion de Tipos de Datos
+## Archivos a Modificar
 
-### 3.1 Crear `docs/types/comex-types.md`
-
-Documentar `src/types/comex.ts`:
-
-| Tipo | Descripcion |
-|------|-------------|
-| `UserRole` | admin, manager, operator, viewer |
-| `User` | Usuario con id, email, name, role, modules[] |
-| `Product` | Producto/MP con codigo, categoria, precios |
-| `Supplier` | Proveedor con datos de contacto |
-| `PIM` | Proceso de importacion con estado, items, SLA |
-| `PIMStatus` | 13 estados posibles de un PIM |
-| `PaymentModality` | carta_credito, anticipo, pago_contado, credito |
-| `MonthlyRequirement` | Requerimiento mensual con productos |
-| `SLAData` | Metricas de tiempo por etapa |
-| `Contract` | Contrato con validaciones |
-| `Notification` | Notificacion del sistema |
-
-### 3.2 Crear `docs/types/work-orders-types.md`
-
-Documentar `src/types/workOrders.ts`:
-
-| Tipo | Descripcion |
-|------|-------------|
-| `WorkOrderStatus` | pendiente, en_progreso, completada, cancelada |
-| `WorkOrderPriority` | baja, media, alta, urgente |
-| `WorkOrderType` | correctivo, preventivo, mejora |
-| `WorkOrder` | Orden de trabajo completa |
-
----
-
-## Seccion 4: Documentacion del Backend (Supabase)
-
-### 4.1 Crear `docs/backend/database-schema.md`
-
-Documentar las 11 tablas de Supabase:
-
-**Tablas principales:**
-| Tabla | Proposito | Columnas clave |
-|-------|-----------|----------------|
-| `pims` | Procesos de importacion | codigo, estado, proveedor_id, total_usd |
-| `productos` | Catalogo de productos | codigo, categoria, precio_usd |
-| `proveedores` | Proveedores y fabricas | nombre, pais, tipo_proveedor |
-| `requerimientos_mensuales` | Requerimientos por mes | mes, cuadro_id, total_toneladas |
-| `requerimiento_items` | Items de requerimiento | producto_id, cantidad_requerida |
-| `pim_items` | Items de un PIM | pim_id, cantidad, precio |
-| `pim_documentos` | Documentos adjuntos a PIM | tipo, url, pim_id |
-| `pim_requirement_items` | Vinculo PIM-Requerimiento | kilos_consumidos |
-| `sla_data` | Datos de SLA por PIM | tiempos estimados/reales |
-| `cuadros_importacion` | Cuadros de importacion | codigo, nombre |
-| `validacion_contrato_pim` | Validaciones de contrato | estado, validado_por |
-| `diferencia_contrato` | Diferencias en validacion | campo, coincide |
-
-**Incluir para cada tabla:**
-- Esquema completo de columnas
-- Relaciones (foreign keys)
-- Indices
-- Valores por defecto
-
-### 4.2 Crear `docs/backend/rls-policies.md`
-
-**CRITICO - SEGURIDAD**
-
-Documentar politicas RLS actuales:
-
-| Tabla | Politica | Comando | Expresion |
-|-------|----------|---------|-----------|
-| `pims` | SELECT | `auth.role() = 'authenticated'` o `true` |
-| `productos` | SELECT, INSERT, UPDATE | Permisivas |
-| `proveedores` | SELECT, INSERT, UPDATE | Permisivas |
-| ... | ... | ... |
-
-**Advertencias de seguridad:**
-- Varias tablas tienen `USING (true)` - acceso publico
-- Tablas sin DELETE permitido
-- `diferencia_contrato`, `sla_data`, `pim_requirement_items` sin RLS configurado
-
-### 4.3 Crear `docs/backend/api-integration.md`
-
-Documentar:
-- Configuracion del cliente Supabase (`client.ts`)
-- Uso de `supabase.from()` para queries
-- Patron de fetching con React Query (pendiente de implementar)
-- Manejo de errores
-
-### 4.4 Crear `docs/backend/auth-implementation.md`
-
-**Estado actual: Autenticacion Mock**
-
-Documentar:
-- El AuthContext actual usa datos mock (no Supabase Auth)
-- Pasos para migrar a Supabase Auth real
-- Estructura de la tabla `user_roles` (pendiente de crear)
-- Flujo de autenticacion recomendado
-
----
-
-## Seccion 5: Documentacion de Modulos
-
-### 5.1 Crear `docs/modules/comex/README.md`
-
-Contenido:
-- Proposito del modulo
-- Flujo de trabajo: Requerimiento -> PIM -> Contrato -> Tracking -> Entrega
-- Estados del ciclo de vida de un PIM
-- Metricas de SLA
-
-**Paginas del modulo:**
-| Pagina | Funcionalidad | Estado |
-|--------|---------------|--------|
-| Dashboard | KPIs, graficos, alertas SLA | Implementado (mock) |
-| Requerimientos | CRUD requerimientos mensuales | Implementado (mock) |
-| PIMs | Gestion completa de PIMs | Implementado (mock) |
-| Productos | Catalogo de productos | Implementado (mock) |
-| Proveedores | Gestion de proveedores | Implementado (mock) |
-| Contratos | Validacion de contratos | Coming Soon |
-| Pagos | Control de pagos | Coming Soon |
-| Precios | Historico de precios | Coming Soon |
-
-### 5.2 Crear `docs/modules/work-orders/README.md`
-
-Contenido:
-- Proposito del modulo
-- Tipos de OT: correctivo, preventivo, mejora
-- Estados y prioridades
-- Asignacion de tecnicos
-
-**Paginas del modulo:**
-| Pagina | Funcionalidad | Estado |
-|--------|---------------|--------|
-| Dashboard | KPIs, OTs recientes | Implementado (mock) |
-| Lista OTs | Tabla con filtros | Implementado (mock) |
-| Detalle OT | Vista individual | Implementado (mock) |
-| Crear OT | Formulario nuevo | Implementado (mock) |
-| Mantenimiento | Programacion | Coming Soon |
-
----
-
-## Seccion 6: Documentacion de Configuracion
-
-### 6.1 Crear `docs/setup/development.md`
-
-Contenido:
-- Prerrequisitos (Node.js 18+, npm/bun)
-- Instalacion de dependencias
-- Variables de entorno (`.env`)
-- Comandos de desarrollo (`npm run dev`)
-- Conexion a Supabase
-
-### 6.2 Crear `docs/setup/deployment.md`
-
-Contenido:
-- Build de produccion
-- Configuracion de Lovable Cloud
-- URLs del proyecto (preview, produccion)
-- Configuracion de dominio personalizado
-
----
-
-## Seccion 7: Documentacion de Seguridad
-
-### 7.1 Crear `docs/security/checklist.md`
-
-**Problemas identificados:**
-
-1. **Autenticacion Mock** - No hay autenticacion real
-   - Cualquier email/password funciona
-   - Roles asignados por patron de email
-
-2. **RLS Permisivo** - Algunas tablas tienen `USING (true)`
-   - Acceso publico a datos sensibles
-   - Sin restriccion por usuario
-
-3. **Tablas sin RLS**
-   - `diferencia_contrato`
-   - `sla_data`
-   - `pim_requirement_items`
-   - `validacion_contrato_pim`
-
-4. **Sin tabla de roles** - Roles en memoria, no persistidos
-
-**Plan de remediacion:**
-- Implementar Supabase Auth
-- Crear tabla `user_roles` con funcion `has_role()`
-- Configurar RLS restrictivo por usuario/rol
-- Auditar todas las policies
-
----
-
-## Seccion 8: Guias de Desarrollo
-
-### 8.1 Crear `docs/guides/adding-new-module.md`
-
-Pasos:
-1. Definir tipos en `src/types/`
-2. Crear datos mock en `src/data/`
-3. Crear Sidebar en `src/components/layout/`
-4. Crear Layout con proteccion de rutas
-5. Crear paginas en `src/pages/[modulo]/`
-6. Agregar rutas en `App.tsx`
-7. Agregar modulo en `ModulesPage.tsx`
-8. Configurar acceso por rol en `AuthContext`
-
-### 8.2 Crear `docs/guides/adding-supabase-table.md`
-
-Pasos:
-1. Crear migracion SQL
-2. Configurar RLS policies
-3. Actualizar `types.ts` (auto-generado)
-4. Crear hooks con React Query
-5. Integrar en componentes
-
-### 8.3 Crear `docs/guides/implementing-auth.md`
-
-Pasos para migrar a Supabase Auth:
-1. Crear tabla `user_roles`
-2. Crear funcion `has_role()`
-3. Actualizar AuthContext para usar Supabase Auth
-4. Configurar listeners `onAuthStateChange`
-5. Crear pagina de registro
-6. Configurar Site URL y Redirect URLs
-
----
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/layout/Header.tsx` | Reemplazar mockNotifications por useNotifications |
+| `src/pages/DashboardPage.tsx` | Calcular graficos y SLA desde datos reales |
+| `src/pages/PIMsPage.tsx` | Obtener SLA del PIM seleccionado |
+| `src/pages/RequirementsPage.tsx` | Contar PIMs asociados dinamicamente |
+| `src/pages/workOrders/CreateWorkOrderPage.tsx` | Usar mutation real |
 
 ## Archivos a Crear
 
-| Archivo | Prioridad |
+| Archivo | Proposito |
 |---------|-----------|
-| `docs/README.md` | Alta |
-| `docs/architecture/README.md` | Alta |
-| `docs/architecture/module-system.md` | Alta |
-| `docs/frontend/routing.md` | Alta |
-| `docs/frontend/components.md` | Alta |
-| `docs/frontend/ui-library.md` | Media |
-| `docs/frontend/state-management.md` | Alta |
-| `docs/frontend/styling.md` | Media |
-| `docs/types/comex-types.md` | Alta |
-| `docs/types/work-orders-types.md` | Alta |
-| `docs/backend/database-schema.md` | Alta |
-| `docs/backend/rls-policies.md` | Alta |
-| `docs/backend/api-integration.md` | Alta |
-| `docs/backend/auth-implementation.md` | Alta |
-| `docs/modules/comex/README.md` | Media |
-| `docs/modules/work-orders/README.md` | Media |
-| `docs/setup/development.md` | Alta |
-| `docs/setup/deployment.md` | Media |
-| `docs/security/checklist.md` | Alta |
-| `docs/guides/adding-new-module.md` | Media |
-| `docs/guides/adding-supabase-table.md` | Media |
-| `docs/guides/implementing-auth.md` | Alta |
+| `src/hooks/useNotifications.ts` | Hook para notificaciones |
+| `src/hooks/useSLAData.ts` | Hook para datos de SLA |
+
+## Archivos a Eliminar
+
+| Archivo | Razon |
+|---------|-------|
+| `src/data/mockData.ts` | Datos obsoletos |
+| `src/data/workOrdersMock.ts` | Datos obsoletos |
 
 ---
 
-## Hallazgos Criticos Durante el Analisis
+## Seccion Tecnica
 
-1. **La autenticacion es completamente mock** - No hay conexion real con Supabase Auth
+### Hook useNotifications
+```typescript
+export function useNotifications(userId?: string) {
+  return useQuery({
+    queryKey: ['notificaciones', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notificaciones')
+        .select('*')
+        .eq('destinatario_id', userId)
+        .order('fecha_creacion', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+}
+```
 
-2. **Los datos son mock** - Aunque hay 11 tablas en Supabase, la app usa datos hardcoded en `mockData.ts` y `workOrdersMock.ts`
+### Calculo de Status Distribution
+```typescript
+const statusDistribution = useMemo(() => {
+  if (!pims) return [];
+  const counts = pims.reduce((acc, pim) => {
+    acc[pim.estado] = (acc[pim.estado] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  return Object.entries(counts).map(([name, value]) => ({
+    name: statusLabels[name] || name,
+    value,
+    color: statusColors[name] || 'gray'
+  }));
+}, [pims]);
+```
 
-3. **Varias tablas sin RLS configurado** - Riesgo de seguridad si se conecta a datos reales
+### Integracion CreateWorkOrder
+```typescript
+const createMutation = useCreateWorkOrder();
 
-4. **Warn en consola** - React Router muestra warnings sobre `forwardRef` que deben corregirse
-
-5. **Modulos "Coming Soon"** - Contratos, Pagos, Precios, Mantenimiento no estan implementados
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+    await createMutation.mutateAsync({
+      codigo: generateCode(),
+      titulo: formData.titulo,
+      descripcion: formData.descripcion,
+      prioridad: formData.prioridad,
+      tipo_trabajo: formData.tipoTrabajo,
+      area: formData.area,
+      solicitante: formData.solicitante,
+      estado: 'pendiente',
+      fecha_limite: calculateDueDate(formData.prioridad),
+    });
+    toast({ title: 'Orden creada exitosamente' });
+    navigate('/work-orders/orders');
+  } catch (error) {
+    toast({ 
+      title: 'Error al crear la orden', 
+      variant: 'destructive' 
+    });
+  }
+};
+```
 
 ---
 
-## Orden de Implementacion Recomendado
+## Orden de Ejecucion
 
-1. Crear carpeta `docs/` y `docs/README.md` como indice
-2. Documentar arquitectura y modulos (entender el sistema)
-3. Documentar esquema de base de datos y tipos (fuente de verdad)
-4. Documentar seguridad y RLS (critico antes de produccion)
-5. Crear guias de desarrollo (onboarding de nuevos desarrolladores)
-6. Documentar componentes UI (referencia para desarrollo)
-
+1. Crear tabla `notificaciones` (migracion SQL)
+2. Crear hooks nuevos (`useNotifications`, `useSLAData`)
+3. Actualizar `Header.tsx`
+4. Actualizar `DashboardPage.tsx`
+5. Actualizar `PIMsPage.tsx`
+6. Actualizar `RequirementsPage.tsx`
+7. Actualizar `CreateWorkOrderPage.tsx`
+8. Eliminar archivos mock
+9. Probar todas las paginas
+10. Actualizar documentacion
