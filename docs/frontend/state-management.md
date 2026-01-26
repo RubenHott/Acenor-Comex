@@ -59,31 +59,6 @@ function Component() {
 }
 ```
 
-### Lógica de Login (Mock)
-
-```typescript
-const login = async (email: string, password: string): Promise<boolean> => {
-  // Mock: cualquier password de 4+ caracteres es válido
-  if (email && password.length >= 4) {
-    const isAdmin = email.includes('admin');
-    
-    setUser({
-      id: 'user-1',
-      email,
-      name: email.split('@')[0].replace(/\./g, ' '),
-      role: isAdmin ? 'admin' : 'operator',
-      modules: isAdmin 
-        ? ['comex', 'work-orders', 'production', 'maintenance', 'analytics', 'logistics']
-        : ['comex'],
-      createdAt: new Date(),
-    });
-    
-    return true;
-  }
-  return false;
-};
-```
-
 ---
 
 ## 2. React Query (Estado del Servidor)
@@ -102,75 +77,78 @@ function App() {
 }
 ```
 
-### Patrones de Uso (Pendiente de Implementar)
+### Hooks Implementados
 
-#### Query para Leer Datos
+El sistema utiliza hooks personalizados que consumen Edge Functions y queries directas a Supabase.
+
+#### useDashboardStats (Edge Function)
 
 ```typescript
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 
-function usePIMs() {
-  return useQuery({
-    queryKey: ['pims'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('pims')
-        .select('*')
-        .order('fecha_creacion', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    },
-  });
-}
-
-// Uso en componente
-function PIMsList() {
-  const { data: pims, isLoading, error } = usePIMs();
+function Dashboard() {
+  const { data, isLoading, error } = useDashboardStats();
 
   if (isLoading) return <Skeleton />;
   if (error) return <Alert variant="destructive">{error.message}</Alert>;
   
-  return <Table>{/* ... */}</Table>;
+  return (
+    <div>
+      <StatCard value={data.pimStats.totalPIMs} />
+      <Chart data={data.statusDistribution} />
+    </div>
+  );
 }
 ```
 
-#### Mutation para Escribir Datos
+#### useWorkOrders con Mutation
 
 ```typescript
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useWorkOrders, useCreateWorkOrder } from '@/hooks/useWorkOrders';
 
-function useCreatePIM() {
-  const queryClient = useQueryClient();
+function WorkOrdersPage() {
+  const { data: orders, isLoading } = useWorkOrders();
+  const createMutation = useCreateWorkOrder();
 
-  return useMutation({
-    mutationFn: async (newPIM: CreatePIMInput) => {
-      const { data, error } = await supabase
-        .from('pims')
-        .insert(newPIM)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      // Invalidar cache para recargar datos
-      queryClient.invalidateQueries({ queryKey: ['pims'] });
-    },
-  });
-}
-
-// Uso en componente
-function CreatePIMForm() {
-  const { mutate, isPending } = useCreatePIM();
-
-  const handleSubmit = (data) => {
-    mutate(data);
+  const handleCreate = (formData) => {
+    createMutation.mutate(formData, {
+      onSuccess: () => {
+        toast({ title: 'OT creada exitosamente' });
+      },
+      onError: (error) => {
+        toast({ 
+          variant: 'destructive',
+          title: 'Error',
+          description: error.message 
+        });
+      }
+    });
   };
+
+  return (
+    <div>
+      <OrdersList orders={orders} />
+      <CreateForm onSubmit={handleCreate} isPending={createMutation.isPending} />
+    </div>
+  );
 }
 ```
+
+### Hooks Disponibles
+
+| Hook | Propósito | Fuente de Datos |
+|------|-----------|-----------------|
+| `useDashboardStats()` | Estadísticas consolidadas | Edge Function |
+| `usePIMs()` | Lista de PIMs | Supabase directo |
+| `useWorkOrders()` | Lista de OTs | Supabase directo |
+| `useWorkOrderStats()` | Stats de OTs | Edge Function |
+| `useCreateWorkOrder()` | Crear OT | Edge Function (mutation) |
+| `useProducts()` | Catálogo de productos | Supabase directo |
+| `useSuppliers()` | Lista de proveedores | Supabase directo |
+| `useRequirements()` | Requerimientos mensuales | Supabase directo |
+| `useNotifications()` | Notificaciones | Supabase directo |
+
+Ver [Hooks](./hooks.md) para documentación completa.
 
 ---
 
@@ -227,18 +205,7 @@ function Component() {
 
 ---
 
-## Estado Actual vs Ideal
-
-| Aspecto | Estado Actual | Estado Ideal |
-|---------|---------------|--------------|
-| Auth | Mock local | Supabase Auth |
-| Datos PIMs | mockData.ts | React Query + Supabase |
-| Datos OTs | workOrdersMock.ts | React Query + Supabase |
-| Persistencia | Ninguna (se pierde al refrescar) | Local storage / Supabase |
-
----
-
-## Hooks Personalizados
+## Hooks Personalizados Utilitarios
 
 ### use-toast
 
@@ -274,7 +241,24 @@ function Component() {
 ## Buenas Prácticas
 
 1. **AuthContext**: Solo para datos de sesión del usuario
-2. **React Query**: Para datos del servidor (Supabase)
+2. **React Query**: Para datos del servidor (Supabase/Edge Functions)
 3. **useState**: Para UI local (modals, filtros, selección)
 4. **Evitar prop drilling**: Usar Context cuando datos se necesitan en múltiples niveles
 5. **Invalidar cache**: Después de mutaciones para mantener datos actualizados
+
+```typescript
+const queryClient = useQueryClient();
+
+const mutation = useMutation({
+  mutationFn: async (data) => { /* ... */ },
+  onSuccess: () => {
+    // Invalidar queries relacionadas
+    queryClient.invalidateQueries({ queryKey: ['pims'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+  },
+});
+```
+
+---
+
+*Última actualización: Enero 2026*

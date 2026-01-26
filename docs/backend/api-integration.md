@@ -8,21 +8,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = "https://ykzeuukqhliuslycjcxc.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
 
 export const supabase = createClient<Database>(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
-```
-
-## Variables de Entorno
-
-```env
-VITE_SUPABASE_PROJECT_ID="ykzeuukqhliuslycjcxc"
-VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-VITE_SUPABASE_URL="https://ykzeuukqhliuslycjcxc.supabase.co"
 ```
 
 ## Tipos Auto-Generados
@@ -46,7 +38,107 @@ type UpdatePIM = TablesUpdate<'pims'>;
 
 ---
 
-## Operaciones CRUD
+## Edge Functions
+
+Las Edge Functions se ejecutan en Deno y orquestan lógica de negocio compleja.
+
+### Invocar Edge Functions
+
+```typescript
+const { data, error } = await supabase.functions.invoke('get-dashboard-stats');
+```
+
+### Edge Functions Disponibles
+
+| Función | Propósito | Método |
+|---------|-----------|--------|
+| `get-dashboard-stats` | Estadísticas consolidadas del dashboard COMEX | GET |
+| `get-work-order-stats` | Estadísticas de órdenes de trabajo | GET |
+| `create-work-order` | Crear nueva orden de trabajo con código auto-generado | POST |
+
+### Ejemplo: Dashboard Stats
+
+```typescript
+import { useDashboardStats } from '@/hooks/useDashboardStats';
+
+function Dashboard() {
+  const { data, isLoading, error } = useDashboardStats();
+  
+  if (isLoading) return <Skeleton />;
+  if (error) return <Alert>{error.message}</Alert>;
+  
+  return (
+    <div>
+      <StatCard title="PIMs Activos" value={data.pimStats.pimsActivos} />
+    </div>
+  );
+}
+```
+
+### Ejemplo: Crear Orden de Trabajo
+
+```typescript
+import { useCreateWorkOrder } from '@/hooks/useWorkOrders';
+
+function CreateOrderForm() {
+  const { mutate, isPending } = useCreateWorkOrder();
+  
+  const handleSubmit = (formData) => {
+    mutate(formData, {
+      onSuccess: () => toast({ title: 'OT creada exitosamente' })
+    });
+  };
+  
+  return (
+    <Form onSubmit={handleSubmit}>
+      {/* campos */}
+      <Button disabled={isPending}>
+        {isPending ? 'Creando...' : 'Crear OT'}
+      </Button>
+    </Form>
+  );
+}
+```
+
+---
+
+## Funciones SQL (RPC)
+
+Las funciones SQL ejecutan cálculos pesados directamente en PostgreSQL.
+
+### Invocar Funciones SQL
+
+```typescript
+const { data, error } = await supabase.rpc('fn_pim_stats');
+```
+
+### Funciones Disponibles
+
+| Función | Retorna | Descripción |
+|---------|---------|-------------|
+| `fn_pim_stats()` | TABLE | Estadísticas agregadas de PIMs |
+| `fn_pim_status_distribution()` | TABLE | Distribución por estado |
+| `fn_pim_monthly_trend(months_back)` | TABLE | Tendencia mensual de PIMs |
+| `fn_sla_global_stats()` | JSONB | Promedios SLA con alertas |
+| `fn_work_order_stats()` | TABLE | Estadísticas de OTs |
+| `fn_generate_work_order_code()` | TEXT | Genera código OT-YYYY-NNN |
+| `fn_calculate_due_date(priority)` | TIMESTAMPTZ | Calcula fecha límite según prioridad |
+| `fn_requirement_pim_count(id)` | INTEGER | Cuenta PIMs por requerimiento |
+| `fn_get_critical_pim()` | TABLE | Obtiene el PIM más crítico |
+
+### Ejemplo: Conteo de PIMs
+
+```typescript
+const { data, error } = await supabase.rpc('fn_requirement_pim_count', {
+  requirement_id: 'req-123'
+});
+
+console.log(`PIMs asociados: ${data}`);
+```
+
+---
+
+## Operaciones CRUD (Queries Directas)
 
 ### SELECT (Lectura)
 
@@ -88,10 +180,9 @@ const { data, error } = await supabase
   .from('pims')
   .insert({
     id: crypto.randomUUID(),
-    codigo: 'PIM-2025-001',
+    codigo: 'PIM-2026-001',
     descripcion: 'Nueva importación',
     estado: 'creado',
-    // ... otros campos
   })
   .select()
   .single();
@@ -146,102 +237,49 @@ const queryClient = new QueryClient({
 });
 ```
 
-### Hook de Query
+### Hook de Query (Ejemplo Real)
 
 ```typescript
-// src/hooks/usePIMs.ts
+// src/hooks/useDashboardStats.ts
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export function usePIMs() {
+export function useDashboardStats() {
   return useQuery({
-    queryKey: ['pims'],
+    queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('pims')
-        .select('*')
-        .order('fecha_creacion', { ascending: false });
-      
+      const { data, error } = await supabase.functions.invoke('get-dashboard-stats');
       if (error) throw error;
       return data;
     },
+    staleTime: 30000, // Cache 30 segundos
   });
-}
-
-// Uso en componente
-function PIMsList() {
-  const { data: pims, isLoading, error } = usePIMs();
-  
-  if (isLoading) return <Skeleton />;
-  if (error) return <Alert variant="destructive">{error.message}</Alert>;
-  
-  return (
-    <Table>
-      {pims.map(pim => (
-        <TableRow key={pim.id}>
-          <TableCell>{pim.codigo}</TableCell>
-        </TableRow>
-      ))}
-    </Table>
-  );
 }
 ```
 
-### Hook de Mutation
+### Hook de Mutation (Ejemplo Real)
 
 ```typescript
-// src/hooks/useCreatePIM.ts
+// src/hooks/useWorkOrders.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { TablesInsert } from '@/integrations/supabase/types';
 
-export function useCreatePIM() {
+export function useCreateWorkOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newPIM: TablesInsert<'pims'>) => {
-      const { data, error } = await supabase
-        .from('pims')
-        .insert(newPIM)
-        .select()
-        .single();
-      
+    mutationFn: async (newOrder) => {
+      const { data, error } = await supabase.functions.invoke('create-work-order', {
+        body: newOrder
+      });
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      // Invalidar cache para refrescar datos
-      queryClient.invalidateQueries({ queryKey: ['pims'] });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: 'Error al crear PIM',
-        description: error.message,
-      });
+      queryClient.invalidateQueries({ queryKey: ['work-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['work-order-stats'] });
     },
   });
-}
-
-// Uso en componente
-function CreatePIMForm() {
-  const { mutate, isPending } = useCreatePIM();
-
-  const handleSubmit = (data) => {
-    mutate({
-      id: crypto.randomUUID(),
-      ...data,
-    });
-  };
-
-  return (
-    <Form onSubmit={handleSubmit}>
-      {/* campos */}
-      <Button disabled={isPending}>
-        {isPending ? 'Creando...' : 'Crear PIM'}
-      </Button>
-    </Form>
-  );
 }
 ```
 
@@ -258,7 +296,6 @@ async function fetchPIMs() {
     .select('*');
 
   if (error) {
-    // Error de Supabase
     if (error.code === 'PGRST116') {
       throw new Error('No se encontraron resultados');
     }
@@ -285,7 +322,6 @@ const channel = supabase
     { event: '*', schema: 'public', table: 'pims' },
     (payload) => {
       console.log('Cambio detectado:', payload);
-      // Actualizar UI
       queryClient.invalidateQueries({ queryKey: ['pims'] });
     }
   )
@@ -301,31 +337,15 @@ useEffect(() => {
 
 ---
 
-## Estado Actual vs Ideal
+## Resumen de Métodos de Acceso
 
-| Aspecto | Estado Actual | Estado Ideal |
-|---------|---------------|--------------|
-| Datos PIMs | `mockData.ts` | React Query + Supabase |
-| Datos Productos | `mockData.ts` | React Query + Supabase |
-| Datos Proveedores | `mockData.ts` | React Query + Supabase |
-| Auth | Mock local | Supabase Auth |
-| Real-time | No implementado | Supabase Channels |
-| Cache | No hay | React Query |
+| Método | Cuándo Usar | Ejemplo |
+|--------|-------------|---------|
+| `functions.invoke()` | Lógica compleja, orquestación | Dashboard stats |
+| `rpc()` | Cálculos pesados en BD | Conteo de PIMs |
+| `from().select()` | Queries simples | Lista de productos |
+| `from().insert()` | Crear registros simples | Nuevo proveedor |
 
 ---
 
-## Próximos Pasos
-
-1. **Crear hooks para cada entidad**
-   - `usePIMs()`, `usePIM(id)`
-   - `useProducts()`, `useProduct(id)`
-   - `useSuppliers()`, `useSupplier(id)`
-   - `useRequirements()`, `useRequirement(id)`
-
-2. **Reemplazar datos mock**
-   - Actualizar componentes para usar hooks
-   - Mantener loading states
-   - Manejar errores
-
-3. **Implementar autenticación real**
-   - Ver [Implementar Autenticación](../guides/implementing-auth.md)
+*Última actualización: Enero 2026*

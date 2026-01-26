@@ -19,6 +19,7 @@ Documentación exhaustiva del Sistema de Gestión de Planta, una aplicación mod
 | [Componentes](./frontend/components.md) | Componentes reutilizables del sistema |
 | [Librería UI](./frontend/ui-library.md) | Componentes shadcn/ui disponibles |
 | [Estado](./frontend/state-management.md) | Manejo de estado con Context y React Query |
+| [Hooks](./frontend/hooks.md) | React Query hooks disponibles |
 | [Estilos](./frontend/styling.md) | Sistema de diseño y Tailwind CSS |
 
 ### Tipos de Datos
@@ -32,9 +33,10 @@ Documentación exhaustiva del Sistema de Gestión de Planta, una aplicación mod
 
 | Documento | Descripción |
 |-----------|-------------|
-| [Esquema de Base de Datos](./backend/database-schema.md) | Tablas, columnas y relaciones |
+| [Esquema de Base de Datos](./backend/database-schema.md) | Tablas, columnas, funciones SQL y triggers |
+| [Edge Functions](./backend/edge-functions.md) | Funciones serverless en Deno |
 | [Políticas RLS](./backend/rls-policies.md) | Seguridad a nivel de fila |
-| [Integración API](./backend/api-integration.md) | Cliente Supabase y queries |
+| [Integración API](./backend/api-integration.md) | Cliente Supabase, Edge Functions y RPC |
 | [Autenticación](./backend/auth-implementation.md) | Estado actual y plan de migración |
 
 ### Módulos
@@ -62,7 +64,7 @@ Documentación exhaustiva del Sistema de Gestión de Planta, una aplicación mod
 | Documento | Descripción |
 |-----------|-------------|
 | [Agregar Nuevo Módulo](./guides/adding-new-module.md) | Pasos para crear un módulo |
-| [Agregar Tabla Supabase](./guides/adding-supabase-table.md) | Migraciones y RLS |
+| [Agregar Tabla Supabase](./guides/adding-supabase-table.md) | Migraciones, funciones SQL y Edge Functions |
 | [Implementar Autenticación](./guides/implementing-auth.md) | Migración a Supabase Auth |
 
 ---
@@ -82,7 +84,8 @@ npm run dev
 - **Frontend**: React 18 + TypeScript + Vite
 - **Estilos**: Tailwind CSS + shadcn/ui
 - **Estado**: React Query + Context API
-- **Backend**: Supabase (PostgreSQL)
+- **Backend**: Supabase (PostgreSQL + Edge Functions)
+- **Edge Functions**: Deno (TypeScript serverless)
 - **Routing**: React Router v6
 
 ## 📦 Módulos Disponibles
@@ -96,14 +99,23 @@ npm run dev
 | Analytics | 🚧 Pendiente | Reportes y métricas |
 | Logística | 🚧 Pendiente | Gestión de almacenes |
 
-## ⚠️ Hallazgos Críticos
+## ⚠️ Estado del Sistema
+
+### ✅ Implementado
+
+- **Base de datos Supabase**: 13 tablas con datos reales
+- **Funciones SQL**: 9 funciones para cálculos en servidor
+- **Edge Functions**: 3 funciones para orquestación
+- **Trigger SLA**: Cálculo automático de alertas
+
+### 🚧 Pendiente
+
+1. **Autenticación Real**: La autenticación actual es mock (simulada)
+2. **RLS Robusto**: Políticas permitivas para desarrollo, ajustar para producción
+3. **Storage**: Integración con Supabase Storage para documentos
 
 > **Importante**: Revisa el [Checklist de Seguridad](./security/checklist.md) antes de desplegar a producción.
 
-1. **Autenticación Mock**: La autenticación actual es simulada
-2. **Datos Mock**: La app usa datos hardcoded, no conecta a Supabase
-3. **RLS Incompleto**: Algunas tablas no tienen políticas de seguridad
-
 ---
 
-*Última actualización: Enero 2025*
+*Última actualización: Enero 2026*
