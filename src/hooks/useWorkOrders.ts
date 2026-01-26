@@ -42,23 +42,32 @@ export function useWorkOrder(id: string | undefined) {
   });
 }
 
-// Create work order
+// Create work order via edge function (generates code and due date server-side)
 export function useCreateWorkOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newOrder: WorkOrderInsert) => {
-      const { data, error } = await supabase
-        .from('work_orders')
-        .insert(newOrder)
-        .select()
-        .single();
+    mutationFn: async (newOrder: {
+      titulo: string;
+      descripcion: string;
+      prioridad: string;
+      tipo_trabajo: string;
+      area: string;
+      solicitante: string;
+      tecnico_asignado?: string;
+      equipo_id?: string;
+      observaciones?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('create-work-order', {
+        body: newOrder,
+      });
       
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work_orders'] });
+      queryClient.invalidateQueries({ queryKey: ['work-order-stats'] });
     },
   });
 }
@@ -82,28 +91,27 @@ export function useUpdateWorkOrder() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['work_orders'] });
       queryClient.invalidateQueries({ queryKey: ['work_orders', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['work-order-stats'] });
     },
   });
 }
 
-// Work order stats
+// Work order stats from edge function
 export function useWorkOrderStats() {
   return useQuery({
-    queryKey: ['work_orders', 'stats'],
+    queryKey: ['work-order-stats'],
     queryFn: async () => {
-      const { data: orders, error } = await supabase
-        .from('work_orders')
-        .select('estado, prioridad');
+      const { data, error } = await supabase.functions.invoke('get-work-order-stats');
       
       if (error) throw error;
-
-      return {
-        total: orders?.length || 0,
-        pendientes: orders?.filter(o => o.estado === 'pendiente').length || 0,
-        enProgreso: orders?.filter(o => o.estado === 'en_progreso').length || 0,
-        completadas: orders?.filter(o => o.estado === 'completada').length || 0,
-        urgentes: orders?.filter(o => o.prioridad === 'urgente' && o.estado !== 'completada').length || 0,
+      return data as {
+        total: number;
+        pendientes: number;
+        enProgreso: number;
+        completadas: number;
+        urgentes: number;
       };
     },
+    staleTime: 30000, // Cache for 30 seconds
   });
 }

@@ -10,27 +10,6 @@ import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateWorkOrder } from '@/hooks/useWorkOrders';
 
-// Generate automatic code OT-YYYY-NNN
-function generateWorkOrderCode() {
-  const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 900) + 100; // 100-999
-  return `OT-${year}-${random}`;
-}
-
-// Calculate due date based on priority
-function calculateDueDate(priority: string): string {
-  const now = new Date();
-  const daysToAdd = {
-    urgente: 1,
-    alta: 3,
-    media: 7,
-    baja: 14,
-  }[priority] || 7;
-  
-  now.setDate(now.getDate() + daysToAdd);
-  return now.toISOString();
-}
-
 export default function CreateWorkOrderPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -60,16 +39,14 @@ export default function CreateWorkOrderPage() {
     }
 
     try {
+      // Edge function generates codigo and fecha_limite server-side
       await createMutation.mutateAsync({
-        codigo: generateWorkOrderCode(),
         titulo: formData.titulo,
         descripcion: formData.descripcion,
         prioridad: formData.prioridad,
         tipo_trabajo: formData.tipoTrabajo,
         area: formData.area,
         solicitante: formData.solicitante,
-        estado: 'pendiente',
-        fecha_limite: calculateDueDate(formData.prioridad),
       });
       
       toast({
@@ -222,7 +199,7 @@ export default function CreateWorkOrderPage() {
 
             <Button 
               type="submit" 
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              className="w-full bg-success hover:bg-success/90"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

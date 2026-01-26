@@ -909,7 +909,60 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      fn_calculate_due_date: { Args: { priority: string }; Returns: string }
+      fn_generate_work_order_code: { Args: never; Returns: string }
+      fn_get_critical_pim: {
+        Args: never
+        Returns: {
+          codigo: string
+          descripcion: string
+          estado: string
+          id: string
+        }[]
+      }
+      fn_pim_monthly_trend: {
+        Args: { months_back?: number }
+        Returns: {
+          anio: number
+          mes: string
+          mes_orden: string
+          total_pims: number
+          total_toneladas: number
+        }[]
+      }
+      fn_pim_stats: {
+        Args: never
+        Returns: {
+          alertas_sla: number
+          monto_total_usd: number
+          pims_activos: number
+          pims_pendientes: number
+          toneladas_mes: number
+          total_pims: number
+        }[]
+      }
+      fn_pim_status_distribution: {
+        Args: never
+        Returns: {
+          cantidad: number
+          estado: string
+        }[]
+      }
+      fn_requirement_pim_count: {
+        Args: { requirement_id: string }
+        Returns: number
+      }
+      fn_sla_global_stats: { Args: never; Returns: Json }
+      fn_work_order_stats: {
+        Args: never
+        Returns: {
+          completadas: number
+          en_progreso: number
+          pendientes: number
+          total: number
+          urgentes: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
