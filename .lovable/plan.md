@@ -1,13 +1,13 @@
 
 # Plan: Migración de Cálculos Frontend a Edge Functions y SQL
 
-## Resumen Ejecutivo
+## Estado: ✅ COMPLETADO (26 Enero 2026)
 
-Este plan convierte todos los cálculos que actualmente se ejecutan en el navegador (frontend) a funciones del servidor (Edge Functions) y reglas de base de datos (SQL). Esto mejora el rendimiento, la seguridad y la consistencia de los datos.
+Este plan convirtió todos los cálculos que se ejecutaban en el navegador (frontend) a funciones del servidor (Edge Functions) y reglas de base de datos (SQL).
 
 ---
 
-## Inventario de Cálculos Actuales en Frontend
+## Resumen de Implementación
 
 ### 1. Estadísticas de PIMs (`usePIMs.ts` - líneas 109-137)
 

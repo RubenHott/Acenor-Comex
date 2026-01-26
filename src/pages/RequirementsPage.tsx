@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Header } from '@/components/layout/Header';
 import { useRequirements } from '@/hooks/useRequirements';
 import { usePIMs } from '@/hooks/usePIMs';
@@ -47,9 +47,18 @@ export default function RequirementsPage() {
     setSelectedRequirement(requirements[0]);
   }
 
-  // Count PIMs for a requirement
+  // Pre-compute PIM counts per requirement for efficiency
+  const pimCountsByRequirement = useMemo(() => {
+    if (!pims) return {};
+    return pims.reduce((acc, pim) => {
+      acc[pim.requerimiento_id] = (acc[pim.requerimiento_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [pims]);
+
+  // Count PIMs for a requirement using pre-computed map
   const countPIMsForRequirement = (requirementId: string) => {
-    return pims?.filter(pim => pim.requerimiento_id === requirementId).length || 0;
+    return pimCountsByRequirement[requirementId] || 0;
   };
 
   // Total PIMs generated

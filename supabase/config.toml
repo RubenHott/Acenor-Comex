@@ -1,1 +1,10 @@
 project_id = "ykzeuukqhliuslycjcxc"
+
+[functions.get-dashboard-stats]
+verify_jwt = false
+
+[functions.get-work-order-stats]
+verify_jwt = false
+
+[functions.create-work-order]
+verify_jwt = false

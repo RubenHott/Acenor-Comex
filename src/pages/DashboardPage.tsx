@@ -1,10 +1,8 @@
-import { useMemo } from 'react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentPIMsTable } from '@/components/dashboard/RecentPIMsTable';
 import { SLAIndicator } from '@/components/dashboard/SLAIndicator';
-import { usePIMs, usePIMStats } from '@/hooks/usePIMs';
-import { useSLAStats } from '@/hooks/useSLAData';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 import {
   Ship,
   AlertTriangle,
@@ -43,53 +41,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const { data: pims, isLoading: isLoadingPims } = usePIMs();
-  const { data: stats, isLoading: isLoadingStats } = usePIMStats();
-  const { data: slaStats, isLoading: isLoadingSLA } = useSLAStats();
-
-  // Calculate status distribution from real data
-  const statusDistribution = useMemo(() => {
-    if (!pims || pims.length === 0) return [];
-    
-    const counts = pims.reduce((acc, pim) => {
-      acc[pim.estado] = (acc[pim.estado] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    return Object.entries(counts).map(([status, value]) => ({
-      name: statusLabels[status] || status,
-      value,
-      color: statusColors[status] || 'hsl(var(--muted))',
-    }));
-  }, [pims]);
-
-  // Calculate monthly data from PIMs
-  const monthlyData = useMemo(() => {
-    if (!pims || pims.length === 0) return [];
-    
-    const monthCounts: Record<string, { pims: number; toneladas: number }> = {};
-    
-    pims.forEach(pim => {
-      if (pim.fecha_creacion) {
-        const date = new Date(pim.fecha_creacion);
-        const monthKey = date.toLocaleDateString('es-PE', { month: 'short' });
-        
-        if (!monthCounts[monthKey]) {
-          monthCounts[monthKey] = { pims: 0, toneladas: 0 };
-        }
-        monthCounts[monthKey].pims += 1;
-        monthCounts[monthKey].toneladas += pim.total_toneladas || 0;
-      }
-    });
-    
-    return Object.entries(monthCounts)
-      .slice(-4) // Last 4 months
-      .map(([month, data]) => ({
-        month,
-        pims: data.pims,
-        toneladas: Math.round(data.toneladas),
-      }));
-  }, [pims]);
+  const { data: dashboardStats, isLoading } = useDashboardStats();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-PE', {
@@ -100,12 +52,25 @@ export default function DashboardPage() {
     }).format(value);
   };
 
-  // Get the PIM with critical state
-  const criticalPIM = pims?.find(p => 
-    p.estado === 'en_negociacion' || p.estado === 'contrato_pendiente'
-  );
+  // Transform status distribution for chart
+  const statusDistribution = (dashboardStats?.statusDistribution || []).map(item => ({
+    name: statusLabels[item.estado] || item.estado,
+    value: item.cantidad,
+    color: statusColors[item.estado] || 'hsl(var(--muted))',
+  }));
 
-  if (isLoadingStats) {
+  // Transform monthly trend for chart
+  const monthlyData = (dashboardStats?.monthlyTrend || []).map(item => ({
+    month: item.mes,
+    pims: item.total_pims,
+    toneladas: Math.round(Number(item.total_toneladas)),
+  }));
+
+  const stats = dashboardStats?.pimStats;
+  const slaStats = dashboardStats?.slaStats;
+  const criticalPIM = dashboardStats?.criticalPim;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header title="Dashboard" subtitle="Vista general del sistema COMEX" />
@@ -282,13 +247,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {isLoadingSLA ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                  </div>
-                ) : slaStats ? (
+                {slaStats ? (
                   <>
                     <SLAIndicator
                       label="Negociación"

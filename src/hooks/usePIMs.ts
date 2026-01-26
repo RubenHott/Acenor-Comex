@@ -78,6 +78,7 @@ export function useCreatePIM() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pims'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 }
@@ -101,37 +102,30 @@ export function useUpdatePIM() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['pims'] });
       queryClient.invalidateQueries({ queryKey: ['pims', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 }
 
-// Dashboard stats
+// Dashboard stats - now uses edge function via useDashboardStats
+// Keeping this for backwards compatibility
 export function usePIMStats() {
   return useQuery({
-    queryKey: ['pims', 'stats'],
+    queryKey: ['dashboard-stats', 'pim-stats'],
     queryFn: async () => {
-      const { data: pims, error } = await supabase
-        .from('pims')
-        .select('estado, total_usd, total_toneladas');
+      const { data, error } = await supabase.functions.invoke('get-dashboard-stats');
       
       if (error) throw error;
-
-      const activos = pims?.filter(p => 
-        !['cerrado', 'entregado'].includes(p.estado)
-      ).length || 0;
-
-      const pendientes = pims?.filter(p => 
-        ['creado', 'en_negociacion', 'contrato_pendiente'].includes(p.estado)
-      ).length || 0;
-
-      return {
-        totalPIMs: pims?.length || 0,
-        pimsActivos: activos,
-        pimsPendientes: pendientes,
-        alertasSLA: 2, // Would need sla_data join
-        montoTotalUSD: pims?.reduce((sum, p) => sum + (p.total_usd || 0), 0) || 0,
-        toneladasMes: pims?.reduce((sum, p) => sum + (p.total_toneladas || 0), 0) || 0,
+      
+      return data?.pimStats || {
+        totalPIMs: 0,
+        pimsActivos: 0,
+        pimsPendientes: 0,
+        alertasSLA: 0,
+        montoTotalUSD: 0,
+        toneladasMes: 0,
       };
     },
+    staleTime: 30000,
   });
 }
