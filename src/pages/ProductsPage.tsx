@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
-import { mockProducts } from '@/data/mockData';
+import { useProducts } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,16 +19,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Filter, Download, Eye } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Search, Plus, Filter, Download, Eye, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  
+  const { data: products, isLoading, error } = useProducts();
 
-  const categories = [...new Set(mockProducts.map(p => p.categoria))];
+  const categories = [...new Set(products?.map(p => p.categoria) || [])];
 
-  const filteredProducts = mockProducts.filter(product => {
+  const filteredProducts = (products || []).filter(product => {
     const matchesSearch = 
       product.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
@@ -36,7 +40,7 @@ export default function ProductsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const formatCurrency = (value?: number) => {
+  const formatCurrency = (value?: number | null) => {
     if (!value) return '-';
     return new Intl.NumberFormat('es-PE', {
       style: 'currency',
@@ -44,14 +48,28 @@ export default function ProductsPage() {
     }).format(value);
   };
 
-  const formatDate = (date?: Date) => {
+  const formatDate = (date?: string | null) => {
     if (!date) return '-';
     return new Intl.DateTimeFormat('es-PE', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
-    }).format(date);
+    }).format(new Date(date));
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title="Productos" subtitle="Catálogo de productos y materias primas" />
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>Error al cargar productos: {error.message}</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background page-enter">
@@ -111,66 +129,81 @@ export default function ProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product) => (
-                <TableRow key={product.id} className="table-row-hover">
-                  <TableCell className="font-mono text-sm font-medium">{product.codigo}</TableCell>
-                  <TableCell className="max-w-[250px]">
-                    <p className="truncate">{product.descripcion}</p>
-                    {product.codBaseMP && (
-                      <p className="text-xs text-muted-foreground">MP: {product.codBaseMP}</p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm">{product.categoria}</p>
-                      <p className="text-xs text-muted-foreground">{product.subCategoria}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        product.origen === 'Importación'
-                          ? 'border-info/50 text-info bg-info/10'
-                          : product.origen === 'Fabricación'
-                          ? 'border-success/50 text-success bg-success/10'
-                          : 'border-muted-foreground/50'
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-6 mx-auto rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                filteredProducts.map((product) => (
+                  <TableRow key={product.id} className="table-row-hover">
+                    <TableCell className="font-mono text-sm font-medium">{product.codigo}</TableCell>
+                    <TableCell className="max-w-[250px]">
+                      <p className="truncate">{product.descripcion}</p>
+                      {product.cod_base_mp && (
+                        <p className="text-xs text-muted-foreground">MP: {product.cod_base_mp}</p>
                       )}
-                    >
-                      {product.origen}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span
-                      className={cn(
-                        'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
-                        product.tipoABC === 'A'
-                          ? 'bg-success/10 text-success'
-                          : product.tipoABC === 'B'
-                          ? 'bg-warning/10 text-warning'
-                          : 'bg-muted text-muted-foreground'
-                      )}
-                    >
-                      {product.tipoABC}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(product.ultimoPrecioUSD)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(product.ultimaFechaImportacion)}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm">{product.categoria}</p>
+                        <p className="text-xs text-muted-foreground">{product.sub_categoria}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          product.origen === 'Importación'
+                            ? 'border-info/50 text-info bg-info/10'
+                            : product.origen === 'Fabricación'
+                            ? 'border-success/50 text-success bg-success/10'
+                            : 'border-muted-foreground/50'
+                        )}
+                      >
+                        {product.origen || 'N/A'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span
+                        className={cn(
+                          'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
+                          product.tipo_abc === 'A'
+                            ? 'bg-success/10 text-success'
+                            : product.tipo_abc === 'B'
+                            ? 'bg-warning/10 text-warning'
+                            : 'bg-muted text-muted-foreground'
+                        )}
+                      >
+                        {product.tipo_abc || '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(product.ultimo_precio_usd)}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(product.ultima_fecha_importacion)}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
 
-          {filteredProducts.length === 0 && (
+          {!isLoading && filteredProducts.length === 0 && (
             <div className="p-12 text-center">
               <p className="text-muted-foreground">No se encontraron productos</p>
             </div>
@@ -180,7 +213,7 @@ export default function ProductsPage() {
         {/* Pagination placeholder */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {filteredProducts.length} de {mockProducts.length} productos
+            Mostrando {filteredProducts.length} de {products?.length || 0} productos
           </p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled>

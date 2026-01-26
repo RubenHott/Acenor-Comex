@@ -2,7 +2,7 @@ import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentPIMsTable } from '@/components/dashboard/RecentPIMsTable';
 import { SLAIndicator } from '@/components/dashboard/SLAIndicator';
-import { mockDashboardStats, mockPIMs } from '@/data/mockData';
+import { usePIMs, usePIMStats } from '@/hooks/usePIMs';
 import {
   Ship,
   AlertTriangle,
@@ -10,9 +10,11 @@ import {
   Package,
   TrendingUp,
   Clock,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const statusDistribution = [
   { name: 'En Negociación', value: 3, color: 'hsl(var(--info))' },
@@ -30,6 +32,9 @@ const monthlyData = [
 ];
 
 export default function DashboardPage() {
+  const { data: pims, isLoading: isLoadingPims } = usePIMs();
+  const { data: stats, isLoading: isLoadingStats } = usePIMStats();
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-PE', {
       style: 'currency',
@@ -39,10 +44,25 @@ export default function DashboardPage() {
     }).format(value);
   };
 
-  // Get the PIM with worst SLA for alert
-  const criticalPIM = mockPIMs.find(p => 
-    Object.values(p.slaData).some(s => s.alerta === 'rojo')
+  // Get the PIM with critical state
+  const criticalPIM = pims?.find(p => 
+    p.estado === 'en_negociacion' || p.estado === 'contrato_pendiente'
   );
+
+  if (isLoadingStats) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title="Dashboard" subtitle="Vista general del sistema COMEX" />
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <Skeleton key={i} className="h-32 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background page-enter">
@@ -53,29 +73,29 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="PIMs Activos"
-            value={mockDashboardStats.pimsActivos}
-            subtitle={`${mockDashboardStats.totalPIMs} totales`}
+            value={stats?.pimsActivos || 0}
+            subtitle={`${stats?.totalPIMs || 0} totales`}
             icon={Ship}
             variant="primary"
             trend={{ value: 25, isPositive: true }}
           />
           <StatCard
             title="Alertas SLA"
-            value={mockDashboardStats.alertasSLA}
+            value={stats?.alertasSLA || 0}
             subtitle="Requieren atención"
             icon={AlertTriangle}
             variant="warning"
           />
           <StatCard
             title="Monto en Tránsito"
-            value={formatCurrency(mockDashboardStats.montoTotalUSD)}
+            value={formatCurrency(stats?.montoTotalUSD || 0)}
             icon={DollarSign}
             variant="accent"
             trend={{ value: 12, isPositive: true }}
           />
           <StatCard
             title="Toneladas del Mes"
-            value={`${mockDashboardStats.toneladasMes} t`}
+            value={`${stats?.toneladasMes || 0} t`}
             icon={Package}
             variant="success"
             trend={{ value: 8, isPositive: true }}
@@ -89,9 +109,9 @@ export default function DashboardPage() {
               <AlertTriangle className="h-5 w-5 text-destructive" />
             </div>
             <div className="flex-1">
-              <p className="font-medium text-foreground">SLA Crítico: {criticalPIM.codigo}</p>
+              <p className="font-medium text-foreground">PIM Pendiente: {criticalPIM.codigo}</p>
               <p className="text-sm text-muted-foreground">
-                {criticalPIM.descripcion} - Tiempo de negociación excedido
+                {criticalPIM.descripcion}
               </p>
             </div>
             <button className="px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors">

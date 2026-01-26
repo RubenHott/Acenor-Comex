@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
-import { mockRequirements, mockProducts } from '@/data/mockData';
+import { useRequirements } from '@/hooks/useRequirements';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
   TableBody,
@@ -22,21 +23,27 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Search, 
   Plus, 
   Calendar,
   Package,
   DollarSign,
   TrendingUp,
-  Eye,
   Edit,
   ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { Requirement } from '@/hooks/useRequirements';
 
 export default function RequirementsPage() {
-  const [selectedRequirement, setSelectedRequirement] = useState(mockRequirements[0]);
+  const { data: requirements, isLoading, error } = useRequirements();
+  const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+
+  // Set first requirement as selected when data loads
+  if (requirements && requirements.length > 0 && !selectedRequirement) {
+    setSelectedRequirement(requirements[0]);
+  }
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-PE', {
@@ -47,14 +54,31 @@ export default function RequirementsPage() {
   };
 
   const getStatusBadge = (estado: string) => {
-    const styles = {
+    const styles: Record<string, string> = {
       borrador: 'bg-muted text-muted-foreground',
       pendiente: 'bg-warning/10 text-warning',
       aprobado: 'bg-success/10 text-success',
       cerrado: 'bg-info/10 text-info',
     };
-    return styles[estado as keyof typeof styles] || styles.borrador;
+    return styles[estado] || styles.borrador;
   };
+
+  const totalToneladas = requirements?.reduce((acc, r) => acc + (r.total_toneladas || 0), 0) || 0;
+  const totalUSD = requirements?.reduce((acc, r) => acc + (r.total_usd || 0), 0) || 0;
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title="Requerimientos Mensuales" subtitle="Gestión de requerimientos de importación por cuadro" />
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>Error al cargar requerimientos: {error.message}</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background page-enter">
@@ -71,7 +95,7 @@ export default function RequirementsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Requerimientos Activos</p>
-                  <p className="text-2xl font-bold">{mockRequirements.length}</p>
+                  <p className="text-2xl font-bold">{requirements?.length || 0}</p>
                 </div>
                 <Calendar className="h-8 w-8 text-primary/60" />
               </div>
@@ -82,9 +106,7 @@ export default function RequirementsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Toneladas</p>
-                  <p className="text-2xl font-bold">
-                    {mockRequirements.reduce((acc, r) => acc + r.totalToneladas, 0)} t
-                  </p>
+                  <p className="text-2xl font-bold">{totalToneladas} t</p>
                 </div>
                 <Package className="h-8 w-8 text-muted-foreground/60" />
               </div>
@@ -95,9 +117,7 @@ export default function RequirementsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Monto Total USD</p>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(mockRequirements.reduce((acc, r) => acc + r.totalUSD, 0))}
-                  </p>
+                  <p className="text-2xl font-bold">{formatCurrency(totalUSD)}</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-muted-foreground/60" />
               </div>
@@ -147,32 +167,42 @@ export default function RequirementsPage() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-border">
-                  {mockRequirements.map((req) => (
-                    <button
-                      key={req.id}
-                      onClick={() => setSelectedRequirement(req)}
-                      className={cn(
-                        'w-full p-4 text-left transition-colors hover:bg-muted/50 flex items-center justify-between',
-                        selectedRequirement?.id === req.id && 'bg-muted'
-                      )}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium">{req.mes}</p>
-                          <Badge className={getStatusBadge(req.estado)}>
-                            {req.estado}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Cuadro: {req.cuadroId} • {req.totalToneladas}t
-                        </p>
-                        <p className="text-sm font-medium text-primary mt-1">
-                          {formatCurrency(req.totalUSD)}
-                        </p>
+                  {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="p-4">
+                        <Skeleton className="h-4 w-24 mb-2" />
+                        <Skeleton className="h-3 w-full mb-2" />
+                        <Skeleton className="h-4 w-20" />
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  ))}
+                    ))
+                  ) : (
+                    (requirements || []).map((req) => (
+                      <button
+                        key={req.id}
+                        onClick={() => setSelectedRequirement(req)}
+                        className={cn(
+                          'w-full p-4 text-left transition-colors hover:bg-muted/50 flex items-center justify-between',
+                          selectedRequirement?.id === req.id && 'bg-muted'
+                        )}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium">{req.mes}</p>
+                            <Badge className={getStatusBadge(req.estado)}>
+                              {req.estado}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Cuadro: {req.cuadro_id} • {req.total_toneladas || 0}t
+                          </p>
+                          <p className="text-sm font-medium text-primary mt-1">
+                            {formatCurrency(req.total_usd || 0)}
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -188,12 +218,12 @@ export default function RequirementsPage() {
                       Requerimiento {selectedRequirement.mes}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Cuadro: {selectedRequirement.cuadroId} • 
-                      Creado el {new Intl.DateTimeFormat('es-PE', {
+                      Cuadro: {selectedRequirement.cuadro_id} • 
+                      {selectedRequirement.fecha_creacion && ` Creado el ${new Intl.DateTimeFormat('es-PE', {
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric',
-                      }).format(selectedRequirement.fechaCreacion)}
+                      }).format(new Date(selectedRequirement.fecha_creacion))}`}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -210,64 +240,38 @@ export default function RequirementsPage() {
                   {/* Summary */}
                   <div className="grid grid-cols-3 gap-4 p-4 rounded-lg bg-muted/50 mb-6">
                     <div>
-                      <p className="text-sm text-muted-foreground">Productos</p>
-                      <p className="text-xl font-bold">{selectedRequirement.productos.length}</p>
+                      <p className="text-sm text-muted-foreground">Total Kilos</p>
+                      <p className="text-xl font-bold">{(selectedRequirement.total_kilos || 0).toLocaleString()} kg</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Toneladas</p>
-                      <p className="text-xl font-bold">{selectedRequirement.totalToneladas} t</p>
+                      <p className="text-xl font-bold">{selectedRequirement.total_toneladas || 0} t</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total USD</p>
-                      <p className="text-xl font-bold">{formatCurrency(selectedRequirement.totalUSD)}</p>
+                      <p className="text-xl font-bold">{formatCurrency(selectedRequirement.total_usd || 0)}</p>
                     </div>
                   </div>
 
-                  {/* Products Table */}
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Código</TableHead>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead className="text-right">Cantidad</TableHead>
-                        <TableHead className="text-right">Toneladas</TableHead>
-                        <TableHead className="text-right">Precio Unit.</TableHead>
-                        <TableHead className="text-right">Total USD</TableHead>
-                        <TableHead>Última Import.</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedRequirement.productos.map((item) => (
-                        <TableRow key={item.id} className="table-row-hover">
-                          <TableCell className="font-mono text-sm">{item.codigoProducto}</TableCell>
-                          <TableCell className="max-w-[180px] truncate">{item.descripcion}</TableCell>
-                          <TableCell className="text-right">
-                            {item.cantidadRequerida.toLocaleString()} {item.unidad}
-                          </TableCell>
-                          <TableCell className="text-right">{item.toneladas}</TableCell>
-                          <TableCell className="text-right">${item.precioUnitarioUSD.toFixed(2)}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(item.totalUSD)}
-                          </TableCell>
-                          <TableCell>
-                            {item.ultimaImportacion ? (
-                              <div className="text-xs">
-                                <p className="text-muted-foreground">
-                                  {new Intl.DateTimeFormat('es-PE', {
-                                    day: '2-digit',
-                                    month: 'short',
-                                  }).format(item.ultimaImportacion.fecha)}
-                                </p>
-                                <p className="font-medium">${item.ultimaImportacion.precio}</p>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  {/* Availability */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="p-4 rounded-lg border border-success/30 bg-success/5">
+                      <p className="text-sm text-muted-foreground">Kilos Disponibles</p>
+                      <p className="text-xl font-bold text-success">{(selectedRequirement.kilos_disponibles || 0).toLocaleString()} kg</p>
+                    </div>
+                    <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
+                      <p className="text-sm text-muted-foreground">Kilos Consumidos</p>
+                      <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString()} kg</p>
+                    </div>
+                  </div>
+
+                  {/* Observations */}
+                  {selectedRequirement.observaciones && (
+                    <div className="p-4 rounded-lg border border-border">
+                      <p className="text-sm font-medium mb-2">Observaciones</p>
+                      <p className="text-sm text-muted-foreground">{selectedRequirement.observaciones}</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
