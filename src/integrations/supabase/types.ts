@@ -85,6 +85,56 @@ export type Database = {
           },
         ]
       }
+      notificaciones: {
+        Row: {
+          created_at: string | null
+          destinatario_id: string
+          fecha_creacion: string
+          id: string
+          leido: boolean
+          mensaje: string
+          pim_id: string | null
+          prioridad: string
+          tipo: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          destinatario_id: string
+          fecha_creacion?: string
+          id: string
+          leido?: boolean
+          mensaje: string
+          pim_id?: string | null
+          prioridad?: string
+          tipo: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          destinatario_id?: string
+          fecha_creacion?: string
+          id?: string
+          leido?: boolean
+          mensaje?: string
+          pim_id?: string | null
+          prioridad?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_pim_id_fkey"
+            columns: ["pim_id"]
+            isOneToOne: false
+            referencedRelation: "pims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pim_documentos: {
         Row: {
           created_at: string | null

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { useRequirements } from '@/hooks/useRequirements';
+import { usePIMs } from '@/hooks/usePIMs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,6 +38,7 @@ import type { Requirement } from '@/hooks/useRequirements';
 
 export default function RequirementsPage() {
   const { data: requirements, isLoading, error } = useRequirements();
+  const { data: pims } = usePIMs();
   const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
 
@@ -44,6 +46,14 @@ export default function RequirementsPage() {
   if (requirements && requirements.length > 0 && !selectedRequirement) {
     setSelectedRequirement(requirements[0]);
   }
+
+  // Count PIMs for a requirement
+  const countPIMsForRequirement = (requirementId: string) => {
+    return pims?.filter(pim => pim.requerimiento_id === requirementId).length || 0;
+  };
+
+  // Total PIMs generated
+  const totalPIMsGenerated = pims?.length || 0;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-PE', {
@@ -128,7 +138,7 @@ export default function RequirementsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">PIMs Generados</p>
-                  <p className="text-2xl font-bold">5</p>
+                  <p className="text-2xl font-bold">{totalPIMsGenerated}</p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-success/60" />
               </div>
@@ -238,7 +248,7 @@ export default function RequirementsPage() {
                 </CardHeader>
                 <CardContent>
                   {/* Summary */}
-                  <div className="grid grid-cols-3 gap-4 p-4 rounded-lg bg-muted/50 mb-6">
+                  <div className="grid grid-cols-4 gap-4 p-4 rounded-lg bg-muted/50 mb-6">
                     <div>
                       <p className="text-sm text-muted-foreground">Total Kilos</p>
                       <p className="text-xl font-bold">{(selectedRequirement.total_kilos || 0).toLocaleString()} kg</p>
@@ -250,6 +260,10 @@ export default function RequirementsPage() {
                     <div>
                       <p className="text-sm text-muted-foreground">Total USD</p>
                       <p className="text-xl font-bold">{formatCurrency(selectedRequirement.total_usd || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">PIMs</p>
+                      <p className="text-xl font-bold">{countPIMsForRequirement(selectedRequirement.id)}</p>
                     </div>
                   </div>
 

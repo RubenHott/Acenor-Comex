@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentPIMsTable } from '@/components/dashboard/RecentPIMsTable';
 import { SLAIndicator } from '@/components/dashboard/SLAIndicator';
 import { usePIMs, usePIMStats } from '@/hooks/usePIMs';
+import { useSLAStats } from '@/hooks/useSLAData';
 import {
   Ship,
   AlertTriangle,
@@ -10,30 +12,84 @@ import {
   Package,
   TrendingUp,
   Clock,
-  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const statusDistribution = [
-  { name: 'En Negociación', value: 3, color: 'hsl(var(--info))' },
-  { name: 'Contrato', value: 2, color: 'hsl(var(--warning))' },
-  { name: 'Producción', value: 4, color: 'hsl(var(--chart-5))' },
-  { name: 'Tránsito', value: 3, color: 'hsl(var(--success))' },
-  { name: 'Aduana', value: 2, color: 'hsl(var(--accent))' },
-];
+// Status labels and colors for chart
+const statusLabels: Record<string, string> = {
+  creado: 'Creado',
+  en_negociacion: 'En Negociación',
+  contrato_pendiente: 'Contrato Pendiente',
+  contrato_validado: 'Contrato Validado',
+  en_produccion: 'En Producción',
+  en_transito: 'En Tránsito',
+  en_aduana: 'En Aduana',
+  entregado: 'Entregado',
+  cerrado: 'Cerrado',
+};
 
-const monthlyData = [
-  { month: 'Oct', pims: 8, toneladas: 320 },
-  { month: 'Nov', pims: 12, toneladas: 450 },
-  { month: 'Dic', pims: 10, toneladas: 380 },
-  { month: 'Ene', pims: 15, toneladas: 520 },
-];
+const statusColors: Record<string, string> = {
+  creado: 'hsl(var(--muted-foreground))',
+  en_negociacion: 'hsl(var(--info))',
+  contrato_pendiente: 'hsl(var(--warning))',
+  contrato_validado: 'hsl(var(--chart-5))',
+  en_produccion: 'hsl(var(--accent))',
+  en_transito: 'hsl(var(--success))',
+  en_aduana: 'hsl(var(--primary))',
+  entregado: 'hsl(var(--chart-4))',
+  cerrado: 'hsl(var(--muted))',
+};
 
 export default function DashboardPage() {
   const { data: pims, isLoading: isLoadingPims } = usePIMs();
   const { data: stats, isLoading: isLoadingStats } = usePIMStats();
+  const { data: slaStats, isLoading: isLoadingSLA } = useSLAStats();
+
+  // Calculate status distribution from real data
+  const statusDistribution = useMemo(() => {
+    if (!pims || pims.length === 0) return [];
+    
+    const counts = pims.reduce((acc, pim) => {
+      acc[pim.estado] = (acc[pim.estado] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(counts).map(([status, value]) => ({
+      name: statusLabels[status] || status,
+      value,
+      color: statusColors[status] || 'hsl(var(--muted))',
+    }));
+  }, [pims]);
+
+  // Calculate monthly data from PIMs
+  const monthlyData = useMemo(() => {
+    if (!pims || pims.length === 0) return [];
+    
+    const monthCounts: Record<string, { pims: number; toneladas: number }> = {};
+    
+    pims.forEach(pim => {
+      if (pim.fecha_creacion) {
+        const date = new Date(pim.fecha_creacion);
+        const monthKey = date.toLocaleDateString('es-PE', { month: 'short' });
+        
+        if (!monthCounts[monthKey]) {
+          monthCounts[monthKey] = { pims: 0, toneladas: 0 };
+        }
+        monthCounts[monthKey].pims += 1;
+        monthCounts[monthKey].toneladas += pim.total_toneladas || 0;
+      }
+    });
+    
+    return Object.entries(monthCounts)
+      .slice(-4) // Last 4 months
+      .map(([month, data]) => ({
+        month,
+        pims: data.pims,
+        toneladas: Math.round(data.toneladas),
+      }));
+  }, [pims]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-PE', {
@@ -135,37 +191,45 @@ export default function DashboardPage() {
                 <CardTitle className="text-base font-semibold">Distribución por Estado</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={statusDistribution}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        paddingAngle={4}
-                        dataKey="value"
-                      >
-                        {statusDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-4">
-                  {statusDistribution.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-xs text-muted-foreground">{item.name}</span>
-                      <span className="text-xs font-medium ml-auto">{item.value}</span>
+                {statusDistribution.length > 0 ? (
+                  <>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={statusDistribution}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={80}
+                            paddingAngle={4}
+                            dataKey="value"
+                          >
+                            {statusDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                  ))}
-                </div>
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      {statusDistribution.map((item) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <div
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="text-xs text-muted-foreground">{item.name}</span>
+                          <span className="text-xs font-medium ml-auto">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
+                    No hay datos de PIMs
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -178,28 +242,34 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-40">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyData}>
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} fontSize={12} />
-                      <YAxis hide />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                        }}
-                      />
-                      <Bar
-                        dataKey="pims"
-                        fill="hsl(var(--primary))"
-                        radius={[4, 4, 0, 0]}
-                        name="PIMs"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                {monthlyData.length > 0 ? (
+                  <div className="h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthlyData}>
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} fontSize={12} />
+                        <YAxis hide />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                          }}
+                        />
+                        <Bar
+                          dataKey="pims"
+                          fill="hsl(var(--primary))"
+                          radius={[4, 4, 0, 0]}
+                          name="PIMs"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">
+                    No hay datos mensuales
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -212,24 +282,38 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <SLAIndicator
-                  label="Negociación"
-                  diasEstimados={5}
-                  diasReales={4}
-                  alerta="verde"
-                />
-                <SLAIndicator
-                  label="Contratos"
-                  diasEstimados={3}
-                  diasReales={3}
-                  alerta="amarillo"
-                />
-                <SLAIndicator
-                  label="Tránsito Promedio"
-                  diasEstimados={25}
-                  diasReales={23}
-                  alerta="verde"
-                />
+                {isLoadingSLA ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : slaStats ? (
+                  <>
+                    <SLAIndicator
+                      label="Negociación"
+                      diasEstimados={slaStats.negociacion.estimados}
+                      diasReales={slaStats.negociacion.reales ?? undefined}
+                      alerta={slaStats.negociacion.alerta}
+                    />
+                    <SLAIndicator
+                      label="Contratos"
+                      diasEstimados={slaStats.contrato.estimados}
+                      diasReales={slaStats.contrato.reales ?? undefined}
+                      alerta={slaStats.contrato.alerta}
+                    />
+                    <SLAIndicator
+                      label="Tránsito Promedio"
+                      diasEstimados={slaStats.transito.estimados}
+                      diasReales={slaStats.transito.reales ?? undefined}
+                      alerta={slaStats.transito.alerta}
+                    />
+                  </>
+                ) : (
+                  <div className="text-center text-muted-foreground text-sm py-4">
+                    No hay datos de SLA
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

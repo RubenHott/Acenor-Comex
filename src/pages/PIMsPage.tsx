@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { usePIMs } from '@/hooks/usePIMs';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { usePIMSLA, formatSLAForPIM } from '@/hooks/useSLAData';
 import { PIMStatusBadge } from '@/components/dashboard/PIMStatusBadge';
 import { SLAIndicator } from '@/components/dashboard/SLAIndicator';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,10 @@ export default function PIMsPage() {
   const [selectedPIM, setSelectedPIM] = useState<PIM | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Fetch SLA data for selected PIM
+  const { data: slaData, isLoading: isLoadingSLA } = usePIMSLA(selectedPIM?.id);
+  const formattedSLA = formatSLAForPIM(slaData);
 
   // Set first PIM as selected when data loads
   if (pims && pims.length > 0 && !selectedPIM) {
@@ -295,14 +300,52 @@ export default function PIMsPage() {
                     </TabsContent>
 
                     <TabsContent value="sla" className="space-y-4">
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <SLAIndicator label="Negociación" diasEstimados={5} diasReales={4} alerta="verde" />
-                        <SLAIndicator label="Contrato" diasEstimados={3} diasReales={3} alerta="amarillo" />
-                        <SLAIndicator label="Producción" diasEstimados={30} alerta="verde" />
-                        <SLAIndicator label="Tránsito" diasEstimados={25} alerta="verde" />
-                        <SLAIndicator label="Aduana" diasEstimados={5} alerta="verde" />
-                        <SLAIndicator label="Total" diasEstimados={70} alerta="verde" />
-                      </div>
+                      {isLoadingSLA ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {[1, 2, 3, 4, 5, 6].map(i => (
+                            <Skeleton key={i} className="h-20 w-full" />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          <SLAIndicator 
+                            label="Negociación" 
+                            diasEstimados={formattedSLA.negociacion.estimados} 
+                            diasReales={formattedSLA.negociacion.reales} 
+                            alerta={formattedSLA.negociacion.alerta} 
+                          />
+                          <SLAIndicator 
+                            label="Contrato" 
+                            diasEstimados={formattedSLA.contrato.estimados} 
+                            diasReales={formattedSLA.contrato.reales} 
+                            alerta={formattedSLA.contrato.alerta} 
+                          />
+                          <SLAIndicator 
+                            label="Producción" 
+                            diasEstimados={formattedSLA.produccion.estimados} 
+                            diasReales={formattedSLA.produccion.reales} 
+                            alerta={formattedSLA.produccion.alerta} 
+                          />
+                          <SLAIndicator 
+                            label="Tránsito" 
+                            diasEstimados={formattedSLA.transito.estimados} 
+                            diasReales={formattedSLA.transito.reales} 
+                            alerta={formattedSLA.transito.alerta} 
+                          />
+                          <SLAIndicator 
+                            label="Aduana" 
+                            diasEstimados={formattedSLA.aduana.estimados} 
+                            diasReales={formattedSLA.aduana.reales} 
+                            alerta={formattedSLA.aduana.alerta} 
+                          />
+                          <SLAIndicator 
+                            label="Total" 
+                            diasEstimados={formattedSLA.total.estimados} 
+                            diasReales={formattedSLA.total.reales} 
+                            alerta={formattedSLA.total.alerta} 
+                          />
+                        </div>
+                      )}
                     </TabsContent>
 
                     <TabsContent value="items">
