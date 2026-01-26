@@ -36,23 +36,77 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 │  └────────────────┘  └────────────────┘  └────────────────┘    │
 ├─────────────────────────────────────────────────────────────────┤
 │                     CAPA DE DATOS                               │
-│  ┌────────────────┐  ┌────────────────┐                        │
-│  │   Mock Data    │  │Supabase Client │                        │
-│  │ (mockData.ts)  │  │  (client.ts)   │                        │
-│  └────────────────┘  └────────────────┘                        │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │               React Query Hooks                         │    │
+│  │  useDashboardStats, usePIMs, useWorkOrders, etc.       │    │
+│  └────────────────────────────────────────────────────────┘    │
+│           │                                      │              │
+│           ▼                                      ▼              │
+│  ┌────────────────┐                    ┌────────────────┐      │
+│  │supabase.func   │                    │ supabase.from  │      │
+│  │  .invoke()     │                    │   .select()    │      │
+│  └────────────────┘                    └────────────────┘      │
 └─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
+                                │
+                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      SUPABASE (Backend)                         │
+│                     EDGE FUNCTIONS (Deno)                        │
 ├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   Database   │  │     Auth     │  │   Storage    │          │
-│  │ (PostgreSQL) │  │  (Pendiente) │  │  (Pendiente) │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
-│                                                                 │
-│  Tablas: pims, productos, proveedores, requerimientos, etc.    │
+│  ┌──────────────────┐ ┌──────────────────┐ ┌─────────────────┐ │
+│  │get-dashboard-    │ │get-work-order-   │ │ create-work-    │ │
+│  │    stats         │ │    stats         │ │    order        │ │
+│  └────────┬─────────┘ └────────┬─────────┘ └────────┬────────┘ │
+│           │                    │                     │          │
+│           └────────────────────┴─────────────────────┘          │
+│                                │                                 │
+│                       supabase.rpc('fn_*')                      │
 └─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      SUPABASE (PostgreSQL)                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    FUNCIONES SQL                          │  │
+│  │  fn_pim_stats, fn_sla_global_stats, fn_work_order_stats  │  │
+│  │  fn_generate_work_order_code, fn_calculate_due_date      │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                      TRIGGERS                             │  │
+│  │  trg_sla_auto_alerts → Calcula alertas automáticamente   │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                       TABLAS                              │  │
+│  │  pims, productos, proveedores, requerimientos, sla_data  │  │
+│  │  work_orders, notificaciones, pim_items, etc.            │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │     Auth     │  │   Storage    │  │     RLS      │          │
+│  │  (Pendiente) │  │  (Pendiente) │  │   (Activo)   │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Flujo de Datos
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Component  │────▶│ React Query │────▶│    Edge     │────▶│     SQL     │
+│   (React)   │     │    Hook     │     │  Function   │     │  Function   │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+       │                   │                   │                   │
+       │ useDashboard      │ invoke()          │ rpc()             │ Cálculo
+       │ Stats()           │                   │                   │ en BD
+       ▼                   ▼                   ▼                   ▼
+    Render             Cache 30s           Orquesta          Retorna datos
+       ▲                   ▲                   ▲                   ▲
+       │                   │                   │                   │
+       └───────────────────┴───────────────────┴───────────────────┘
+                              JSON Response
 ```
 
 ## Stack Tecnológico
@@ -67,6 +121,7 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 | **Routing** | React Router | 6.30.1 | Navegación SPA |
 | **Estado Server** | React Query | 5.83.0 | Cache y fetching |
 | **Backend** | Supabase | 2.93.1 | BaaS (PostgreSQL) |
+| **Edge Functions** | Deno | Latest | Funciones serverless |
 | **Animaciones** | Framer Motion | 12.27.5 | Animaciones fluidas |
 | **Formularios** | React Hook Form | 7.61.1 | Manejo de formularios |
 | **Validación** | Zod | 3.25.76 | Schema validation |
@@ -78,36 +133,46 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 ```
 src/
 ├── components/
-│   ├── dashboard/          # Componentes del dashboard (StatCard, PIMStatusBadge, etc.)
-│   ├── layout/             # Layouts y sidebars (ComexSidebar, WorkOrdersSidebar, Header)
-│   ├── ui/                 # Componentes shadcn/ui (40+ componentes)
-│   └── workOrders/         # Componentes específicos de OTs
+│   ├── dashboard/          # Componentes del dashboard (StatCard, etc.)
+│   ├── layout/             # Layouts y sidebars
+│   ├── ui/                 # Componentes shadcn/ui (40+)
+│   └── workOrders/         # Componentes de OTs
 ├── contexts/
 │   └── AuthContext.tsx     # Contexto de autenticación (mock)
-├── data/
-│   ├── mockData.ts         # Datos mock de COMEX
-│   └── workOrdersMock.ts   # Datos mock de OTs
 ├── hooks/
-│   ├── use-mobile.tsx      # Hook para detección de móvil
-│   └── use-toast.ts        # Hook para notificaciones
+│   ├── useDashboardStats.ts  # Stats del dashboard (Edge Function)
+│   ├── usePIMs.ts            # Lista de PIMs
+│   ├── useWorkOrders.ts      # Órdenes de trabajo
+│   ├── useProducts.ts        # Productos
+│   ├── useSuppliers.ts       # Proveedores
+│   ├── useRequirements.ts    # Requerimientos
+│   ├── useNotifications.ts   # Notificaciones
+│   └── useSLAData.ts         # Datos SLA
 ├── integrations/
 │   └── supabase/
-│       ├── client.ts       # Cliente Supabase configurado
+│       ├── client.ts       # Cliente Supabase
 │       └── types.ts        # Tipos auto-generados
 ├── lib/
 │   └── utils.ts            # Utilidades (cn, etc.)
 ├── pages/
-│   ├── workOrders/         # Páginas del módulo OTs
+│   ├── workOrders/         # Páginas módulo OTs
 │   ├── DashboardPage.tsx   # Dashboard COMEX
-│   ├── LoginPage.tsx       # Página de login
-│   ├── ModulesPage.tsx     # Selector de módulos
-│   └── ...                 # Otras páginas
+│   ├── LoginPage.tsx       # Login
+│   └── ModulesPage.tsx     # Selector de módulos
 ├── types/
-│   ├── comex.ts            # Tipos del módulo COMEX
-│   └── workOrders.ts       # Tipos del módulo OTs
-├── App.tsx                 # Configuración de rutas
-├── index.css               # Variables CSS y estilos globales
+│   ├── comex.ts            # Tipos COMEX
+│   └── workOrders.ts       # Tipos OTs
+├── App.tsx                 # Rutas
+├── index.css               # Variables CSS
 └── main.tsx                # Entry point
+
+supabase/
+├── functions/
+│   ├── get-dashboard-stats/  # Stats dashboard
+│   ├── get-work-order-stats/ # Stats OTs
+│   └── create-work-order/    # Crear OT
+├── migrations/               # Migraciones SQL
+└── config.toml               # Configuración
 ```
 
 ## Flujo de Navegación
@@ -131,10 +196,14 @@ Usuario autenticado:
 3. **Type Safety**: TypeScript en todo el código
 4. **Responsive**: Diseño adaptable a diferentes tamaños de pantalla
 5. **Accesibilidad**: Componentes accesibles con soporte para teclado y screen readers
+6. **Cálculos en Servidor**: Lógica pesada ejecutada en SQL/Edge Functions
 
-## Próximos Pasos de Arquitectura
+## Próximos Pasos
 
 1. **Migrar a Supabase Auth real** (ver [Implementar Autenticación](../guides/implementing-auth.md))
-2. **Conectar datos reales** de Supabase en lugar de mocks
-3. **Implementar RLS robusto** para seguridad por usuario/rol
-4. **Agregar Edge Functions** para lógica de negocio compleja
+2. **Implementar RLS robusto** para seguridad por usuario/rol
+3. **Integrar Supabase Storage** para documentos
+
+---
+
+*Última actualización: Enero 2026*

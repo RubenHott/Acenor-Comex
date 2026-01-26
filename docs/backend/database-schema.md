@@ -1,6 +1,6 @@
 # Esquema de Base de Datos
 
-Base de datos PostgreSQL en Supabase con 12 tablas para el módulo COMEX.
+Base de datos PostgreSQL en Supabase con 13 tablas, 9 funciones SQL y 1 trigger.
 
 ## Diagrama de Relaciones
 
@@ -32,11 +32,75 @@ Base de datos PostgreSQL en Supabase con 12 tablas para el módulo COMEX.
      └──────────────────────────────────┘                └──────────────┘
                     │
                     ▼
-           ┌─────────────────┐
-           │    productos    │
-           │       (7)       │
-           └─────────────────┘
+           ┌─────────────────┐     ┌─────────────────┐
+           │    productos    │     │   work_orders   │
+           │       (7)       │     │      (13)       │
+           └─────────────────┘     └─────────────────┘
+
+                                   ┌─────────────────┐
+                                   │  notificaciones │
+                                   │      (14)       │
+                                   └─────────────────┘
 ```
+
+---
+
+## Funciones SQL
+
+El sistema utiliza funciones PL/pgSQL para ejecutar cálculos en el servidor.
+
+### Funciones de Estadísticas
+
+| Función | Tipo Retorno | Descripción |
+|---------|--------------|-------------|
+| `fn_pim_stats()` | TABLE | Estadísticas agregadas de PIMs (total, activos, pendientes, alertas SLA, monto USD, toneladas) |
+| `fn_pim_status_distribution()` | TABLE | Conteo de PIMs por estado |
+| `fn_pim_monthly_trend(months_back)` | TABLE | Tendencia mensual de PIMs y toneladas |
+| `fn_sla_global_stats()` | JSONB | Promedios SLA con alertas por etapa |
+| `fn_work_order_stats()` | TABLE | Estadísticas de OTs (total, pendientes, en progreso, completadas, urgentes) |
+
+### Funciones Utilitarias
+
+| Función | Tipo Retorno | Descripción |
+|---------|--------------|-------------|
+| `fn_generate_work_order_code()` | TEXT | Genera código secuencial OT-YYYY-NNN |
+| `fn_calculate_due_date(priority)` | TIMESTAMPTZ | Calcula fecha límite según prioridad |
+| `fn_requirement_pim_count(id)` | INTEGER | Cuenta PIMs asociados a un requerimiento |
+| `fn_get_critical_pim()` | TABLE | Obtiene el primer PIM en estado crítico |
+
+### Ejemplo de Invocación
+
+```typescript
+// Desde Edge Function
+const { data, error } = await supabase.rpc('fn_pim_stats');
+
+// Resultado
+{
+  total_pims: 45,
+  pims_activos: 12,
+  pims_pendientes: 8,
+  alertas_sla: 3,
+  monto_total_usd: 2500000,
+  toneladas_mes: 150
+}
+```
+
+---
+
+## Triggers
+
+| Trigger | Tabla | Evento | Función |
+|---------|-------|--------|---------|
+| `trg_sla_auto_alerts` | `sla_data` | BEFORE INSERT/UPDATE | `trg_calculate_sla_alerts()` |
+
+### trg_calculate_sla_alerts
+
+Calcula automáticamente las alertas (verde/amarillo/rojo) para cada etapa del SLA cuando se insertan o actualizan datos.
+
+**Lógica**:
+- `verde`: días reales <= días estimados
+- `amarillo`: días reales <= días estimados * 1.2
+- `rojo`: días reales > días estimados * 1.2
 
 ---
 
@@ -55,12 +119,6 @@ Cuadros de importación (agrupaciones de productos).
 | `activo` | boolean | Sí | `true` | Estado activo |
 | `created_at` | timestamptz | Sí | `now()` | Fecha creación |
 | `updated_at` | timestamptz | Sí | `now()` | Fecha actualización |
-
-**Ejemplo de datos:**
-```sql
-INSERT INTO cuadros_importacion (id, codigo, nombre)
-VALUES ('RGAL', 'RGAL', 'Rollos Galvanizados');
-```
 
 ---
 
@@ -185,17 +243,8 @@ Catálogo de productos.
 | `categoria` | text | No | - | Categoría principal |
 | `sub_categoria` | text | Sí | - | Subcategoría |
 | `origen` | text | Sí | - | Origen del producto |
-| `cod_estadistico` | text | Sí | - | Código estadístico |
-| `cod_base_mp` | text | Sí | - | Código base MP |
-| `peso_compra` | numeric | Sí | - | Peso de compra |
-| `espesor` | numeric | Sí | - | Espesor en mm |
-| `ancho` | numeric | Sí | - | Ancho en mm |
-| `peso` | numeric | Sí | - | Peso en kg |
 | `cuadro` | text | Sí | - | FK → cuadros_importacion |
-| `linea` | text | Sí | - | Línea de producto |
 | `unidad` | text | No | - | Unidad de medida |
-| `clasificacion` | text | Sí | - | Clasificación 80/20 |
-| `tipo_abc` | text | Sí | - | Tipo A, B o C |
 | `ultimo_precio_usd` | numeric | Sí | - | Último precio |
 | `ultima_fecha_importacion` | timestamptz | Sí | - | Última importación |
 | `created_at` | timestamptz | Sí | `now()` | Fecha creación |
@@ -235,7 +284,6 @@ Requerimientos mensuales de importación.
 | `cuadro_id` | text | No | - | FK → cuadros_importacion |
 | `estado` | text | No | - | Estado del req. |
 | `creado_por` | text | No | - | Usuario creador |
-| `observaciones` | text | Sí | - | Observaciones |
 | `total_kilos` | numeric | No | `0` | Total en kilos |
 | `total_toneladas` | numeric | No | `0` | Total en toneladas |
 | `total_usd` | numeric | No | `0` | Total en USD |
@@ -264,8 +312,6 @@ Items de un requerimiento mensual.
 | `unidad` | text | No | `'kg'` | Unidad de medida |
 | `kilos_disponibles` | numeric | No | - | Kilos sin asignar |
 | `kilos_consumidos` | numeric | No | `0` | Kilos asignados a PIMs |
-| `precio_unitario_usd` | numeric | Sí | - | Precio por unidad |
-| `total_usd` | numeric | Sí | - | Total en USD |
 | `created_at` | timestamptz | Sí | `now()` | Fecha creación |
 | `updated_at` | timestamptz | Sí | `now()` | Fecha actualización |
 
@@ -281,11 +327,8 @@ Datos de SLA por PIM.
 | `pim_id` | text | No | - | FK → pims (unique) |
 | `tiempo_negociacion_dias_estimados` | integer | No | - | Días estimados |
 | `tiempo_negociacion_dias_reales` | integer | Sí | - | Días reales |
-| `tiempo_negociacion_fecha_inicio` | timestamptz | Sí | - | Fecha inicio |
-| `tiempo_negociacion_fecha_fin` | timestamptz | Sí | - | Fecha fin |
 | `tiempo_negociacion_alerta` | text | Sí | - | verde/amarillo/rojo |
 | `tiempo_contrato_*` | ... | ... | ... | (misma estructura) |
-| `tiempo_apertura_pago_*` | ... | ... | ... | (misma estructura) |
 | `tiempo_produccion_*` | ... | ... | ... | (misma estructura) |
 | `tiempo_transito_*` | ... | ... | ... | (misma estructura) |
 | `tiempo_aduana_*` | ... | ... | ... | (misma estructura) |
@@ -312,6 +355,53 @@ Validaciones de contratos por PIM.
 
 ---
 
+### 13. work_orders
+
+Órdenes de trabajo de mantenimiento.
+
+| Columna | Tipo | Nullable | Default | Descripción |
+|---------|------|----------|---------|-------------|
+| `id` | uuid | No | `gen_random_uuid()` | PK |
+| `codigo` | text | No | - | Código único (OT-YYYY-NNN) |
+| `titulo` | text | No | - | Título de la OT |
+| `descripcion` | text | No | - | Descripción detallada |
+| `estado` | text | No | `'pendiente'` | Estado (pendiente/en_progreso/completada) |
+| `prioridad` | text | No | `'media'` | Prioridad (baja/media/alta/critica) |
+| `area` | text | No | - | Área de trabajo |
+| `tipo_trabajo` | text | No | - | Tipo de trabajo |
+| `solicitante` | text | No | - | Usuario solicitante |
+| `tecnico_asignado` | text | Sí | - | Técnico asignado |
+| `equipo_id` | text | Sí | - | ID del equipo |
+| `fecha_creacion` | timestamptz | No | `now()` | Fecha creación |
+| `fecha_limite` | timestamptz | No | - | Fecha límite |
+| `fecha_inicio` | timestamptz | Sí | - | Fecha inicio real |
+| `fecha_fin` | timestamptz | Sí | - | Fecha fin real |
+| `observaciones` | text | Sí | - | Observaciones |
+| `created_at` | timestamptz | Sí | `now()` | Metadato |
+| `updated_at` | timestamptz | Sí | `now()` | Metadato |
+
+---
+
+### 14. notificaciones
+
+Notificaciones del sistema.
+
+| Columna | Tipo | Nullable | Default | Descripción |
+|---------|------|----------|---------|-------------|
+| `id` | text | No | - | PK |
+| `destinatario_id` | text | No | - | ID del usuario destinatario |
+| `tipo` | text | No | - | Tipo de notificación |
+| `titulo` | text | No | - | Título |
+| `mensaje` | text | No | - | Mensaje |
+| `prioridad` | text | No | `'media'` | Prioridad |
+| `pim_id` | text | Sí | - | FK → pims (opcional) |
+| `leido` | boolean | No | `false` | Si fue leída |
+| `fecha_creacion` | timestamptz | No | `now()` | Fecha creación |
+| `created_at` | timestamptz | Sí | `now()` | Metadato |
+| `updated_at` | timestamptz | Sí | `now()` | Metadato |
+
+---
+
 ## Foreign Keys
 
 | Tabla Origen | Columna | Tabla Destino | Columna |
@@ -333,3 +423,8 @@ Validaciones de contratos por PIM.
 | `requerimientos_mensuales` | `cuadro_id` | `cuadros_importacion` | `id` |
 | `sla_data` | `pim_id` | `pims` | `id` |
 | `validacion_contrato_pim` | `pim_id` | `pims` | `id` |
+| `notificaciones` | `pim_id` | `pims` | `id` |
+
+---
+
+*Última actualización: Enero 2026*
