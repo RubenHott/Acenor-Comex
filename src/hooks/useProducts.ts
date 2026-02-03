@@ -23,6 +23,25 @@ export function useProducts() {
   });
 }
 
+// Fetch products filtered by cuadro ID
+export function useProductsByCuadro(cuadroId: string | undefined) {
+  return useQuery({
+    queryKey: ['productos', 'by-cuadro', cuadroId],
+    queryFn: async () => {
+      if (!cuadroId) return [];
+      const { data, error } = await supabase
+        .from('productos')
+        .select('*')
+        .eq('cuadro', cuadroId)
+        .order('codigo', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!cuadroId,
+  });
+}
+
 // Fetch single product
 export function useProduct(id: string | undefined) {
   return useQuery({

@@ -20,6 +20,7 @@ interface ProductAutocompleteProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  showCuadroInfo?: boolean;
 }
 
 /** Deriva "Materia Prima" o "Producto Terminado" desde categoria del maestro */
@@ -37,11 +38,12 @@ export function ProductAutocomplete({
   placeholder = 'Buscar código o descripción...',
   disabled,
   className,
+  showCuadroInfo = false,
 }: ProductAutocompleteProps) {
   const [open, setOpen] = React.useState(false);
 
   const displayValue = value ? `${value.codigo} — ${value.descripcion}` : '';
-
+  const productCount = products?.length ?? 0;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -58,9 +60,12 @@ export function ProductAutocomplete({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="w-[450px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Código o descripción..." />
+          <div className="px-3 py-2 text-xs text-muted-foreground border-b">
+            {productCount} producto{productCount !== 1 ? 's' : ''} disponible{productCount !== 1 ? 's' : ''}
+          </div>
           <CommandList>
             <CommandEmpty>No se encontraron productos.</CommandEmpty>
             <CommandGroup>
@@ -75,12 +80,19 @@ export function ProductAutocomplete({
                 >
                   <Check
                     className={cn(
-                      'mr-2 h-4 w-4',
+                      'mr-2 h-4 w-4 flex-shrink-0',
                       value?.id === p.id ? 'opacity-100' : 'opacity-0'
                     )}
                   />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{p.codigo}</span>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium font-mono">{p.codigo}</span>
+                      {showCuadroInfo && p.cuadro && (
+                        <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                          {p.cuadro}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-xs text-muted-foreground truncate">{p.descripcion}</span>
                   </div>
                 </CommandItem>

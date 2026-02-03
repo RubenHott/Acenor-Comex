@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { useRequirements, useRequirementByMesAndCuadro, useRequirement, useCreateRequirementWithItems, useUpdateRequirementWithItems } from '@/hooks/useRequirements';
 import { useCuadros } from '@/hooks/useCuadros';
-import { useProducts } from '@/hooks/useProducts';
+import { useProducts, useProductsByCuadro } from '@/hooks/useProducts';
 import { usePIMs } from '@/hooks/usePIMs';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -73,6 +73,9 @@ export default function RequirementsPage() {
   const [formCuadroId, setFormCuadroId] = useState('');
   const [formLines, setFormLines] = useState<RequirementLine[]>([]);
   const [editRequirementId, setEditRequirementId] = useState<string | null>(null);
+
+  // Filtered products by selected cuadro for the form
+  const { data: filteredProducts } = useProductsByCuadro(formCuadroId || undefined);
 
   const { data: existingByMesCuadro } = useRequirementByMesAndCuadro(
     formOpen === 'create' && formMes && formCuadroId ? formMes : null,
@@ -447,6 +450,7 @@ export default function RequirementsPage() {
               lines={formLines}
               cuadros={cuadros}
               products={products}
+              filteredProducts={filteredProducts}
               existingRequirementId={existingByMesCuadro?.id ?? null}
               onMesChange={setFormMes}
               onCuadroChange={setFormCuadroId}
