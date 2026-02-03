@@ -1,163 +1,193 @@
 
-# Plan: Actualización del README.md Principal
+
+# Plan: Mejora del Módulo Maestros con Estructura Clara y Preview de Datos
 
 ## Objetivo
 
-Transformar el README.md genérico de Lovable en una documentación completa del Sistema de Gestión de Planta, reflejando la arquitectura actual, módulos implementados y tecnologías utilizadas.
+Rediseñar el módulo `/comex/maestros` para que el usuario pueda:
+1. Ver claramente la estructura requerida de cada tabla para carga masiva
+2. Descargar plantillas de ejemplo (CSV/Excel)
+3. Ver un preview completo de todos los datos actuales con todas las columnas de la BD
 
 ---
 
-## Contenido Propuesto
+## Cambios Propuestos
 
-### Estructura del Nuevo README.md
+### 1. Nuevo Componente: Tarjeta de Estructura de Tabla
 
-```markdown
-# Sistema de Gestión de Planta
+Para cada pestaña (Cuadros, Productos, Proveedores), agregar una sección colapsable que muestre:
 
-Sistema modular para la gestión de operaciones industriales, incluyendo comercio exterior (COMEX) y órdenes de trabajo.
+| Elemento | Descripción |
+|----------|-------------|
+| Tabla de columnas | Nombre, tipo, requerido/opcional, descripción |
+| Botón de descarga | Plantilla CSV vacía con encabezados correctos |
+| Ejemplo visual | Cómo debe verse el archivo antes de subir |
 
-## Descripción
+### 2. Estructura por Tabla (Basado en Supabase)
 
-Aplicación web empresarial que funciona como un "lanzador" de módulos para gestionar diferentes áreas operativas de una planta industrial.
+#### Cuadros de Importación (`cuadros_importacion`)
 
-## Módulos Disponibles
+| Columna | Tipo | Requerido | Descripción |
+|---------|------|-----------|-------------|
+| codigo | texto | Si | Código único del cuadro |
+| nombre | texto | Si | Nombre del cuadro |
+| descripcion | texto | No | Descripción adicional |
+| activo | boolean | No | Estado activo (default: true) |
 
-| Módulo | Estado | Descripción |
-|--------|--------|-------------|
-| COMEX | ✅ Activo | Gestión de importaciones, PIMs y seguimiento de SLA |
-| Órdenes de Trabajo | ✅ Activo | Gestión de OTs de mantenimiento |
-| Producción | 🚧 Pendiente | Control de producción |
-| Mantenimiento | 🚧 Pendiente | Programación de mantenimiento |
+#### Productos (`productos`)
 
-## Stack Tecnológico
+| Columna | Tipo | Requerido | Descripción |
+|---------|------|-----------|-------------|
+| codigo | texto | Si | Código único del producto |
+| descripcion | texto | Si | Descripción del producto |
+| categoria | texto | Si | Categoría principal |
+| unidad | texto | Si | Unidad de medida (TON, KG, etc.) |
+| sub_categoria | texto | No | Subcategoría |
+| origen | texto | No | Fabricacion/Compra Local/Importacion |
+| cuadro | texto | No | ID del cuadro de importación |
+| linea | texto | No | Línea de producto |
+| clasificacion | texto | No | Clasificación del producto |
+| tipo_abc | texto | No | Clasificación ABC (A/B/C) |
+| cod_estadistico | texto | No | Código estadístico |
+| cod_base_mp | texto | No | Código base materia prima |
+| espesor | número | No | Espesor en mm |
+| ancho | número | No | Ancho en mm |
+| peso | número | No | Peso en kg |
+| peso_compra | número | No | Peso de compra |
+| ultimo_precio_usd | número | No | Último precio en USD |
+| ultima_fecha_importacion | fecha | No | Última fecha de importación |
 
-### Frontend
-- **React 18** + TypeScript + Vite
-- **Tailwind CSS** + shadcn/ui
-- **React Query** (TanStack Query v5)
-- **React Router v6**
-- **Framer Motion** para animaciones
+#### Proveedores (`proveedores`)
 
-### Backend (Supabase)
-- **PostgreSQL** - Base de datos
-- **Edge Functions** (Deno) - Lógica serverless
-- **Funciones SQL** - Cálculos en servidor
-- **Triggers** - Automatización de datos
-
-## Arquitectura
-
-El sistema utiliza una arquitectura de 3 capas:
-
-1. **Frontend (React)** → Componentes y hooks
-2. **Edge Functions (Deno)** → Orquestación de lógica
-3. **PostgreSQL** → Funciones SQL y datos
-
-## Inicio Rápido
-
-### Requisitos
-- Node.js 18+
-- npm o bun
-
-### Instalación
-
-\`\`\`bash
-# Clonar repositorio
-git clone <YOUR_GIT_URL>
-cd <YOUR_PROJECT_NAME>
-
-# Instalar dependencias
-npm install
-
-# Iniciar servidor de desarrollo
-npm run dev
-\`\`\`
-
-### Scripts Disponibles
-
-| Comando | Descripción |
-|---------|-------------|
-| `npm run dev` | Servidor de desarrollo |
-| `npm run build` | Build de producción |
-| `npm run preview` | Preview del build |
-| `npm run lint` | Ejecutar ESLint |
-
-## Estructura del Proyecto
-
-\`\`\`
-src/
-├── components/       # Componentes React
-│   ├── dashboard/    # Componentes del dashboard
-│   ├── layout/       # Layouts y sidebars
-│   ├── ui/           # shadcn/ui (40+ componentes)
-│   └── workOrders/   # Componentes de OTs
-├── contexts/         # React Context (Auth)
-├── hooks/            # React Query hooks
-├── integrations/     # Cliente Supabase
-├── pages/            # Páginas/rutas
-├── types/            # TypeScript interfaces
-└── lib/              # Utilidades
-
-supabase/
-├── functions/        # Edge Functions (Deno)
-│   ├── get-dashboard-stats/
-│   ├── get-work-order-stats/
-│   └── create-work-order/
-├── migrations/       # Migraciones SQL
-└── config.toml       # Configuración
-\`\`\`
-
-## Documentación
-
-La documentación técnica completa está disponible en la carpeta `/docs`:
-
-- [Arquitectura General](./docs/architecture/README.md)
-- [Edge Functions](./docs/backend/edge-functions.md)
-- [Esquema de Base de Datos](./docs/backend/database-schema.md)
-- [Hooks de React Query](./docs/frontend/hooks.md)
-- [Guía: Agregar Nuevo Módulo](./docs/guides/adding-new-module.md)
-
-## Despliegue
-
-### Lovable (Recomendado)
-1. Abrir el proyecto en Lovable
-2. Ir a Share → Publish
-
-### Dominio Personalizado
-Configurar en Project > Settings > Domains
-
-## URLs del Proyecto
-
-- **Preview**: https://id-preview--8c8fe5e1-414b-456a-81f6-aee39f6c7312.lovable.app
-- **Producción**: https://acenor-comex.lovable.app
-
-## Licencia
-
-Proyecto privado - Todos los derechos reservados.
+| Columna | Tipo | Requerido | Descripción |
+|---------|------|-----------|-------------|
+| codigo | texto | Si | Código único del proveedor |
+| nombre | texto | Si | Nombre/razón social |
+| pais | texto | Si | País de origen |
+| ciudad | texto | No | Ciudad |
+| contacto | texto | No | Nombre del contacto |
+| email | texto | No | Correo electrónico |
+| telefono | texto | No | Teléfono |
+| tipo_proveedor | texto | No | Fabricante/Trader/Distribuidor |
+| activo | boolean | No | Estado activo (default: true) |
 
 ---
 
-*Última actualización: Enero 2026*
+### 3. Preview de Datos Completo
+
+Mostrar tabla con scroll horizontal con **todas las columnas** de la BD:
+
+#### Cuadros
+- codigo, nombre, descripcion, activo, created_at
+
+#### Productos (18 columnas visibles)
+- codigo, descripcion, categoria, unidad, sub_categoria, origen, cuadro, linea, clasificacion, tipo_abc, cod_estadistico, cod_base_mp, espesor, ancho, peso, peso_compra, ultimo_precio_usd, ultima_fecha_importacion
+
+#### Proveedores (9 columnas visibles)
+- codigo, nombre, pais, ciudad, contacto, email, telefono, tipo_proveedor, activo
+
+---
+
+### 4. Diseño de UI Propuesto
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  MAESTROS                                                       │
+├─────────────────────────────────────────────────────────────────┤
+│  [Cuadros] [Productos] [Proveedores]                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─ Estructura requerida para carga masiva ─────────────────┐   │
+│  │                                                           │   │
+│  │  Columnas obligatorias: codigo, descripcion, categoria,  │   │
+│  │                         unidad                            │   │
+│  │                                                           │   │
+│  │  ┌──────────────────────────────────────────────────┐    │   │
+│  │  │ Columna          │ Tipo   │ Req │ Descripción    │    │   │
+│  │  ├──────────────────┼────────┼─────┼────────────────┤    │   │
+│  │  │ codigo           │ texto  │ Si  │ Código único   │    │   │
+│  │  │ descripcion      │ texto  │ Si  │ Descripción    │    │   │
+│  │  │ ...              │ ...    │ ... │ ...            │    │   │
+│  │  └──────────────────────────────────────────────────┘    │   │
+│  │                                                           │   │
+│  │  [Descargar Plantilla CSV]  [Ver Ejemplo]                 │   │
+│  │                                                           │   │
+│  └───────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  [Cargar CSV / Excel]                                           │
+│                                                                 │
+│  ─── Datos actuales (245 registros) ────────────────────────    │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ codigo │ descripcion │ categoria │ ... │ precio │       │◄──┤ Scroll horizontal
+│  ├────────┼─────────────┼───────────┼─────┼────────┼───────┤    │
+│  │ P001   │ Fleje 0.5mm │ MP        │ ... │ 1,200  │ [🗑️] │    │
+│  │ P002   │ Bobina HD   │ MP        │ ... │ 1,450  │ [🗑️] │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Cambios Principales
+## Archivos a Modificar
 
-| Sección | Antes | Después |
-|---------|-------|---------|
-| Título | "Welcome to your Lovable project" | "Sistema de Gestión de Planta" |
-| Descripción | Genérica | Específica del proyecto |
-| Tecnologías | Lista básica (5 items) | Stack completo con backend |
-| Estructura | No existía | Árbol de carpetas completo |
-| Módulos | No existía | Tabla con estado de módulos |
-| Documentación | No existía | Links a /docs |
-| URLs | Placeholders | URLs reales del proyecto |
+| Archivo | Cambio |
+|---------|--------|
+| `src/pages/MaestrosPage.tsx` | Agregar sección de estructura, expandir tablas de preview |
+
+## Nuevo Componente
+
+| Archivo | Propósito |
+|---------|-----------|
+| `src/components/maestros/TableStructureCard.tsx` | Componente reutilizable para mostrar estructura y generar plantilla |
+
+---
+
+## Implementación Detallada
+
+### Fase 1: Componente TableStructureCard
+
+Crear componente que reciba:
+- `tableName`: nombre de la tabla
+- `columns`: array de columnas con metadata
+- `onDownloadTemplate`: función para descargar CSV
+
+Características:
+- Sección colapsable (Collapsible de shadcn/ui)
+- Tabla con columnas: Nombre, Tipo, Requerido, Descripción
+- Botón para descargar plantilla CSV con encabezados
+- Badge de color para columnas requeridas vs opcionales
+
+### Fase 2: Actualizar MaestrosPage
+
+1. Agregar definiciones de estructura para cada tabla
+2. Integrar TableStructureCard en cada TabsContent
+3. Expandir las tablas de preview para mostrar **todas** las columnas
+4. Agregar contador de registros
+5. Mejorar scroll horizontal para tablas anchas
+
+### Fase 3: Función de Descarga de Plantilla
+
+```typescript
+function downloadTemplate(columns: string[], filename: string) {
+  const csv = columns.join(',') + '\n';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+}
+```
 
 ---
 
 ## Beneficios
 
-1. **Onboarding rápido**: Nuevos desarrolladores entienden el proyecto inmediatamente
-2. **Referencia central**: Links a documentación detallada
-3. **Profesionalismo**: README apropiado para un proyecto empresarial
-4. **Mantenibilidad**: Fácil de actualizar cuando se agreguen módulos
+1. **Claridad**: El usuario sabe exactamente qué columnas necesita
+2. **Prevención de errores**: Las columnas requeridas están claramente marcadas
+3. **Facilidad de uso**: Puede descargar plantilla y solo llenarla
+4. **Transparencia**: Ve todos los datos actuales, no solo un resumen
+5. **Alineación con BD**: La estructura coincide 100% con Supabase
+
