@@ -37,6 +37,7 @@ interface RequirementEntryFormProps {
   lines: RequirementLine[];
   cuadros: Cuadro[] | undefined;
   products: Product[] | undefined;
+  filteredProducts: Product[] | undefined;
   existingRequirementId: string | null;
   onMesChange: (mes: string) => void;
   onCuadroChange: (cuadroId: string) => void;
@@ -95,6 +96,7 @@ export function RequirementEntryForm({
   lines,
   cuadros,
   products,
+  filteredProducts,
   existingRequirementId,
   onMesChange,
   onCuadroChange,
@@ -108,6 +110,10 @@ export function RequirementEntryForm({
   validationErrors,
   mode,
 }: RequirementEntryFormProps) {
+  // Use filtered products if cuadro is selected, otherwise show all
+  const availableProducts = cuadroId && filteredProducts && filteredProducts.length > 0 
+    ? filteredProducts 
+    : products;
   const addLine = () => {
     onLinesChange([
       ...lines,
@@ -251,11 +257,12 @@ export function RequirementEntryForm({
                   <TableRow key={line.tempId}>
                     <TableCell>
                       <ProductAutocomplete
-                        products={products}
+                        products={availableProducts}
                         value={line.product}
                         onSelect={(p) => handleProductSelect(line.tempId, p)}
                         disabled={busy}
                         className="min-w-[200px]"
+                        showCuadroInfo={!cuadroId}
                       />
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
