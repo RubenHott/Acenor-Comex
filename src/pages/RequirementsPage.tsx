@@ -26,7 +26,6 @@ import {
   type RequirementLine,
 } from '@/components/requirements/RequirementEntryForm';
 import type { Product } from '@/hooks/useProducts';
-import type { RequirementItem } from '@/hooks/useRequirements';
 
 // Convierte ítem de requerimiento a "producto" mínimo para el formulario (edición)
 function requirementItemToProductLike(item: RequirementItem, productFromMaster: Product | null): Product | null {

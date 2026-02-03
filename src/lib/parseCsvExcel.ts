@@ -47,11 +47,11 @@ export async function parseFile(file: File): Promise<ParsedRow[]> {
     const firstSheet = wb.SheetNames[0];
     if (!firstSheet) return [];
     const sheet = wb.Sheets[firstSheet];
-    const data = XLSX.utils.sheet_to_json<ParsedRow>(sheet, {
+    const data = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
       raw: false,
       defval: null,
-    }) as (string | number | null)[][];
+    }) as unknown as (string | number | null)[][];
     if (data.length < 2) return [];
     const headers = (data[0] as (string | number)[]).map((h) => String(h ?? '').trim());
     const rows: ParsedRow[] = [];
