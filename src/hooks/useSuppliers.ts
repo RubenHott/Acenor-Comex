@@ -102,3 +102,35 @@ export function useUpdateSupplier() {
     },
   });
 }
+
+// Delete supplier
+export function useDeleteSupplier() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('proveedores').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proveedores'] });
+    },
+  });
+}
+
+// Bulk insert suppliers (IDs generados automáticamente)
+export function useBulkInsertSuppliers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (rows: Omit<SupplierInsert, 'id'>[]) => {
+      const withIds = rows.map((r) => ({ ...r, id: crypto.randomUUID() }));
+      const { data, error } = await supabase.from('proveedores').insert(withIds).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proveedores'] });
+    },
+  });
+}

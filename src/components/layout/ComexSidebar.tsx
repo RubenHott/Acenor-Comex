@@ -17,6 +17,7 @@ import {
   Building2,
   LogOut,
   ArrowLeft,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,10 @@ const catalogNavItems: NavItem[] = [
   { label: 'Productos', href: '/comex/products', icon: Package },
   { label: 'Proveedores', href: '/comex/suppliers', icon: Building2 },
   { label: 'Precios', href: '/comex/prices', icon: TrendingUp },
+];
+
+const mastersNavItems: NavItem[] = [
+  { label: 'Maestros', href: '/comex/maestros', icon: Database },
 ];
 
 const systemNavItems: NavItem[] = [
@@ -163,6 +168,16 @@ export function ComexSidebar() {
             </p>
           )}
           {catalogNavItems.map(renderNavItem)}
+        </div>
+
+        {/* Maestros: carga masiva y CRUD */}
+        <div className="space-y-1">
+          {!collapsed && (
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
+              Maestros
+            </p>
+          )}
+          {mastersNavItems.map(renderNavItem)}
         </div>
 
         {/* System Section */}

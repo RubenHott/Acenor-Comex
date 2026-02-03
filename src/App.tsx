@@ -13,6 +13,7 @@ import ProductsPage from "./pages/ProductsPage";
 import RequirementsPage from "./pages/RequirementsPage";
 import PIMsPage from "./pages/PIMsPage";
 import SuppliersPage from "./pages/SuppliersPage";
+import MaestrosPage from "./pages/MaestrosPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import NotFound from "./pages/NotFound";
 import WorkOrdersDashboardPage from "./pages/workOrders/WorkOrdersDashboardPage";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="pims" element={<PIMsPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="suppliers" element={<SuppliersPage />} />
+              <Route path="maestros" element={<MaestrosPage />} />
               <Route path="contracts" element={<ComingSoonPage />} />
               <Route path="payments" element={<ComingSoonPage />} />
               <Route path="prices" element={<ComingSoonPage />} />

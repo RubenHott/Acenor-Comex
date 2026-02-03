@@ -85,3 +85,35 @@ export function useUpdateProduct() {
     },
   });
 }
+
+// Delete product
+export function useDeleteProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('productos').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productos'] });
+    },
+  });
+}
+
+// Bulk insert products (IDs generados automáticamente)
+export function useBulkInsertProducts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (rows: Omit<ProductInsert, 'id'>[]) => {
+      const withIds = rows.map((r) => ({ ...r, id: crypto.randomUUID() }));
+      const { data, error } = await supabase.from('productos').insert(withIds).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productos'] });
+    },
+  });
+}
