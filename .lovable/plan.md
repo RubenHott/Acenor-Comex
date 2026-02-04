@@ -1,226 +1,151 @@
 
-# Plan: Corrección de Edición de Requerimientos + Módulo de Creación de PIMs
 
-## Parte 1: Corrección del Bug de Edición de Requerimientos
+# Plan: Corrección de Bugs y Mejoras al Módulo PIM Multi-Cuadro
 
-### Diagnóstico del Problema
+## Parte 1: Diagnóstico del Problema Principal
 
-En `src/pages/RequirementsPage.tsx`, línea 100, el `useEffect` que carga las líneas al editar tiene esta condición:
+### Problema Identificado
+La tabla `requerimiento_items` **no tiene política RLS para DELETE**, lo que impide eliminar items al editar un requerimiento. Esto causa:
 
-```typescript
-if (formOpen !== 'edit' || !editRequirementId || !requirementForEdit || 
-    requirementForEdit.id !== editRequirementId || !products) return;
-```
+1. Los items nunca se guardan correctamente (el insert falla después del delete bloqueado)
+2. Al editar, no hay líneas que mostrar porque la tabla está vacía
+3. En la creación de PIMs, no hay items disponibles para consumir
 
-El problema es la dependencia `!products`. Si el maestro de productos no ha terminado de cargar, las líneas nunca se muestran, incluso aunque `requirementForEdit.items` ya tiene toda la información necesaria (código, descripción, precio, cantidad).
+### Solución: Agregar Política RLS de DELETE
 
-### Solución
-
-Modificar la lógica para:
-1. Cargar las líneas inmediatamente usando `requirementItemToProductLike()` que ya crea un objeto "producto" a partir del item
-2. Opcionalmente enriquecer con datos del maestro cuando esté disponible
-
-### Cambios en RequirementsPage.tsx
-
-**Archivo**: `src/pages/RequirementsPage.tsx`
-
-Modificar el `useEffect` de líneas 98-114:
-
-```text
-// ANTES (línea 100):
-if (formOpen !== 'edit' || !editRequirementId || !requirementForEdit || 
-    requirementForEdit.id !== editRequirementId || !products) return;
-
-// DESPUÉS:
-if (formOpen !== 'edit' || !editRequirementId || !requirementForEdit || 
-    requirementForEdit.id !== editRequirementId) return;
-```
-
-Y ajustar la creación de líneas para usar `products` opcionalmente:
-
-```text
-const lines: RequirementLine[] = items.map((item) => {
-  const product = products?.find((p) => p.id === item.producto_id) ?? null;
-  const productLike = requirementItemToProductLike(item, product);
-  return {
-    tempId: item.id,
-    product: productLike,
-    cantidadRequerida: item.cantidad_requerida,
-  };
-});
-```
+Se debe crear una migración SQL para habilitar DELETE en `requerimiento_items`.
 
 ---
 
-## Parte 2: Módulo de Creación de PIMs
+## Parte 2: Corrección del Flujo de Edición de Requerimientos
 
-### Flujo de Negocio
+### Problema Actual
+El `useEffect` en `RequirementsPage.tsx` (línea 102-118) no carga las líneas correctamente cuando se abre el diálogo de edición.
 
-```text
-REQUERIMIENTO MENSUAL
-       │
-       ▼
-┌──────────────────────────────────────────────────────────────┐
-│  PIM PRINCIPAL (Cierre de Gerencia con Trader)               │
-│  - Consume productos del requerimiento                        │
-│  - Proveedor (Trader)                                         │
-│  - Productos seleccionados del saldo disponible              │
-└───────────────────────┬──────────────────────────────────────┘
-                        │
-       ┌────────────────┼────────────────┐
-       ▼                ▼                ▼
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│  SUB-PIM 1  │  │  SUB-PIM 2  │  │  SUB-PIM N  │
-│  Fábrica A  │  │  Fábrica B  │  │  Fábrica N  │
-└──────┬──────┘  └─────────────┘  └─────────────┘
-       │
-       ├──────────────────┐
-       ▼                  ▼
-┌────────────┐    ┌────────────┐
-│ Parcial 1  │    │ Parcial 2  │   (Envíos parcializados)
-└────────────┘    └────────────┘
-```
+### Cambios Requeridos
 
-### Regla de Reconciliación
+**Archivo**: `src/pages/RequirementsPage.tsx`
 
-La suma de todos los PIMs de un mes debe igualar el requerimiento inicial.
+- Separar la lógica de carga de items del maestro de productos
+- Usar `requirementItemToProductLike()` inmediatamente para mostrar datos del item
+- Asegurar que `formLines` se pueble tan pronto como `requirementForEdit` esté disponible
 
-Para esto, cada item del requerimiento tiene:
-- `cantidad_requerida`: Lo que se pidió
-- `kilos_consumidos`: Lo ya asignado a PIMs
-- `kilos_disponibles`: Saldo para nuevos PIMs
+---
 
-### Estructura de Archivos a Crear
+## Parte 3: PIM Multi-Cuadro (Consumir de 2+ Requerimientos)
+
+### Cambios de Arquitectura
+
+El diseño actual solo permite seleccionar UN requerimiento por PIM. Para soportar múltiples:
 
 ```text
-src/
-├── pages/
-│   └── comex/
-│       └── CreatePIMPage.tsx       (NUEVA)
-├── components/
-│   └── pim/
-│       ├── PIMItemSelector.tsx     (NUEVO)
-│       └── PIMForm.tsx             (NUEVO)
-└── hooks/
-    └── usePIMs.ts                  (ACTUALIZAR)
+ANTES:
+  PIM -> 1 Requerimiento -> N Items
+
+DESPUÉS:
+  PIM -> N Requerimientos (de cualquier cuadro) -> Items de cada uno
 ```
 
-### Componentes a Implementar
+### Cambios en CreatePIMPage.tsx
 
-#### 1. Página CreatePIMPage.tsx
+1. Reemplazar selector único de requerimiento por selector múltiple
+2. Agregar tarjetas para cada requerimiento seleccionado
+3. Mostrar items agrupados por cuadro/requerimiento
+4. Permitir agregar/quitar requerimientos dinámicamente
 
-Funcionalidad:
-- Seleccionar requerimiento(s) del mes con saldo disponible
-- Ver ítems disponibles (`kilos_disponibles > 0`)
-- Seleccionar ítems a incluir en el PIM
-- Ingresar cantidades (validar vs disponible)
-- Seleccionar proveedor (trader)
-- Ingresar datos del cierre:
-  - Descripción
-  - Modalidad de pago (carta crédito, anticipo, contado)
-  - Días crédito / % anticipo según modalidad
-- Generar código automático (PIM-YYYY-NNN)
+### Cambios en PIMItemSelector.tsx
 
-#### 2. Componente PIMItemSelector.tsx
+1. Recibir items de múltiples requerimientos
+2. Agrupar visualmente por cuadro de origen
+3. Mantener referencia a qué requerimiento pertenece cada item
 
-Tabla interactiva con:
-- Items del requerimiento con saldo > 0
-- Columnas: Código, Descripción, Disponible, A Consumir
-- Checkboxes para selección múltiple
-- Input para cantidad a consumir
-- Validación: cantidad <= disponible
-- Totales: Toneladas y USD
+### Cambios en usePIMCreation.ts
 
-#### 3. Componente PIMForm.tsx
+1. Actualizar la mutación para:
+   - Aceptar items de múltiples requerimientos
+   - Actualizar `kilos_consumidos` en cada `requerimiento_items` correspondiente
+   - Actualizar totales en cada `requerimientos_mensuales` afectado
 
-Campos del formulario:
-- Descripción (texto)
-- Proveedor (select de proveedores activos)
-- Modalidad de pago (select: carta_credito, anticipo, contado, mixto)
-- Días crédito (si modalidad = carta_credito)
-- % Anticipo (si modalidad = anticipo o mixto)
+---
 
-#### 4. Hook useCreatePIMWithItems
+## Parte 4: Productos Extra (Fuera de Requerimiento)
 
-Nueva función en `usePIMs.ts`:
+### Nueva Funcionalidad
 
-```text
-useCreatePIMWithItems(): Mutation para:
-1. Generar código PIM-{YYYY}-{NNN}
-2. Insertar en tabla `pims`
-3. Insertar items en `pim_items`
-4. Insertar relación en `pim_requirement_items`
-5. Actualizar `kilos_consumidos` en `requerimiento_items`
-6. Actualizar totales en `requerimientos_mensuales`
-```
+Permitir agregar productos al PIM que **no provienen de ningún requerimiento**. Estos productos:
+- No afectan el saldo de ningún requerimiento
+- Se guardan en `pim_items` con un flag o sin referencia a `pim_requirement_items`
+- Permiten flexibilidad cuando hay productos adicionales en el cierre de gerencia
 
-### Integración con UI Existente
+### Cambios Requeridos
 
-Conectar el botón "Generar PIM" de `RequirementsPage.tsx` (línea 403-405) para:
-- Navegar a `/comex/pim/crear?requerimiento={id}`
-- Pre-seleccionar el requerimiento en el formulario
+**Nuevo componente**: `src/components/pim/PIMExtraProductSelector.tsx`
 
-Actualizar el botón "Nuevo PIM" de `PIMsPage.tsx` (línea 135-138) para:
-- Navegar a `/comex/pim/crear`
-- Mostrar selector de requerimientos disponibles
+- Buscador de productos del maestro general
+- Input para cantidad, precio, unidad
+- Lista de productos extra agregados
+- Totales separados de los consumidos de requerimiento
 
-### Rutas a Agregar
+**Modificar PIM creation flow**:
 
-```text
-Archivo: src/App.tsx
+1. Agregar sección "Productos Adicionales" bajo el selector de items
+2. Calcular totales combinados (requerimiento + extras)
+3. Guardar productos extra en `pim_items` sin vincular a `pim_requirement_items`
 
-Nueva ruta bajo /comex:
-<Route path="pim/crear" element={<CreatePIMPage />} />
-```
+### Cambios en usePIMCreation.ts
 
-### Generación de Código PIM
+Diferenciar entre:
+- `items`: productos que consumen requerimiento (se vinculan a `pim_requirement_items`)
+- `extraItems`: productos adicionales (solo van a `pim_items`, sin consumir saldo)
 
-Formato: `PIM-{YYYY}-{NNN}`
-Ejemplo: `PIM-2026-001`
+---
 
-Lógica:
-1. Obtener año actual
-2. Contar PIMs del año actual en la base de datos
-3. Incrementar secuencia
+## Parte 5: Validación con Alerta (Sin Bloqueo)
 
-### Validaciones de Negocio
+### Regla de Negocio
+Si un usuario intenta consumir más de lo disponible en un item:
+- **NO bloquear** el guardado
+- **Mostrar alerta visual** (borde rojo, mensaje de advertencia)
+- **Registrar observación** en el PIM creado
 
-Al crear PIM:
-- Cada item: `cantidad_a_consumir <= kilos_disponibles`
-- Proveedor obligatorio
-- Al menos un item seleccionado
-- Total > 0
+### Implementación
 
-Al guardar:
-- Actualizar `kilos_consumidos += cantidad` en `requerimiento_items`
-- Recalcular `kilos_disponibles` en `requerimiento_items`
-- Actualizar totales en `requerimientos_mensuales`
+1. En `PIMItemSelector`: mostrar alerta visual cuando `cantidadAConsumir > cantidadDisponible`
+2. En validaciones de `CreatePIMPage`: no bloquear, solo mostrar warning
+3. Al guardar: incluir observación automática indicando el exceso
+
+---
+
+## Resumen de Archivos a Modificar
+
+| Archivo | Tipo | Cambios |
+|---------|------|---------|
+| Migración SQL | Nuevo | Política RLS DELETE para `requerimiento_items` |
+| `src/pages/RequirementsPage.tsx` | Modificar | Fix carga de líneas en edición |
+| `src/pages/comex/CreatePIMPage.tsx` | Modificar | Selector múltiple de requerimientos + sección extras |
+| `src/components/pim/PIMItemSelector.tsx` | Modificar | Agrupar por cuadro, mostrar origen |
+| `src/components/pim/PIMExtraProductSelector.tsx` | Nuevo | Selector de productos extra |
+| `src/hooks/usePIMCreation.ts` | Modificar | Soporte multi-requerimiento + extras |
 
 ---
 
 ## Secuencia de Implementación
 
-### Fase 1 (Inmediato): Corrección del Bug
-1. Modificar `useEffect` en `RequirementsPage.tsx` para no depender de `products`
+### Fase 1: Fix Crítico (Inmediato)
+1. Migración SQL para política DELETE en `requerimiento_items`
+2. Corregir carga de líneas en edición de requerimientos
 
-### Fase 2: Creación Básica de PIMs
-1. Crear hook `useCreatePIMWithItems` en `usePIMs.ts`
-2. Crear componente `PIMItemSelector.tsx`
-3. Crear componente `PIMForm.tsx`
-4. Crear página `CreatePIMPage.tsx`
-5. Agregar ruta en `App.tsx`
-6. Conectar botones existentes
+### Fase 2: PIM Multi-Cuadro
+1. Modificar selector de requerimientos a múltiple
+2. Actualizar `PIMItemSelector` para múltiples fuentes
+3. Actualizar hook de creación de PIM
 
-### Fase 3 (Futuro): Sub-PIMs y Fábricas
-- División de PIM en sub-PIMs por fábrica
-- Gestión de envíos parcializados
+### Fase 3: Productos Extra
+1. Crear componente `PIMExtraProductSelector`
+2. Integrar en `CreatePIMPage`
+3. Actualizar lógica de guardado
 
-### Fase 4 (Futuro): Validación de Contratos
-- Comparación cierre vs contrato de fábrica
-- Detección de diferencias
-- Flujo de aprobación
+### Fase 4: Validación con Alerta
+1. Implementar warnings visuales sin bloqueo
+2. Agregar observaciones automáticas al PIM
 
-### Fase 5 (Futuro): Flujo de Pagos
-- Apertura de carta de crédito
-- Registro de anticipos
-- Tracking de pagos
