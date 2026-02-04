@@ -1,151 +1,96 @@
 
+# Plan: Corrección del Bug de Items en Requerimientos
 
-# Plan: Corrección de Bugs y Mejoras al Módulo PIM Multi-Cuadro
+## Diagnóstico
 
-## Parte 1: Diagnóstico del Problema Principal
+El error en los logs de Postgres es claro:
 
-### Problema Identificado
-La tabla `requerimiento_items` **no tiene política RLS para DELETE**, lo que impide eliminar items al editar un requerimiento. Esto causa:
-
-1. Los items nunca se guardan correctamente (el insert falla después del delete bloqueado)
-2. Al editar, no hay líneas que mostrar porque la tabla está vacía
-3. En la creación de PIMs, no hay items disponibles para consumir
-
-### Solución: Agregar Política RLS de DELETE
-
-Se debe crear una migración SQL para habilitar DELETE en `requerimiento_items`.
-
----
-
-## Parte 2: Corrección del Flujo de Edición de Requerimientos
-
-### Problema Actual
-El `useEffect` en `RequirementsPage.tsx` (línea 102-118) no carga las líneas correctamente cuando se abre el diálogo de edición.
-
-### Cambios Requeridos
-
-**Archivo**: `src/pages/RequirementsPage.tsx`
-
-- Separar la lógica de carga de items del maestro de productos
-- Usar `requirementItemToProductLike()` inmediatamente para mostrar datos del item
-- Asegurar que `formLines` se pueble tan pronto como `requirementForEdit` esté disponible
-
----
-
-## Parte 3: PIM Multi-Cuadro (Consumir de 2+ Requerimientos)
-
-### Cambios de Arquitectura
-
-El diseño actual solo permite seleccionar UN requerimiento por PIM. Para soportar múltiples:
-
-```text
-ANTES:
-  PIM -> 1 Requerimiento -> N Items
-
-DESPUÉS:
-  PIM -> N Requerimientos (de cualquier cuadro) -> Items de cada uno
+```
+new row for relation "requerimiento_items" violates check constraint "requerimiento_items_tipo_material_check"
 ```
 
-### Cambios en CreatePIMPage.tsx
+### Causa Raíz
 
-1. Reemplazar selector único de requerimiento por selector múltiple
-2. Agregar tarjetas para cada requerimiento seleccionado
-3. Mostrar items agrupados por cuadro/requerimiento
-4. Permitir agregar/quitar requerimientos dinámicamente
+La función `productTipoFromCategoria()` en `src/components/requirements/ProductAutocomplete.tsx` devuelve valores como:
+- `"Materia Prima"` (con espacio y mayúsculas)
+- `"Producto Terminado"` (con espacio y mayúsculas)
 
-### Cambios en PIMItemSelector.tsx
+Pero el CHECK constraint en la base de datos requiere:
+- `'materia_prima'` (snake_case)
+- `'producto_terminado'` (snake_case)
 
-1. Recibir items de múltiples requerimientos
-2. Agrupar visualmente por cuadro de origen
-3. Mantener referencia a qué requerimiento pertenece cada item
-
-### Cambios en usePIMCreation.ts
-
-1. Actualizar la mutación para:
-   - Aceptar items de múltiples requerimientos
-   - Actualizar `kilos_consumidos` en cada `requerimiento_items` correspondiente
-   - Actualizar totales en cada `requerimientos_mensuales` afectado
+Este desajuste hace que **todos los inserts en `requerimiento_items` fallen**, dejando la tabla vacía. Por eso al editar un requerimiento no aparecen los códigos de producto.
 
 ---
 
-## Parte 4: Productos Extra (Fuera de Requerimiento)
+## Solución
 
-### Nueva Funcionalidad
+### Archivo a Modificar
 
-Permitir agregar productos al PIM que **no provienen de ningún requerimiento**. Estos productos:
-- No afectan el saldo de ningún requerimiento
-- Se guardan en `pim_items` con un flag o sin referencia a `pim_requirement_items`
-- Permiten flexibilidad cuando hay productos adicionales en el cierre de gerencia
+**`src/components/requirements/ProductAutocomplete.tsx`**
 
-### Cambios Requeridos
+Cambiar la función `productTipoFromCategoria()` para que retorne los valores exactos que espera la base de datos:
 
-**Nuevo componente**: `src/components/pim/PIMExtraProductSelector.tsx`
+```
+// ANTES (línea 27-32):
+export function productTipoFromCategoria(categoria: string | null): string {
+  if (!categoria) return 'Producto Terminado';
+  const c = categoria.toLowerCase();
+  if (c.includes('mp') || c.includes('materia') || c.includes('materia prima')) return 'Materia Prima';
+  return 'Producto Terminado';
+}
 
-- Buscador de productos del maestro general
-- Input para cantidad, precio, unidad
-- Lista de productos extra agregados
-- Totales separados de los consumidos de requerimiento
+// DESPUÉS:
+export function productTipoFromCategoria(categoria: string | null): string {
+  if (!categoria) return 'producto_terminado';
+  const c = categoria.toLowerCase();
+  if (c.includes('mp') || c.includes('materia') || c.includes('materia prima')) return 'materia_prima';
+  return 'producto_terminado';
+}
+```
 
-**Modificar PIM creation flow**:
+### Archivo Secundario
 
-1. Agregar sección "Productos Adicionales" bajo el selector de items
-2. Calcular totales combinados (requerimiento + extras)
-3. Guardar productos extra en `pim_items` sin vincular a `pim_requirement_items`
+**`src/components/requirements/RequirementEntryForm.tsx`**
 
-### Cambios en usePIMCreation.ts
+Actualizar la visualización del tipo de material para mostrarlo de forma amigable al usuario (la columna "Tipo" en la tabla):
 
-Diferenciar entre:
-- `items`: productos que consumen requerimiento (se vinculan a `pim_requirement_items`)
-- `extraItems`: productos adicionales (solo van a `pim_items`, sin consumir saldo)
+```
+// Línea 284 - cambiar la celda de tipo para mostrar etiqueta legible:
+<TableCell className="text-sm">
+  {line.product 
+    ? productTipoFromCategoria(line.product.categoria) === 'materia_prima' 
+      ? 'Materia Prima' 
+      : 'Producto Terminado' 
+    : '—'}
+</TableCell>
+```
 
----
+Alternativamente, crear una función auxiliar para visualización:
 
-## Parte 5: Validación con Alerta (Sin Bloqueo)
-
-### Regla de Negocio
-Si un usuario intenta consumir más de lo disponible en un item:
-- **NO bloquear** el guardado
-- **Mostrar alerta visual** (borde rojo, mensaje de advertencia)
-- **Registrar observación** en el PIM creado
-
-### Implementación
-
-1. En `PIMItemSelector`: mostrar alerta visual cuando `cantidadAConsumir > cantidadDisponible`
-2. En validaciones de `CreatePIMPage`: no bloquear, solo mostrar warning
-3. Al guardar: incluir observación automática indicando el exceso
-
----
-
-## Resumen de Archivos a Modificar
-
-| Archivo | Tipo | Cambios |
-|---------|------|---------|
-| Migración SQL | Nuevo | Política RLS DELETE para `requerimiento_items` |
-| `src/pages/RequirementsPage.tsx` | Modificar | Fix carga de líneas en edición |
-| `src/pages/comex/CreatePIMPage.tsx` | Modificar | Selector múltiple de requerimientos + sección extras |
-| `src/components/pim/PIMItemSelector.tsx` | Modificar | Agrupar por cuadro, mostrar origen |
-| `src/components/pim/PIMExtraProductSelector.tsx` | Nuevo | Selector de productos extra |
-| `src/hooks/usePIMCreation.ts` | Modificar | Soporte multi-requerimiento + extras |
+```typescript
+function tipoMaterialLabel(tipo: string): string {
+  return tipo === 'materia_prima' ? 'Materia Prima' : 'Producto Terminado';
+}
+```
 
 ---
 
-## Secuencia de Implementación
+## Archivos Afectados
 
-### Fase 1: Fix Crítico (Inmediato)
-1. Migración SQL para política DELETE en `requerimiento_items`
-2. Corregir carga de líneas en edición de requerimientos
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/requirements/ProductAutocomplete.tsx` | Corregir retorno de `productTipoFromCategoria()` a snake_case |
+| `src/components/requirements/RequirementEntryForm.tsx` | Agregar función de visualización para mostrar etiqueta amigable |
 
-### Fase 2: PIM Multi-Cuadro
-1. Modificar selector de requerimientos a múltiple
-2. Actualizar `PIMItemSelector` para múltiples fuentes
-3. Actualizar hook de creación de PIM
+---
 
-### Fase 3: Productos Extra
-1. Crear componente `PIMExtraProductSelector`
-2. Integrar en `CreatePIMPage`
-3. Actualizar lógica de guardado
+## Resultado Esperado
 
-### Fase 4: Validación con Alerta
-1. Implementar warnings visuales sin bloqueo
-2. Agregar observaciones automáticas al PIM
+Después de aplicar este fix:
 
+1. Los nuevos requerimientos guardarán sus items correctamente
+2. Al editar un requerimiento existente, las líneas se mostrarán con sus códigos
+3. La creación de PIMs tendrá items disponibles para consumir
+
+**Nota**: Los requerimientos existentes seguirán sin items porque se crearon cuando la inserción fallaba. Habría que volver a crearlos.
