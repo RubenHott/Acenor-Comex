@@ -158,12 +158,16 @@ export function useCreateRequirementWithItems() {
     }) => {
       const { mes, cuadro_id, creado_por, items } = payload;
       const total_usd = items.reduce((sum, i) => sum + (i.total_usd ?? 0), 0);
-      const total_toneladas = items
-        .filter((i) => i.unidad === 'TON')
-        .reduce((sum, i) => sum + i.cantidad_requerida, 0);
-      const total_kilos = items
-        .filter((i) => i.unidad === 'TON')
-        .reduce((sum, i) => sum + i.cantidad_requerida * 1000, 0);
+      
+      // Calculate total kilos from all items converting based on unit
+      const total_kilos = items.reduce((sum, i) => {
+        if (i.unidad === 'TON') return sum + i.cantidad_requerida * 1000;
+        if (i.unidad === 'KG') return sum + i.cantidad_requerida;
+        // For UN or other units, use cantidad as-is (could be pieces)
+        return sum + i.cantidad_requerida;
+      }, 0);
+      
+      const total_toneladas = total_kilos / 1000;
 
       const reqId = crypto.randomUUID();
       const { data: req, error: errReq } = await supabase
@@ -186,20 +190,30 @@ export function useCreateRequirementWithItems() {
       if (errReq) throw errReq;
       if (!req) throw new Error('No se creó el requerimiento');
 
-      const itemsToInsert: RequirementItemInsert[] = items.map((line) => ({
-        id: crypto.randomUUID(),
-        requerimiento_id: req.id,
-        producto_id: line.producto_id,
-        codigo_producto: line.codigo_producto,
-        descripcion: line.descripcion,
-        cantidad_requerida: line.cantidad_requerida,
-        unidad: line.unidad,
-        tipo_material: line.tipo_material,
-        precio_unitario_usd: line.precio_unitario_usd,
-        total_usd: line.total_usd,
-        kilos_consumidos: 0,
-        kilos_disponibles: line.unidad === 'TON' ? line.cantidad_requerida * 1000 : line.cantidad_requerida,
-      }));
+      const itemsToInsert: RequirementItemInsert[] = items.map((line) => {
+        // Calculate kilos_disponibles based on unit
+        let kilosDisponibles = line.cantidad_requerida;
+        if (line.unidad === 'TON') {
+          kilosDisponibles = line.cantidad_requerida * 1000;
+        } else if (line.unidad === 'KG') {
+          kilosDisponibles = line.cantidad_requerida;
+        }
+        
+        return {
+          id: crypto.randomUUID(),
+          requerimiento_id: req.id,
+          producto_id: line.producto_id,
+          codigo_producto: line.codigo_producto,
+          descripcion: line.descripcion,
+          cantidad_requerida: line.cantidad_requerida,
+          unidad: line.unidad,
+          tipo_material: line.tipo_material,
+          precio_unitario_usd: line.precio_unitario_usd,
+          total_usd: line.total_usd,
+          kilos_consumidos: 0,
+          kilos_disponibles: kilosDisponibles,
+        };
+      });
 
       if (itemsToInsert.length > 0) {
         const { error: errItems } = await supabase.from('requerimiento_items').insert(itemsToInsert);
@@ -226,12 +240,19 @@ export function useUpdateRequirementWithItems() {
     }) => {
       const { id, updates, items } = payload;
       const total_usd = items.reduce((sum, i) => sum + (i.total_usd ?? 0), 0);
-      const total_toneladas = items
-        .filter((i) => i.unidad === 'TON')
-        .reduce((sum, i) => sum + i.cantidad_requerida, 0);
-      const total_kilos = items
-        .filter((i) => i.unidad === 'TON')
-        .reduce((sum, i) => sum + i.cantidad_requerida * 1000, 0);
+      
+      // Calculate total kilos from all items converting based on unit
+      const total_kilos = items.reduce((sum, i) => {
+        if (i.unidad === 'TON') return sum + i.cantidad_requerida * 1000;
+        if (i.unidad === 'KG') return sum + i.cantidad_requerida;
+        return sum + i.cantidad_requerida;
+      }, 0);
+      
+      const total_toneladas = total_kilos / 1000;
+
+      // Recalculate kilos_disponibles (total - consumed from existing PIMs)
+      // For now, set it equal to total_kilos (will be updated by PIM creation)
+      const kilos_disponibles = total_kilos;
 
       const { error: errReq } = await supabase
         .from('requerimientos_mensuales')
@@ -240,6 +261,7 @@ export function useUpdateRequirementWithItems() {
           total_usd,
           total_toneladas,
           total_kilos,
+          kilos_disponibles,
         })
         .eq('id', id);
 
@@ -248,20 +270,30 @@ export function useUpdateRequirementWithItems() {
       const { error: errDel } = await supabase.from('requerimiento_items').delete().eq('requerimiento_id', id);
       if (errDel) throw errDel;
 
-      const itemsToInsert: RequirementItemInsert[] = items.map((line) => ({
-        id: crypto.randomUUID(),
-        requerimiento_id: id,
-        producto_id: line.producto_id,
-        codigo_producto: line.codigo_producto,
-        descripcion: line.descripcion,
-        cantidad_requerida: line.cantidad_requerida,
-        unidad: line.unidad,
-        tipo_material: line.tipo_material,
-        precio_unitario_usd: line.precio_unitario_usd,
-        total_usd: line.total_usd,
-        kilos_consumidos: 0,
-        kilos_disponibles: line.unidad === 'TON' ? line.cantidad_requerida * 1000 : line.cantidad_requerida,
-      }));
+      const itemsToInsert: RequirementItemInsert[] = items.map((line) => {
+        // Calculate kilos_disponibles based on unit
+        let kilosDisponibles = line.cantidad_requerida;
+        if (line.unidad === 'TON') {
+          kilosDisponibles = line.cantidad_requerida * 1000;
+        } else if (line.unidad === 'KG') {
+          kilosDisponibles = line.cantidad_requerida;
+        }
+        
+        return {
+          id: crypto.randomUUID(),
+          requerimiento_id: id,
+          producto_id: line.producto_id,
+          codigo_producto: line.codigo_producto,
+          descripcion: line.descripcion,
+          cantidad_requerida: line.cantidad_requerida,
+          unidad: line.unidad,
+          tipo_material: line.tipo_material,
+          precio_unitario_usd: line.precio_unitario_usd,
+          total_usd: line.total_usd,
+          kilos_consumidos: 0,
+          kilos_disponibles: kilosDisponibles,
+        };
+      });
 
       if (itemsToInsert.length > 0) {
         const { error: errItems } = await supabase.from('requerimiento_items').insert(itemsToInsert);
