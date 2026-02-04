@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { useRequirements, useRequirementByMesAndCuadro, useRequirement, useCreateRequirementWithItems, useUpdateRequirementWithItems } from '@/hooks/useRequirements';
 import { useCuadros } from '@/hooks/useCuadros';
@@ -62,6 +63,7 @@ function getDefaultMes(): string {
 }
 
 export default function RequirementsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: requirements, isLoading, error } = useRequirements();
   const { data: cuadros } = useCuadros();
@@ -96,11 +98,13 @@ export default function RequirementsPage() {
   }, [formOpen, cuadros, formCuadroId]);
 
   // Cargar datos en modo edición (solo cuando el requerimiento cargado es el que estamos editando)
+  // FIX: No depender de `products` para cargar líneas - usar requirementItemToProductLike inmediatamente
   useEffect(() => {
-    if (formOpen !== 'edit' || !editRequirementId || !requirementForEdit || requirementForEdit.id !== editRequirementId || !products) return;
+    if (formOpen !== 'edit' || !editRequirementId || !requirementForEdit || requirementForEdit.id !== editRequirementId) return;
     const items = (requirementForEdit as { items?: RequirementItem[] }).items ?? [];
     const lines: RequirementLine[] = items.map((item) => {
-      const product = products.find((p) => p.id === item.producto_id) ?? null;
+      // Buscar en products si está disponible, sino usar datos del item directamente
+      const product = products?.find((p) => p.id === item.producto_id) ?? null;
       const productLike = requirementItemToProductLike(item, product);
       return {
         tempId: item.id,
@@ -400,7 +404,11 @@ export default function RequirementsPage() {
                       <Edit className="h-4 w-4 mr-1" />
                       Editar
                     </Button>
-                    <Button size="sm" className="gradient-accent">
+                    <Button 
+                      size="sm" 
+                      className="gradient-accent"
+                      onClick={() => navigate(`/comex/pim/crear?requerimiento=${selectedRequirement.id}`)}
+                    >
                       Generar PIM
                     </Button>
                   </div>

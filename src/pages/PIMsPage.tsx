@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { usePIMs } from '@/hooks/usePIMs';
 import { useSuppliers } from '@/hooks/useSuppliers';
@@ -38,6 +39,7 @@ import type { PIM } from '@/hooks/usePIMs';
 import type { PIMStatus } from '@/types/comex';
 
 export default function PIMsPage() {
+  const navigate = useNavigate();
   const { data: pims, isLoading, error } = usePIMs();
   const { data: suppliers } = useSuppliers();
   
@@ -132,7 +134,7 @@ export default function PIMsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button className="gradient-primary">
+          <Button className="gradient-primary" onClick={() => navigate('/comex/pim/crear')}>
             <Plus className="h-4 w-4 mr-2" />
             Nuevo PIM
           </Button>
