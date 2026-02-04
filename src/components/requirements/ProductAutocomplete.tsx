@@ -23,12 +23,17 @@ interface ProductAutocompleteProps {
   showCuadroInfo?: boolean;
 }
 
-/** Deriva "Materia Prima" o "Producto Terminado" desde categoria del maestro */
+/** Deriva 'materia_prima' o 'producto_terminado' desde categoria del maestro (snake_case para DB) */
 export function productTipoFromCategoria(categoria: string | null): string {
-  if (!categoria) return 'Producto Terminado';
+  if (!categoria) return 'producto_terminado';
   const c = categoria.toLowerCase();
-  if (c.includes('mp') || c.includes('materia') || c.includes('materia prima')) return 'Materia Prima';
-  return 'Producto Terminado';
+  if (c.includes('mp') || c.includes('materia') || c.includes('materia prima')) return 'materia_prima';
+  return 'producto_terminado';
+}
+
+/** Convierte el tipo de material DB a etiqueta legible */
+export function tipoMaterialLabel(tipo: string): string {
+  return tipo === 'materia_prima' ? 'Materia Prima' : 'Producto Terminado';
 }
 
 export function ProductAutocomplete({
