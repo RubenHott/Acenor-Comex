@@ -118,4 +118,4 @@ npm run dev
 
 ---
 
-*Última actualización: Enero 2026*
+*Última actualización: Febrero 2026*

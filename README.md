@@ -122,4 +122,4 @@ Proyecto privado - Todos los derechos reservados.
 
 ---
 
-*Última actualización: Enero 2026*
+*Última actualización: Febrero 2026*

@@ -417,7 +417,7 @@ Notificaciones del sistema.
 | `pims` | `pim_padre_id` | `pims` | `id` |
 | `pims` | `proveedor_id` | `proveedores` | `id` |
 | `pims` | `requerimiento_id` | `requerimientos_mensuales` | `id` |
-| `productos` | `cuadro` | `cuadros_importacion` | `id` |
+| `productos` | `cuadro` | `cuadros_importacion` | `codigo` |
 | `requerimiento_items` | `producto_id` | `productos` | `id` |
 | `requerimiento_items` | `requerimiento_id` | `requerimientos_mensuales` | `id` |
 | `requerimientos_mensuales` | `cuadro_id` | `cuadros_importacion` | `id` |
@@ -425,6 +425,7 @@ Notificaciones del sistema.
 | `validacion_contrato_pim` | `pim_id` | `pims` | `id` |
 | `notificaciones` | `pim_id` | `pims` | `id` |
 
+> **Nota**: `productos.cuadro` referencia `cuadros_importacion.codigo` (no `id`), permitiendo usar códigos de texto como "DISCOS", "INOX" directamente en cargas masivas CSV.
 ---
 
-*Última actualización: Enero 2026*
+*Última actualización: Febrero 2026*
