@@ -20,7 +20,6 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Calendar, Package, DollarSign, TrendingUp, Edit, ChevronRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
-import { Badge } from '@/components/ui/badge';
 import type { Requirement, RequirementItem } from '@/hooks/useRequirements';
 import {
   RequirementEntryForm,
