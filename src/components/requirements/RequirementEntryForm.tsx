@@ -24,6 +24,8 @@ import { ProductAutocomplete, productTipoFromCategoria } from './ProductAutocomp
 import type { Product } from '@/hooks/useProducts';
 import type { Cuadro } from '@/hooks/useCuadros';
 import type { RequirementLinePayload } from '@/hooks/useRequirements';
+import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
+import { Badge } from '@/components/ui/badge';
 
 export interface RequirementLine {
   tempId: string;
@@ -110,10 +112,10 @@ export function RequirementEntryForm({
   validationErrors,
   mode,
 }: RequirementEntryFormProps) {
-  // Use filtered products if cuadro is selected, otherwise show all
-  const availableProducts = cuadroId && filteredProducts && filteredProducts.length > 0 
-    ? filteredProducts 
-    : products;
+  const availableProducts = cuadroId ? (filteredProducts ?? []) : (products ?? []);
+  const selectedCuadro = cuadros?.find((c) => c.id === cuadroId);
+  const esPorUnidad = isCuadroPorUnidad(selectedCuadro?.codigo);
+
   const addLine = () => {
     onLinesChange([
       ...lines,
@@ -179,18 +181,28 @@ export function RequirementEntryForm({
         </div>
         <div className="space-y-2">
           <Label>Cuadro de importación</Label>
-          <Select value={cuadroId} onValueChange={onCuadroChange} disabled={isEdit}>
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar cuadro" />
-            </SelectTrigger>
-            <SelectContent>
-              {(cuadros ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.codigo} — {c.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={cuadroId} onValueChange={onCuadroChange} disabled={isEdit}>
+              <SelectTrigger className="flex-1 min-w-[200px]">
+                <SelectValue placeholder="Seleccionar cuadro" />
+              </SelectTrigger>
+              <SelectContent>
+                {(cuadros ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.codigo} — {c.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedCuadro && (
+              <Badge
+                variant={esPorUnidad ? 'default' : 'secondary'}
+                className={esPorUnidad ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-600 hover:bg-amber-700 text-white'}
+              >
+                {esPorUnidad ? 'En UNIDADES' : 'En TONELADAS'}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
@@ -324,20 +336,38 @@ export function RequirementEntryForm({
         </div>
       </div>
 
-      {/* Totales */}
-      <div className="flex flex-wrap gap-6 p-4 rounded-lg bg-muted/50">
-        <div>
+      {/* Totales: destacar según cuadro en UN o TON */}
+      <div className={cn(
+        'flex flex-wrap gap-6 p-4 rounded-lg border-2',
+        esPorUnidad ? 'bg-blue-500/10 border-blue-500/30' : 'bg-amber-500/10 border-amber-500/30'
+      )}>
+        <div className="order-2">
           <p className="text-sm text-muted-foreground">Total USD estimado</p>
           <p className="text-xl font-bold">{formatCurrency(totalUsd)}</p>
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Total TON</p>
-          <p className="text-xl font-bold">{totalTon.toLocaleString('es-PE')} TON</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Total UN</p>
-          <p className="text-xl font-bold">{totalUn.toLocaleString('es-PE')} UN</p>
-        </div>
+        {esPorUnidad ? (
+          <>
+            <div className="order-1">
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Total UNIDADES</p>
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{totalUn.toLocaleString('es-PE')} UN</p>
+            </div>
+            <div className="order-3">
+              <p className="text-sm text-muted-foreground">Total TON (referencia)</p>
+              <p className="text-lg font-semibold text-muted-foreground">{totalTon.toLocaleString('es-PE')} TON</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="order-1">
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Total TONELADAS</p>
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{totalTon.toLocaleString('es-PE')} TON</p>
+            </div>
+            <div className="order-3">
+              <p className="text-sm text-muted-foreground">Total UN (referencia)</p>
+              <p className="text-lg font-semibold text-muted-foreground">{totalUn.toLocaleString('es-PE')} UN</p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Acciones */}

@@ -19,6 +19,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Plus, Calendar, Package, DollarSign, TrendingUp, Edit, ChevronRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
+import { Badge } from '@/components/ui/badge';
 import type { Requirement, RequirementItem } from '@/hooks/useRequirements';
 import {
   RequirementEntryForm,
@@ -218,6 +220,14 @@ export default function RequirementsPage() {
     return m;
   }, [cuadros]);
 
+  const cuadroCodigoById = useMemo(() => {
+    const m: Record<string, string> = {};
+    (cuadros ?? []).forEach((c) => {
+      m[c.id] = c.codigo;
+    });
+    return m;
+  }, [cuadros]);
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(value);
 
@@ -334,9 +344,15 @@ export default function RequirementsPage() {
                         )}
                       >
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <p className="font-medium">{req.mes}</p>
                             <Badge className={getStatusBadge(req.estado)}>{req.estado}</Badge>
+                            <Badge
+                              variant="outline"
+                              className={isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'border-blue-500 text-blue-700' : 'border-amber-500 text-amber-700'}
+                            >
+                              {isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'UN' : 'TON'}
+                            </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
                             {cuadroNameById[req.cuadro_id] ?? req.cuadro_id} • {req.total_toneladas || 0} t
@@ -359,9 +375,17 @@ export default function RequirementsPage() {
               <Card>
                 <CardHeader className="flex flex-row items-start justify-between space-y-0">
                   <div>
-                    <CardTitle className="text-lg font-semibold">
-                      Requerimiento {selectedRequirement.mes}
-                    </CardTitle>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-lg font-semibold">
+                        Requerimiento {selectedRequirement.mes}
+                      </CardTitle>
+                      <Badge
+                        variant={isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'default' : 'secondary'}
+                        className={isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'bg-blue-600' : 'bg-amber-600'}
+                      >
+                        {isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'En UNIDADES' : 'En TONELADAS'}
+                      </Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground mt-1">
                       {cuadroNameById[selectedRequirement.cuadro_id] ?? selectedRequirement.cuadro_id}
                       {selectedRequirement.fecha_creacion &&
@@ -383,34 +407,53 @@ export default function RequirementsPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-4 gap-4 p-4 rounded-lg bg-muted/50 mb-6">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Kilos</p>
-                      <p className="text-xl font-bold">{(selectedRequirement.total_kilos || 0).toLocaleString()} kg</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Toneladas</p>
-                      <p className="text-xl font-bold">{selectedRequirement.total_toneladas || 0} t</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total USD</p>
-                      <p className="text-xl font-bold">{formatCurrency(selectedRequirement.total_usd || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">PIMs</p>
-                      <p className="text-xl font-bold">{countPIMsForRequirement(selectedRequirement.id)}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="p-4 rounded-lg border border-success/30 bg-success/5">
-                      <p className="text-sm text-muted-foreground">Kilos Disponibles</p>
-                      <p className="text-xl font-bold text-success">{(selectedRequirement.kilos_disponibles || 0).toLocaleString()} kg</p>
-                    </div>
-                    <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
-                      <p className="text-sm text-muted-foreground">Kilos Consumidos</p>
-                      <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString()} kg</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const esPorUnidad = isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]);
+                    return (
+                      <>
+                        <div className={cn(
+                          'grid grid-cols-4 gap-4 p-4 rounded-lg border-2 mb-6',
+                          esPorUnidad ? 'bg-blue-500/10 border-blue-500/30' : 'bg-amber-500/10 border-amber-500/30'
+                        )}>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Total USD</p>
+                            <p className="text-xl font-bold">{formatCurrency(selectedRequirement.total_usd || 0)}</p>
+                          </div>
+                          {esPorUnidad ? (
+                            <div>
+                              <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Total Unidades</p>
+                              <p className="text-xl font-bold text-blue-700 dark:text-blue-400">—</p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Toneladas</p>
+                              <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{selectedRequirement.total_toneladas || 0} t</p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm text-muted-foreground">Total Kilos</p>
+                            <p className="text-xl font-bold">{(selectedRequirement.total_kilos || 0).toLocaleString()} kg</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">PIMs</p>
+                            <p className="text-xl font-bold">{countPIMsForRequirement(selectedRequirement.id)}</p>
+                          </div>
+                        </div>
+                        {!esPorUnidad && (
+                          <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="p-4 rounded-lg border border-success/30 bg-success/5">
+                              <p className="text-sm text-muted-foreground">Kilos Disponibles</p>
+                              <p className="text-xl font-bold text-success">{(selectedRequirement.kilos_disponibles || 0).toLocaleString()} kg</p>
+                            </div>
+                            <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
+                              <p className="text-sm text-muted-foreground">Kilos Consumidos</p>
+                              <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString()} kg</p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   {selectedRequirement.observaciones && (
                     <div className="p-4 rounded-lg border border-border">
                       <p className="text-sm font-medium mb-2">Observaciones</p>
