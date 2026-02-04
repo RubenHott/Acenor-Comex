@@ -489,7 +489,7 @@ export type Database = {
             columns: ["cuadro"]
             isOneToOne: false
             referencedRelation: "cuadros_importacion"
-            referencedColumns: ["id"]
+            referencedColumns: ["codigo"]
           },
         ]
       }
