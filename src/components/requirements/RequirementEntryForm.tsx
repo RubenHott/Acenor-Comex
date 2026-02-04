@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ProductAutocomplete, productTipoFromCategoria } from './ProductAutocomplete';
+import { ProductAutocomplete, productTipoFromCategoria, tipoMaterialLabel } from './ProductAutocomplete';
 import type { Product } from '@/hooks/useProducts';
 import type { Cuadro } from '@/hooks/useCuadros';
 import type { RequirementLinePayload } from '@/hooks/useRequirements';
@@ -281,7 +281,7 @@ export function RequirementEntryForm({
                       {line.product?.descripcion ?? '—'}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {line.product ? productTipoFromCategoria(line.product.categoria) : '—'}
+                      {line.product ? tipoMaterialLabel(productTipoFromCategoria(line.product.categoria)) : '—'}
                     </TableCell>
                     <TableCell className="text-sm font-medium">
                       {line.product?.unidad ?? '—'}
