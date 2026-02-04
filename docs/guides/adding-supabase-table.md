@@ -250,4 +250,4 @@ EXECUTE FUNCTION public.trg_mi_funcion();
 
 ---
 
-*Última actualización: Enero 2026*
+*Última actualización: Febrero 2026*
