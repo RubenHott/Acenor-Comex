@@ -74,8 +74,9 @@ export default function RequirementsPage() {
   const [formLines, setFormLines] = useState<RequirementLine[]>([]);
   const [editRequirementId, setEditRequirementId] = useState<string | null>(null);
 
-  // Filtered products by selected cuadro for the form
-  const { data: filteredProducts } = useProductsByCuadro(formCuadroId || undefined);
+  // Get the cuadro codigo for filtering products (productos.cuadro stores codigo, not id)
+  const selectedCuadroCodigo = cuadros?.find((c) => c.id === formCuadroId)?.codigo;
+  const { data: filteredProducts } = useProductsByCuadro(selectedCuadroCodigo);
 
   const { data: existingByMesCuadro } = useRequirementByMesAndCuadro(
     formOpen === 'create' && formMes && formCuadroId ? formMes : null,
