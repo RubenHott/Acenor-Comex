@@ -308,3 +308,32 @@ export function useUpdateRequirementWithItems() {
     },
   });
 }
+
+// Delete requirement (and its items via cascade or manual delete)
+export function useDeleteRequirement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // First delete associated items
+      const { error: errItems } = await supabase
+        .from('requerimiento_items')
+        .delete()
+        .eq('requerimiento_id', id);
+      
+      if (errItems) throw errItems;
+
+      // Then delete the requirement
+      const { error } = await supabase
+        .from('requerimientos_mensuales')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requerimientos'] });
+    },
+  });
+}
