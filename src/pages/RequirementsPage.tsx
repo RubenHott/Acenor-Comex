@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
-import { useRequirements, useRequirementByMesAndCuadro, useRequirement, useCreateRequirementWithItems, useUpdateRequirementWithItems } from '@/hooks/useRequirements';
+import { useRequirements, useRequirementByMesAndCuadro, useRequirement, useCreateRequirementWithItems, useUpdateRequirementWithItems, useDeleteRequirement } from '@/hooks/useRequirements';
 import { useCuadros } from '@/hooks/useCuadros';
 import { useProducts, useProductsByCuadro } from '@/hooks/useProducts';
-import { usePIMs } from '@/hooks/usePIMs';
+import { usePIMs, useDeletePIM } from '@/hooks/usePIMs';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +17,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Calendar, Package, DollarSign, TrendingUp, Edit, ChevronRight, AlertCircle } from 'lucide-react';
+import { Plus, Calendar, Package, DollarSign, TrendingUp, Edit, ChevronRight, AlertCircle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
 import type { Requirement, RequirementItem } from '@/hooks/useRequirements';
@@ -28,6 +39,7 @@ import {
   type RequirementLine,
 } from '@/components/requirements/RequirementEntryForm';
 import type { Product } from '@/hooks/useProducts';
+import { toast } from 'sonner';
 
 // Convierte ítem de requerimiento a "producto" mínimo para el formulario (edición)
 function requirementItemToProductLike(item: RequirementItem, productFromMaster: Product | null): Product | null {
@@ -89,6 +101,8 @@ export default function RequirementsPage() {
 
   const createMutation = useCreateRequirementWithItems();
   const updateMutation = useUpdateRequirementWithItems();
+  const deleteRequirementMutation = useDeleteRequirement();
+  const deletePIMMutation = useDeletePIM();
 
   // Default cuadro al abrir "Nuevo"
   useEffect(() => {
@@ -197,6 +211,29 @@ export default function RequirementsPage() {
       console.error(e);
     }
   }, [canSave, editRequirementId, formLines, updateMutation, closeForm]);
+
+  const handleDeleteRequirement = useCallback(async (id: string) => {
+    try {
+      await deleteRequirementMutation.mutateAsync(id);
+      toast.success('Requerimiento eliminado correctamente');
+      if (selectedRequirement?.id === id) {
+        setSelectedRequirement(null);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al eliminar el requerimiento');
+    }
+  }, [deleteRequirementMutation, selectedRequirement]);
+
+  const handleDeletePIM = useCallback(async (id: string) => {
+    try {
+      await deletePIMMutation.mutateAsync(id);
+      toast.success('PIM eliminado correctamente');
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al eliminar el PIM');
+    }
+  }, [deletePIMMutation]);
 
   // Set first requirement as selected when data loads
   useEffect(() => {
@@ -404,6 +441,31 @@ export default function RequirementsPage() {
                       <Edit className="h-4 w-4 mr-1" />
                       Editar
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Eliminar requerimiento?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción no se puede deshacer. Se eliminarán el requerimiento y todos sus items asociados.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteRequirement(selectedRequirement.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                     <Button 
                       size="sm" 
                       className="gradient-accent"

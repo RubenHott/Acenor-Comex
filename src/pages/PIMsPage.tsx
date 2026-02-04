@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
-import { usePIMs } from '@/hooks/usePIMs';
+import { usePIMs, useDeletePIM } from '@/hooks/usePIMs';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { usePIMSLA, formatSLAForPIM } from '@/hooks/useSLAData';
 import { PIMStatusBadge } from '@/components/dashboard/PIMStatusBadge';
@@ -19,6 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { 
   Search, 
   Plus, 
@@ -31,17 +42,19 @@ import {
   Calendar,
   DollarSign,
   Package,
-  MoreHorizontal,
+  Trash2,
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PIM } from '@/hooks/usePIMs';
 import type { PIMStatus } from '@/types/comex';
+import { toast } from 'sonner';
 
 export default function PIMsPage() {
   const navigate = useNavigate();
   const { data: pims, isLoading, error } = usePIMs();
   const { data: suppliers } = useSuppliers();
+  const deletePIMMutation = useDeletePIM();
   
   const [selectedPIM, setSelectedPIM] = useState<PIM | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -55,6 +68,19 @@ export default function PIMsPage() {
   if (pims && pims.length > 0 && !selectedPIM) {
     setSelectedPIM(pims[0]);
   }
+
+  const handleDeletePIM = useCallback(async (id: string) => {
+    try {
+      await deletePIMMutation.mutateAsync(id);
+      toast.success('PIM eliminado correctamente');
+      if (selectedPIM?.id === id) {
+        setSelectedPIM(null);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al eliminar el PIM');
+    }
+  }, [deletePIMMutation, selectedPIM]);
 
   const filteredPIMs = (pims || []).filter(pim => {
     const matchesSearch = 
@@ -213,9 +239,31 @@ export default function PIMsPage() {
                     </div>
                     <p className="text-muted-foreground">{selectedPIM.descripcion}</p>
                   </div>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Eliminar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar PIM?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta acción no se puede deshacer. Se eliminarán el PIM y todos sus items asociados.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeletePIM(selectedPIM.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <Tabs defaultValue="general" className="w-full">

@@ -107,6 +107,45 @@ export function useUpdatePIM() {
   });
 }
 
+// Delete PIM (and its items)
+export function useDeletePIM() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // First delete pim_requirement_items
+      const { error: errReqItems } = await supabase
+        .from('pim_requirement_items')
+        .delete()
+        .eq('pim_id', id);
+      
+      if (errReqItems) throw errReqItems;
+
+      // Delete pim_items
+      const { error: errItems } = await supabase
+        .from('pim_items')
+        .delete()
+        .eq('pim_id', id);
+      
+      if (errItems) throw errItems;
+
+      // Then delete the PIM
+      const { error } = await supabase
+        .from('pims')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pims'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['requerimientos'] });
+    },
+  });
+}
+
 // Dashboard stats - now uses edge function via useDashboardStats
 // Keeping this for backwards compatibility
 export function usePIMStats() {
