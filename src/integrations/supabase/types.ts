@@ -303,19 +303,24 @@ export type Database = {
           archivo_pim_excel: string | null
           codigo: string
           codigo_dhl: string | null
+          condicion_precio: string | null
           created_at: string | null
           cuadro_id: string
           descripcion: string
           dias_credito: number | null
           estado: string
+          fabricas_origen: string | null
           fecha_cierre: string | null
           fecha_contrato: string | null
           fecha_creacion: string | null
+          fecha_embarque: string | null
           id: string
           modalidad_pago: string
           molino_id: string | null
           molino_nombre: string | null
+          notas_pago: string | null
           numero_contrato: string | null
+          origen: string | null
           pim_padre_id: string | null
           porcentaje_anticipo: number | null
           proveedor_id: string
@@ -331,19 +336,24 @@ export type Database = {
           archivo_pim_excel?: string | null
           codigo: string
           codigo_dhl?: string | null
+          condicion_precio?: string | null
           created_at?: string | null
           cuadro_id: string
           descripcion: string
           dias_credito?: number | null
           estado: string
+          fabricas_origen?: string | null
           fecha_cierre?: string | null
           fecha_contrato?: string | null
           fecha_creacion?: string | null
+          fecha_embarque?: string | null
           id: string
           modalidad_pago: string
           molino_id?: string | null
           molino_nombre?: string | null
+          notas_pago?: string | null
           numero_contrato?: string | null
+          origen?: string | null
           pim_padre_id?: string | null
           porcentaje_anticipo?: number | null
           proveedor_id: string
@@ -359,19 +369,24 @@ export type Database = {
           archivo_pim_excel?: string | null
           codigo?: string
           codigo_dhl?: string | null
+          condicion_precio?: string | null
           created_at?: string | null
           cuadro_id?: string
           descripcion?: string
           dias_credito?: number | null
           estado?: string
+          fabricas_origen?: string | null
           fecha_cierre?: string | null
           fecha_contrato?: string | null
           fecha_creacion?: string | null
+          fecha_embarque?: string | null
           id?: string
           modalidad_pago?: string
           molino_id?: string | null
           molino_nombre?: string | null
+          notas_pago?: string | null
           numero_contrato?: string | null
+          origen?: string | null
           pim_padre_id?: string | null
           porcentaje_anticipo?: number | null
           proveedor_id?: string

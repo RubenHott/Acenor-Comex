@@ -12,6 +12,7 @@ import {
 } from '@/components/pim/PIMItemSelector';
 import { PIMExtraProductSelector, type PIMExtraItem } from '@/components/pim/PIMExtraProductSelector';
 import { PIMForm, type PIMFormData } from '@/components/pim/PIMForm';
+import { PIMContractConditions, type ContractConditionsData } from '@/components/pim/PIMContractConditions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -20,7 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Ship, Save, AlertCircle, Package, Plus, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Ship, Save, AlertCircle, Package, Plus, FileText } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import type { RequirementItem } from '@/hooks/useRequirements';
 
@@ -47,6 +49,13 @@ export default function CreatePIMPage() {
     modalidadPago: 'carta_credito',
     diasCredito: 90,
     porcentajeAnticipo: null,
+  });
+  const [contractConditions, setContractConditions] = useState<ContractConditionsData>({
+    condicionPrecio: '',
+    fechaEmbarque: '',
+    origen: '',
+    fabricasOrigen: '',
+    notasPago: '',
   });
 
   // Get cuadro info
@@ -155,11 +164,12 @@ export default function CreatePIMPage() {
 
     try {
       const result = await createPIM.mutateAsync({
-        cuadroId: cuadroIds[0] ?? '', // Primary cuadro (first one)
+        cuadroId: cuadroIds[0] ?? '',
         formData,
         items: selections,
         extraItems,
         observaciones,
+        contractConditions,
       });
 
       toast({
@@ -214,14 +224,30 @@ export default function CreatePIMPage() {
                   Datos del PIM
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* PIM Form */}
-                <PIMForm
-                  formData={formData}
-                  onFormDataChange={setFormData}
-                  suppliers={suppliers ?? []}
-                  isLoadingSuppliers={isLoadingSuppliers}
-                />
+              <CardContent>
+                <Tabs defaultValue="general" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    <TabsTrigger value="contrato" className="flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      Contrato
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="general">
+                    <PIMForm
+                      formData={formData}
+                      onFormDataChange={setFormData}
+                      suppliers={suppliers ?? []}
+                      isLoadingSuppliers={isLoadingSuppliers}
+                    />
+                  </TabsContent>
+                  <TabsContent value="contrato">
+                    <PIMContractConditions
+                      data={contractConditions}
+                      onChange={setContractConditions}
+                    />
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
 

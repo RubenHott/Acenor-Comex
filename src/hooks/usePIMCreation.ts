@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { PIMItemSelection } from '@/components/pim/PIMItemSelector';
 import type { PIMExtraItem } from '@/components/pim/PIMExtraProductSelector';
 import type { PIMFormData } from '@/components/pim/PIMForm';
+import type { ContractConditionsData } from '@/components/pim/PIMContractConditions';
 
 interface CreatePIMPayload {
   cuadroId: string;
@@ -10,6 +11,7 @@ interface CreatePIMPayload {
   items: PIMItemSelection[];
   extraItems: PIMExtraItem[];
   observaciones?: string;
+  contractConditions?: ContractConditionsData;
 }
 
 // Generate next PIM code: PIM-YYYY-NNN
@@ -33,7 +35,7 @@ export function useCreatePIMWithItems() {
 
   return useMutation({
     mutationFn: async (payload: CreatePIMPayload) => {
-      const { cuadroId, formData, items, extraItems, observaciones } = payload;
+      const { cuadroId, formData, items, extraItems, observaciones, contractConditions } = payload;
 
       if (items.length === 0 && extraItems.length === 0) {
         throw new Error('Debe seleccionar al menos un ítem o producto extra');
@@ -89,7 +91,7 @@ export function useCreatePIMWithItems() {
         id: pimId,
         codigo,
         descripcion: descripcionFinal,
-        requerimiento_id: requerimientoId ?? items[0]?.requerimientoId ?? cuadroId, // Fallback
+        requerimiento_id: requerimientoId ?? items[0]?.requerimientoId ?? cuadroId,
         cuadro_id: cuadroId,
         proveedor_id: formData.proveedorId,
         proveedor_nombre: supplier?.nombre ?? null,
@@ -100,6 +102,12 @@ export function useCreatePIMWithItems() {
         tipo: 'principal',
         total_toneladas: totalToneladas,
         total_usd: totalUsd,
+        // Contract conditions
+        condicion_precio: contractConditions?.condicionPrecio || null,
+        fecha_embarque: contractConditions?.fechaEmbarque || null,
+        origen: contractConditions?.origen || null,
+        fabricas_origen: contractConditions?.fabricasOrigen || null,
+        notas_pago: contractConditions?.notasPago || null,
       });
 
       if (pimError) throw pimError;
