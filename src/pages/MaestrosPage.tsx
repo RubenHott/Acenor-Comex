@@ -33,6 +33,7 @@ import { parseFile, type ParsedRow } from '@/lib/parseCsvExcel';
 import { toast } from 'sonner';
 import { TableStructureCard } from '@/components/maestros/TableStructureCard';
 import { cuadrosColumns, productosColumns, proveedoresColumns } from '@/components/maestros/tableSchemas';
+import { productTipoFromCategoria, tipoMaterialLabel } from '@/components/requirements/ProductAutocomplete';
 
 type MasterTab = 'cuadros' | 'productos' | 'proveedores';
 
@@ -250,6 +251,7 @@ export default function MaestrosPage() {
                           <TableHead className="sticky left-0 bg-muted/50 z-10">Código</TableHead>
                           <TableHead>Descripción</TableHead>
                           <TableHead>Categoría</TableHead>
+                          <TableHead>Tipo</TableHead>
                           <TableHead>Unidad</TableHead>
                           <TableHead>Sub-Cat</TableHead>
                           <TableHead>Origen</TableHead>
@@ -274,6 +276,11 @@ export default function MaestrosPage() {
                             <TableCell className="sticky left-0 bg-background font-mono font-medium z-10">{p.codigo}</TableCell>
                             <TableCell className="max-w-[200px] truncate">{p.descripcion}</TableCell>
                             <TableCell>{p.categoria}</TableCell>
+                            <TableCell>
+                              <Badge variant={productTipoFromCategoria(p.categoria) === 'materia_prima' ? 'default' : 'secondary'}>
+                                {tipoMaterialLabel(productTipoFromCategoria(p.categoria))}
+                              </Badge>
+                            </TableCell>
                             <TableCell>{p.unidad}</TableCell>
                             <TableCell className="text-muted-foreground">{formatValue(p.sub_categoria)}</TableCell>
                             <TableCell className="text-muted-foreground">{formatValue(p.origen)}</TableCell>
@@ -303,7 +310,7 @@ export default function MaestrosPage() {
                         ))}
                         {(products ?? []).length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={19} className="text-center text-muted-foreground py-12">
+                            <TableCell colSpan={20} className="text-center text-muted-foreground py-12">
                               No hay productos. Use la plantilla para cargar datos masivamente.
                             </TableCell>
                           </TableRow>

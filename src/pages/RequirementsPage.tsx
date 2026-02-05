@@ -29,7 +29,15 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Calendar, Package, DollarSign, TrendingUp, Edit, ChevronRight, AlertCircle, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Plus, Calendar, Package, DollarSign, TrendingUp, Edit, ChevronRight, AlertCircle, Trash2, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
 import type { Requirement, RequirementItem } from '@/hooks/useRequirements';
@@ -98,6 +106,7 @@ export default function RequirementsPage() {
     formOpen === 'create' && formCuadroId ? formCuadroId : null
   );
   const { data: requirementForEdit } = useRequirement(editRequirementId ?? undefined);
+  const { data: selectedRequirementDetail } = useRequirement(selectedRequirement?.id ?? undefined);
 
   const createMutation = useCreateRequirementWithItems();
   const updateMutation = useUpdateRequirementWithItems();
@@ -251,6 +260,25 @@ export default function RequirementsPage() {
   }, [pims]);
 
   const countPIMsForRequirement = (requirementId: string) => pimCountsByRequirement[requirementId] || 0;
+
+  // Calcular total unidades para cuadros por unidad (suma de cantidad_requerida de ítems en unidades: u, un, unidad, etc.)
+  const totalUnidadesSelected = useMemo(() => {
+    const detail = selectedRequirementDetail as { items?: RequirementItem[] } | null;
+    const items = detail?.items ?? [];
+    const unidadesMatch = (u: string) => {
+      const x = u.trim().toUpperCase();
+      return ['U', 'UN', 'UNIDAD', 'UND', 'UND.'].includes(x) || x.startsWith('UN');
+    };
+    return items.reduce((sum, i) => {
+      if (unidadesMatch(i.unidad || '')) return sum + i.cantidad_requerida;
+      return sum;
+    }, 0);
+  }, [selectedRequirementDetail]);
+
+  const selectedRequirementItems = useMemo(() => {
+    const detail = selectedRequirementDetail as { items?: RequirementItem[] } | null;
+    return detail?.items ?? [];
+  }, [selectedRequirementDetail]);
   const totalPIMsGenerated = pims?.length || 0;
   const cuadroNameById = useMemo(() => {
     const m: Record<string, string> = {};
@@ -281,7 +309,11 @@ export default function RequirementsPage() {
     return styles[estado] || styles.borrador;
   };
 
-  const totalToneladas = requirements?.reduce((acc, r) => acc + (r.total_toneladas || 0), 0) || 0;
+  // Solo sumar toneladas de cuadros por peso; excluir cuadros en unidades (DISCOS, etc.)
+  const totalToneladas = requirements?.reduce((acc, r) => {
+    if (isCuadroPorUnidad(cuadroCodigoById[r.cuadro_id])) return acc;
+    return acc + (r.total_toneladas || 0);
+  }, 0) || 0;
   const totalUSD = requirements?.reduce((acc, r) => acc + (r.total_usd || 0), 0) || 0;
 
   if (error) {
@@ -395,7 +427,8 @@ export default function RequirementsPage() {
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {cuadroNameById[req.cuadro_id] ?? req.cuadro_id} • {req.total_toneladas || 0} t
+                            {cuadroNameById[req.cuadro_id] ?? req.cuadro_id} •{' '}
+                            {isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'En unidades' : `${req.total_toneladas || 0} t`}
                           </p>
                           <p className="text-sm font-medium text-primary mt-1">
                             {formatCurrency(req.total_usd || 0)}
@@ -481,8 +514,8 @@ export default function RequirementsPage() {
                     return (
                       <>
                         <div className={cn(
-                          'grid grid-cols-4 gap-4 p-4 rounded-lg border-2 mb-6',
-                          esPorUnidad ? 'bg-blue-500/10 border-blue-500/30' : 'bg-amber-500/10 border-amber-500/30'
+                          'grid gap-4 p-4 rounded-lg border-2 mb-6',
+                          esPorUnidad ? 'bg-blue-500/10 border-blue-500/30 grid-cols-3' : 'bg-amber-500/10 border-amber-500/30 grid-cols-4'
                         )}>
                           <div>
                             <p className="text-sm text-muted-foreground">Total USD</p>
@@ -491,35 +524,104 @@ export default function RequirementsPage() {
                           {esPorUnidad ? (
                             <div>
                               <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Total Unidades</p>
-                              <p className="text-xl font-bold text-blue-700 dark:text-blue-400">—</p>
+                              <p className="text-xl font-bold text-blue-700 dark:text-blue-400">
+                                {totalUnidadesSelected.toLocaleString('es-PE')}
+                              </p>
                             </div>
                           ) : (
-                            <div>
-                              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Toneladas</p>
-                              <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{selectedRequirement.total_toneladas || 0} t</p>
-                            </div>
+                            <>
+                              <div>
+                                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Toneladas</p>
+                                <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{selectedRequirement.total_toneladas || 0} t</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Total Kilos</p>
+                                <p className="text-xl font-bold">{(selectedRequirement.total_kilos || 0).toLocaleString()} kg</p>
+                              </div>
+                            </>
                           )}
-                          <div>
-                            <p className="text-sm text-muted-foreground">Total Kilos</p>
-                            <p className="text-xl font-bold">{(selectedRequirement.total_kilos || 0).toLocaleString()} kg</p>
-                          </div>
                           <div>
                             <p className="text-sm text-muted-foreground">PIMs</p>
                             <p className="text-xl font-bold">{countPIMsForRequirement(selectedRequirement.id)}</p>
                           </div>
                         </div>
-                        {!esPorUnidad && (
-                          <div className="grid grid-cols-2 gap-4 mb-6">
-                            <div className="p-4 rounded-lg border border-success/30 bg-success/5">
-                              <p className="text-sm text-muted-foreground">Kilos Disponibles</p>
-                              <p className="text-xl font-bold text-success">{(selectedRequirement.kilos_disponibles || 0).toLocaleString()} kg</p>
-                            </div>
-                            <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
-                              <p className="text-sm text-muted-foreground">Kilos Consumidos</p>
-                              <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString()} kg</p>
-                            </div>
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                          {esPorUnidad ? (
+                            <>
+                              <div className="p-4 rounded-lg border border-success/30 bg-success/5">
+                                <p className="text-sm text-muted-foreground">Unidades Disponibles</p>
+                                <p className="text-xl font-bold text-success">{(selectedRequirement.kilos_disponibles || 0).toLocaleString('es-PE')}</p>
+                              </div>
+                              <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
+                                <p className="text-sm text-muted-foreground">Unidades Consumidas</p>
+                                <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString('es-PE')}</p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="p-4 rounded-lg border border-success/30 bg-success/5">
+                                <p className="text-sm text-muted-foreground">Kilos Disponibles</p>
+                                <p className="text-xl font-bold text-success">{(selectedRequirement.kilos_disponibles || 0).toLocaleString()} kg</p>
+                              </div>
+                              <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
+                                <p className="text-sm text-muted-foreground">Kilos Consumidos</p>
+                                <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString()} kg</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div className="border rounded-lg overflow-hidden">
+                          <div className="px-4 py-2 bg-muted/50 border-b flex items-center gap-2">
+                            <List className="h-4 w-4" />
+                            <p className="font-medium text-sm">Detalle del requerimiento</p>
                           </div>
-                        )}
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Código</TableHead>
+                                <TableHead>Descripción</TableHead>
+                                <TableHead className="text-right">Cantidad</TableHead>
+                                <TableHead className="text-right">Unidad</TableHead>
+                                <TableHead className="text-right">{esPorUnidad ? 'Unid. consumidas' : 'Kg consumidos'}</TableHead>
+                                <TableHead className="text-right">{esPorUnidad ? 'Unid. disponibles' : 'Kg disponibles'}</TableHead>
+                                <TableHead className="text-right">Precio unit. USD</TableHead>
+                                <TableHead className="text-right">Total USD</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {selectedRequirementItems.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                                    No hay ítems cargados
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                selectedRequirementItems.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell className="font-mono text-sm">{item.codigo_producto}</TableCell>
+                                    <TableCell className="max-w-[280px] truncate">{item.descripcion}</TableCell>
+                                    <TableCell className="text-right font-medium">
+                                      {item.cantidad_requerida.toLocaleString('es-PE')}
+                                    </TableCell>
+                                    <TableCell className="text-right text-muted-foreground">{item.unidad}</TableCell>
+                                    <TableCell className="text-right text-muted-foreground">
+                                      {(item.kilos_consumidos ?? 0).toLocaleString('es-PE')}
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">
+                                      {(item.kilos_disponibles ?? 0).toLocaleString('es-PE')}
+                                    </TableCell>
+                                    <TableCell className="text-right text-muted-foreground">
+                                      {item.precio_unitario_usd != null ? formatCurrency(item.precio_unitario_usd) : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">
+                                      {item.total_usd != null ? formatCurrency(item.total_usd) : '—'}
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </>
                     );
                   })()}

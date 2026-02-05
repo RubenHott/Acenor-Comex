@@ -222,8 +222,8 @@ export function useCreateRequirementWithItems() {
 
       return req;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['requerimientos'] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['requerimientos'] });
     },
   });
 }
@@ -302,9 +302,8 @@ export function useUpdateRequirementWithItems() {
 
       return { id, ...updates };
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['requerimientos'] });
-      queryClient.invalidateQueries({ queryKey: ['requerimientos', variables.id] });
+    onSuccess: async (_, variables) => {
+      await queryClient.refetchQueries({ queryKey: ['requerimientos'] });
     },
   });
 }
@@ -332,8 +331,8 @@ export function useDeleteRequirement() {
       if (error) throw error;
       return id;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['requerimientos'] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['requerimientos'] });
     },
   });
 }

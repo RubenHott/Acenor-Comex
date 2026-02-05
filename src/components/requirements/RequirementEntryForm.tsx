@@ -137,9 +137,21 @@ export function RequirementEntryForm({
     updateLine(tempId, { product, cantidadRequerida: product ? 1 : 0 });
   };
 
-  const handleCantidadChange = (tempId: string, value: string) => {
+  // Para cuadros por peso: el usuario ingresa en TONELADAS. Convertir según unidad del producto.
+  const toDisplayCantidad = (cantidad: number, unidad: string | null | undefined): number => {
+    if (!esPorUnidad && unidad?.toUpperCase() === 'KG') return cantidad / 1000;
+    return cantidad;
+  };
+  const fromDisplayCantidad = (inputTon: number, unidad: string | null | undefined): number => {
+    if (!esPorUnidad && unidad?.toUpperCase() === 'KG') return inputTon * 1000;
+    return inputTon;
+  };
+
+  const handleCantidadChange = (tempId: string, value: string, product: Product | null) => {
     const n = parseFloat(value);
-    updateLine(tempId, { cantidadRequerida: isNaN(n) ? 0 : n });
+    const raw = isNaN(n) ? 0 : n;
+    const cantidadRequerida = fromDisplayCantidad(raw, product?.unidad);
+    updateLine(tempId, { cantidadRequerida });
   };
 
   const consolidated = consolidateLines(lines);
@@ -148,9 +160,13 @@ export function RequirementEntryForm({
     const precio = l.product.ultimo_precio_usd ?? 0;
     return sum + l.cantidadRequerida * precio;
   }, 0);
-  const totalTon = consolidated
-    .filter((l) => l.product?.unidad === 'TON')
-    .reduce((sum, l) => sum + l.cantidadRequerida, 0);
+  const totalTon = consolidated.reduce((sum, l) => {
+    if (!l.product) return sum;
+    const u = (l.product.unidad || '').toUpperCase();
+    if (u === 'TON') return sum + l.cantidadRequerida;
+    if (u === 'KG') return sum + l.cantidadRequerida / 1000;
+    return sum;
+  }, 0);
   const totalUn = consolidated
     .filter((l) => l.product?.unidad === 'UN')
     .reduce((sum, l) => sum + l.cantidadRequerida, 0);
@@ -252,7 +268,9 @@ export function RequirementEntryForm({
                 <TableHead className="w-[70px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Unidad</TableHead>
                 <TableHead className="w-[95px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Últ. precio</TableHead>
                 <TableHead className="w-[95px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Últ. fecha imp.</TableHead>
-                <TableHead className="w-[100px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Cantidad</TableHead>
+                <TableHead className="w-[100px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">
+                {esPorUnidad ? 'Cantidad' : 'Cantidad (ton)'}
+              </TableHead>
                 <TableHead className="w-[95px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Subtotal USD</TableHead>
                 <TableHead className="w-[52px] sticky top-0 bg-muted/80 backdrop-blur z-10"></TableHead>
               </TableRow>
@@ -302,11 +320,12 @@ export function RequirementEntryForm({
                       <Input
                         type="number"
                         min={0}
-                        step="any"
-                        value={line.cantidadRequerida || ''}
-                        onChange={(e) => handleCantidadChange(line.tempId, e.target.value)}
+                        step={esPorUnidad ? 1 : 0.001}
+                        value={line.product ? toDisplayCantidad(line.cantidadRequerida, line.product.unidad) || '' : line.cantidadRequerida || ''}
+                        onChange={(e) => handleCantidadChange(line.tempId, e.target.value, line.product)}
                         disabled={busy}
                         className="w-24"
+                        placeholder={esPorUnidad ? undefined : 'ton'}
                       />
                     </TableCell>
                     <TableCell className="text-sm font-medium">
