@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AddSupplierDialog } from './AddSupplierDialog';
 import type { Supplier } from '@/hooks/useSuppliers';
 
 export interface PIMFormData {
@@ -53,6 +54,10 @@ export function PIMForm({
     onFormDataChange(updated);
   };
 
+  const handleSupplierCreated = (supplierId: string) => {
+    handleChange('proveedorId', supplierId);
+  };
+
   return (
     <div className="space-y-6">
       {/* Descripción */}
@@ -67,9 +72,12 @@ export function PIMForm({
         />
       </div>
 
-      {/* Proveedor */}
+      {/* Proveedor with inline add */}
       <div className="space-y-2">
-        <Label htmlFor="proveedor">Proveedor (Trader) *</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="proveedor">Proveedor (Trader) *</Label>
+          <AddSupplierDialog onSupplierCreated={handleSupplierCreated} />
+        </div>
         <Select
           value={formData.proveedorId}
           onValueChange={(v) => handleChange('proveedorId', v)}
