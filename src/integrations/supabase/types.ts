@@ -234,9 +234,12 @@ export type Database = {
           nombre: string
           observaciones: string | null
           pim_id: string
+          stage_key: string | null
           subido_por: string
           tipo: string
           url: string
+          version: number | null
+          version_group: string | null
         }
         Insert: {
           created_at?: string | null
@@ -245,9 +248,12 @@ export type Database = {
           nombre: string
           observaciones?: string | null
           pim_id: string
+          stage_key?: string | null
           subido_por: string
           tipo: string
           url: string
+          version?: number | null
+          version_group?: string | null
         }
         Update: {
           created_at?: string | null
@@ -256,9 +262,12 @@ export type Database = {
           nombre?: string
           observaciones?: string | null
           pim_id?: string
+          stage_key?: string | null
           subido_por?: string
           tipo?: string
           url?: string
+          version?: number | null
+          version_group?: string | null
         }
         Relationships: [
           {
@@ -448,6 +457,9 @@ export type Database = {
           created_at: string | null
           cuadro_id: string
           descripcion: string
+          dhl_last_checked_at: string | null
+          dhl_last_status: string | null
+          dhl_tracking_code: string | null
           dias_credito: number | null
           estado: string
           fabricas_origen: string | null
@@ -481,6 +493,9 @@ export type Database = {
           created_at?: string | null
           cuadro_id: string
           descripcion: string
+          dhl_last_checked_at?: string | null
+          dhl_last_status?: string | null
+          dhl_tracking_code?: string | null
           dias_credito?: number | null
           estado: string
           fabricas_origen?: string | null
@@ -514,6 +529,9 @@ export type Database = {
           created_at?: string | null
           cuadro_id?: string
           descripcion?: string
+          dhl_last_checked_at?: string | null
+          dhl_last_status?: string | null
+          dhl_tracking_code?: string | null
           dias_credito?: number | null
           estado?: string
           fabricas_origen?: string | null
