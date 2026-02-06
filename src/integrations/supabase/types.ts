@@ -135,6 +135,97 @@ export type Database = {
           },
         ]
       }
+      pim_activity_log: {
+        Row: {
+          created_at: string | null
+          descripcion: string
+          id: string
+          metadata: Json | null
+          pim_id: string
+          stage_key: string | null
+          tipo: string
+          usuario: string
+        }
+        Insert: {
+          created_at?: string | null
+          descripcion: string
+          id: string
+          metadata?: Json | null
+          pim_id: string
+          stage_key?: string | null
+          tipo: string
+          usuario: string
+        }
+        Update: {
+          created_at?: string | null
+          descripcion?: string
+          id?: string
+          metadata?: Json | null
+          pim_id?: string
+          stage_key?: string | null
+          tipo?: string
+          usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pim_activity_log_pim_id_fkey"
+            columns: ["pim_id"]
+            isOneToOne: false
+            referencedRelation: "pims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pim_checklist_items: {
+        Row: {
+          checklist_key: string
+          completado: boolean | null
+          completado_en: string | null
+          completado_por: string | null
+          created_at: string | null
+          critico: boolean | null
+          id: string
+          pim_id: string
+          stage_key: string
+          texto: string
+          updated_at: string | null
+        }
+        Insert: {
+          checklist_key: string
+          completado?: boolean | null
+          completado_en?: string | null
+          completado_por?: string | null
+          created_at?: string | null
+          critico?: boolean | null
+          id: string
+          pim_id: string
+          stage_key: string
+          texto: string
+          updated_at?: string | null
+        }
+        Update: {
+          checklist_key?: string
+          completado?: boolean | null
+          completado_en?: string | null
+          completado_por?: string | null
+          created_at?: string | null
+          critico?: boolean | null
+          id?: string
+          pim_id?: string
+          stage_key?: string
+          texto?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pim_checklist_items_pim_id_fkey"
+            columns: ["pim_id"]
+            isOneToOne: false
+            referencedRelation: "pims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pim_documentos: {
         Row: {
           created_at: string | null
@@ -293,6 +384,56 @@ export type Database = {
             columns: ["requirement_item_id"]
             isOneToOne: false
             referencedRelation: "requerimiento_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pim_tracking_stages: {
+        Row: {
+          created_at: string | null
+          fecha_fin: string | null
+          fecha_inicio: string | null
+          fecha_limite: string | null
+          id: string
+          notas: string | null
+          pim_id: string
+          responsable: string | null
+          stage_key: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          fecha_limite?: string | null
+          id: string
+          notas?: string | null
+          pim_id: string
+          responsable?: string | null
+          stage_key: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          fecha_limite?: string | null
+          id?: string
+          notas?: string | null
+          pim_id?: string
+          responsable?: string | null
+          stage_key?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pim_tracking_stages_pim_id_fkey"
+            columns: ["pim_id"]
+            isOneToOne: false
+            referencedRelation: "pims"
             referencedColumns: ["id"]
           },
         ]

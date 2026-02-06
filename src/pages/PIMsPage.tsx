@@ -50,6 +50,7 @@ import {
   Pencil,
   Weight,
   Box,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PIM } from '@/hooks/usePIMs';
@@ -259,6 +260,14 @@ export default function PIMsPage() {
                     <p className="text-muted-foreground">{selectedPIM.descripcion}</p>
                   </div>
                   <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/comex/pim/seguimiento/${selectedPIM.id}`)}
+                    >
+                      <ClipboardList className="h-4 w-4 mr-1" />
+                      Seguimiento
+                    </Button>
                     <Button 
                       variant="outline" 
                       size="sm"
