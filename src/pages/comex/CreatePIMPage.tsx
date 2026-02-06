@@ -114,6 +114,17 @@ export default function CreatePIMPage() {
   const totalExtraUsd = extraItems.reduce((sum, i) => sum + i.totalUsd, 0);
   const totalUsd = totalReqUsd + totalExtraUsd;
 
+  // Extra toneladas & unidades
+  const extraToneladas = extraItems.reduce((sum, i) => {
+    if (isCuadroPorUnidad(i.cuadro ?? '')) return sum;
+    if (i.unidad === 'KG') return sum + i.cantidad / 1000;
+    return sum + i.cantidad;
+  }, 0);
+  const extraUnidades = extraItems.reduce((sum, i) => {
+    if (!isCuadroPorUnidad(i.cuadro ?? '')) return sum;
+    return sum + i.cantidad;
+  }, 0);
+
   const totalToneladas = selections.reduce((sum, s) => {
     if (isCuadroPorUnidad(s.cuadroCodigo)) return sum;
     if (s.unidad === 'KG') return sum + s.cantidadAConsumir / 1000;
@@ -353,20 +364,39 @@ export default function CreatePIMPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs text-muted-foreground">Total Toneladas</Label>
-                    <p className="text-xl font-bold">{totalToneladas.toFixed(2)} t</p>
+                    <p className="text-xl font-bold">
+                      {(totalToneladas + extraToneladas).toLocaleString('es-PE', { minimumFractionDigits: 2 })} t
+                    </p>
+                    {extraToneladas > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        ({extraToneladas.toLocaleString('es-PE', { minimumFractionDigits: 2 })} t extras)
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Total USD</Label>
-                    <p className="text-xl font-bold text-primary">
-                      ${totalUsd.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    <Label className="text-xs text-muted-foreground">Total Unidades</Label>
+                    <p className="text-xl font-bold">
+                      {(selections.reduce((sum, s) => isCuadroPorUnidad(s.cuadroCodigo) ? sum + s.cantidadAConsumir : sum, 0) + extraUnidades).toLocaleString('es-PE', { maximumFractionDigits: 0 })}
                     </p>
+                    {extraUnidades > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        ({extraUnidades.toLocaleString()} extras)
+                      </p>
+                    )}
                   </div>
                 </div>
-                {extraItems.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    (Incluye ${totalExtraUsd.toLocaleString()} en productos adicionales)
+                <Separator className="my-3" />
+                <div>
+                  <Label className="text-xs text-muted-foreground">Total USD</Label>
+                  <p className="text-xl font-bold text-primary">
+                    ${totalUsd.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                   </p>
-                )}
+                  {extraItems.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      (Incluye ${totalExtraUsd.toLocaleString('es-PE', { minimumFractionDigits: 2 })} en productos adicionales)
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
