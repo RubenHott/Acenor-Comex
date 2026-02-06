@@ -22,6 +22,7 @@ import WorkOrderDetailPage from "./pages/workOrders/WorkOrderDetailPage";
 import CreateWorkOrderPage from "./pages/workOrders/CreateWorkOrderPage";
 import CreatePIMPage from "./pages/comex/CreatePIMPage";
 import EditPIMPage from "./pages/comex/EditPIMPage";
+import PIMTrackingPage from "./pages/comex/PIMTrackingPage";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="pims" element={<PIMsPage />} />
               <Route path="pim/crear" element={<CreatePIMPage />} />
               <Route path="pim/editar/:id" element={<EditPIMPage />} />
+              <Route path="pim/seguimiento/:id" element={<PIMTrackingPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="suppliers" element={<SuppliersPage />} />
               <Route path="maestros" element={<MaestrosPage />} />

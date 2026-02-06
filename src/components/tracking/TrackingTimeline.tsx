@@ -1,0 +1,77 @@
+import type { ActivityLog } from '@/hooks/usePIMTracking';
+import { CheckCircle, MessageSquare, ArrowRight, Scissors, Settings, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { getStageByKey } from '@/lib/trackingChecklists';
+
+interface Props {
+  logs: ActivityLog[];
+}
+
+const typeConfig: Record<string, { icon: typeof CheckCircle; color: string }> = {
+  checklist_check: { icon: CheckCircle, color: 'text-green-500' },
+  note: { icon: MessageSquare, color: 'text-blue-500' },
+  status_change: { icon: Settings, color: 'text-purple-500' },
+  stage_advance: { icon: ArrowRight, color: 'text-indigo-500' },
+  split: { icon: Scissors, color: 'text-orange-500' },
+};
+
+export function TrackingTimeline({ logs }: Props) {
+  if (logs.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground text-sm">
+        Sin actividad registrada aún.
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative space-y-0">
+      {/* Vertical line */}
+      <div className="absolute left-5 top-3 bottom-3 w-px bg-border" />
+
+      {logs.map((log) => {
+        const config = typeConfig[log.tipo] || { icon: AlertTriangle, color: 'text-muted-foreground' };
+        const Icon = config.icon;
+        const stage = log.stage_key ? getStageByKey(log.stage_key) : null;
+
+        return (
+          <div key={log.id} className="relative flex gap-3 py-3">
+            <div
+              className={cn(
+                'w-10 h-10 rounded-full bg-card border flex items-center justify-center flex-shrink-0 z-10',
+                config.color
+              )}
+            >
+              <Icon className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0 pt-1">
+              <p className="text-sm">{log.descripcion}</p>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {log.usuario}
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {new Date(log.created_at).toLocaleDateString('es-CL', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+                {stage && (
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded"
+                    style={{ backgroundColor: stage.color + '20', color: stage.color }}
+                  >
+                    {stage.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
