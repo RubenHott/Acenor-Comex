@@ -6,7 +6,7 @@ import { usePIMItems } from '@/hooks/usePIMItems';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { PIMForm, type PIMFormData } from '@/components/pim/PIMForm';
 import { PIMContractConditions, type ContractConditionsData } from '@/components/pim/PIMContractConditions';
-import { PIMEditItemsTable } from '@/components/pim/PIMEditItemsTable';
+import { PIMEditItemsTable, type EditableItem } from '@/components/pim/PIMEditItemsTable';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +17,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Ship, Save, FileText, Package } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
 import { useQueryClient } from '@tanstack/react-query';
 
 export default function EditPIMPage() {
@@ -47,18 +46,10 @@ export default function EditPIMPage() {
     notasPago: '',
   });
 
-  const [editedItems, setEditedItems] = useState<Array<{
-    id: string;
-    codigo_producto: string;
-    descripcion: string;
-    unidad: string;
-    cantidad: number;
-    precio_unitario_usd: number;
-    total_usd: number;
-    toneladas: number;
-  }>>([]);
-
+  const [editedItems, setEditedItems] = useState<EditableItem[]>([]);
+  const [removedItemIds, setRemovedItemIds] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Pre-populate form when PIM data loads
   useEffect(() => {
@@ -71,7 +62,6 @@ export default function EditPIMPage() {
         porcentajeAnticipo: pim.porcentaje_anticipo ?? null,
       });
 
-      // Parse fecha_embarque (stored as "YYYY-MM-DD - YYYY-MM-DD")
       let fechaInicio: Date | undefined;
       let fechaFin: Date | undefined;
       if (pim.fecha_embarque) {
@@ -98,6 +88,7 @@ export default function EditPIMPage() {
     if (pimItems && pimItems.length > 0 && editedItems.length === 0 && initialized) {
       setEditedItems(pimItems.map(item => ({
         id: item.id,
+        producto_id: item.producto_id,
         codigo_producto: item.codigo_producto,
         descripcion: item.descripcion,
         unidad: item.unidad,
@@ -110,9 +101,9 @@ export default function EditPIMPage() {
   }, [pimItems, initialized, editedItems.length]);
 
   // Computed totals
-  const totalToneladas = useMemo(() => 
+  const totalToneladas = useMemo(() =>
     editedItems.reduce((sum, item) => {
-      if (isCuadroPorUnidad('')) return sum; // fallback
+      if (item.unidad === 'UND' || item.unidad === 'PZA') return sum;
       if (item.unidad === 'KG') return sum + item.cantidad / 1000;
       if (item.unidad === 'TON') return sum + item.cantidad;
       return sum + item.toneladas;
@@ -135,6 +126,7 @@ export default function EditPIMPage() {
 
   const handleSave = async () => {
     if (!id || !pim) return;
+    setSaving(true);
 
     try {
       // Get supplier name
@@ -166,21 +158,45 @@ export default function EditPIMPage() {
         },
       });
 
-      // Update each pim_item
+      // 1. Delete removed items
+      for (const removedId of removedItemIds) {
+        await supabase.from('pim_items').delete().eq('id', removedId);
+      }
+
+      // 2. Update existing items & insert new ones
       for (const item of editedItems) {
         const toneladas = item.unidad === 'KG' ? item.cantidad / 1000 : item.unidad === 'TON' ? item.cantidad : 0;
-        await supabase
-          .from('pim_items')
-          .update({
+
+        if (item.isNew) {
+          // Insert new item
+          await supabase.from('pim_items').insert({
+            id: crypto.randomUUID(),
+            pim_id: id,
+            producto_id: item.producto_id ?? '',
+            codigo_producto: item.codigo_producto,
+            descripcion: item.descripcion,
+            unidad: item.unidad,
             cantidad: item.cantidad,
             precio_unitario_usd: item.precio_unitario_usd,
             total_usd: item.total_usd,
             toneladas,
-          })
-          .eq('id', item.id);
+          });
+        } else {
+          // Update existing
+          await supabase
+            .from('pim_items')
+            .update({
+              cantidad: item.cantidad,
+              precio_unitario_usd: item.precio_unitario_usd,
+              total_usd: item.total_usd,
+              toneladas,
+            })
+            .eq('id', item.id);
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ['pim-items', id] });
+      queryClient.invalidateQueries({ queryKey: ['pims'] });
 
       toast({
         title: 'PIM actualizado',
@@ -194,6 +210,8 @@ export default function EditPIMPage() {
         description: error instanceof Error ? error.message : 'Error desconocido',
         variant: 'destructive',
       });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -300,10 +318,10 @@ export default function EditPIMPage() {
             <Button
               className="w-full gradient-primary"
               size="lg"
-              disabled={updatePIM.isPending}
+              disabled={saving || editedItems.length === 0}
               onClick={handleSave}
             >
-              {updatePIM.isPending ? 'Guardando...' : (
+              {saving ? 'Guardando...' : (
                 <>
                   <Save className="h-4 w-4 mr-2" /> Guardar Cambios
                 </>
@@ -325,6 +343,8 @@ export default function EditPIMPage() {
                 <PIMEditItemsTable
                   items={editedItems}
                   onItemsChange={setEditedItems}
+                  removedItemIds={removedItemIds}
+                  onRemovedItemIdsChange={setRemovedItemIds}
                 />
               </CardContent>
             </Card>
