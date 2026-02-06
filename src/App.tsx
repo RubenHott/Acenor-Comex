@@ -42,6 +42,7 @@ const App = () => (
               <Route path="requirements" element={<RequirementsPage />} />
               <Route path="pims" element={<PIMsPage />} />
               <Route path="pim/crear" element={<CreatePIMPage />} />
+              <Route path="pim/editar/:id" element={<CreatePIMPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="suppliers" element={<SuppliersPage />} />
               <Route path="maestros" element={<MaestrosPage />} />
