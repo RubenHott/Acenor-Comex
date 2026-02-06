@@ -14,7 +14,7 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
 │  │  LoginPage   │───▶│ ModulesPage  │───▶│   Módulos    │      │
 │  └──────────────┘    └──────────────┘    └──────────────┘      │
-│                                                │                 │
+│                                                │                │
 │                      ┌─────────────────────────┼───────┐        │
 │                      ▼                         ▼       ▼        │
 │               ┌───────────┐            ┌───────────┐   ...      │
@@ -24,9 +24,10 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 │                      │                         │                 │
 │              ┌───────┴───────┐         ┌───────┴───────┐        │
 │              ▼               ▼         ▼               ▼        │
-│         ┌─────────┐   ┌─────────┐ ┌─────────┐   ┌─────────┐    │
-│         │Dashboard│   │  PIMs   │ │Dashboard│   │ Orders  │    │
-│         └─────────┘   └─────────┘ └─────────┘   └─────────┘    │
+│         ┌─────────┐   ┌─────────┐ ┌─────────┐   ┌─────────┐   │
+│         │Dashboard│   │  PIMs   │ │Dashboard│   │ Orders  │   │
+│         │         │   │Tracking │ │         │   │         │   │
+│         └─────────┘   └─────────┘ └─────────┘   └─────────┘   │
 │                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                     CAPA DE ESTADO                              │
@@ -37,8 +38,9 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 ├─────────────────────────────────────────────────────────────────┤
 │                     CAPA DE DATOS                               │
 │  ┌────────────────────────────────────────────────────────┐    │
-│  │               React Query Hooks                         │    │
-│  │  useDashboardStats, usePIMs, useWorkOrders, etc.       │    │
+│  │               React Query Hooks (15+)                   │    │
+│  │  useDashboardStats, usePIMs, usePIMTracking,           │    │
+│  │  usePIMCreation, usePIMDocuments, useWorkOrders, etc.  │    │
 │  └────────────────────────────────────────────────────────┘    │
 │           │                                      │              │
 │           ▼                                      ▼              │
@@ -57,8 +59,14 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 │  │    stats         │ │    stats         │ │    order        │ │
 │  └────────┬─────────┘ └────────┬─────────┘ └────────┬────────┘ │
 │           │                    │                     │          │
-│           └────────────────────┴─────────────────────┘          │
-│                                │                                 │
+│  ┌────────┴───────────────────┬┘                     │          │
+│  │                            │                      │          │
+│  │  ┌──────────────────┐     │                      │          │
+│  │  │  dhl-tracking    │     │                      │          │
+│  │  │  (API externa)   │     │                      │          │
+│  │  └────────┬─────────┘     │                      │          │
+│  │           │               │                      │          │
+│  └───────────┴───────────────┴──────────────────────┘          │
 │                       supabase.rpc('fn_*')                      │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -68,9 +76,11 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    FUNCIONES SQL                          │  │
+│  │                    FUNCIONES SQL (9)                      │  │
 │  │  fn_pim_stats, fn_sla_global_stats, fn_work_order_stats  │  │
 │  │  fn_generate_work_order_code, fn_calculate_due_date      │  │
+│  │  fn_pim_status_distribution, fn_pim_monthly_trend        │  │
+│  │  fn_requirement_pim_count, fn_get_critical_pim           │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -79,15 +89,19 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │                       TABLAS                              │  │
-│  │  pims, productos, proveedores, requerimientos, sla_data  │  │
-│  │  work_orders, notificaciones, pim_items, etc.            │  │
+│  │                    TABLAS (17+)                           │  │
+│  │  pims, pim_items, pim_tracking_stages,                   │  │
+│  │  pim_checklist_items, pim_activity_log, pim_documentos,  │  │
+│  │  pim_requirement_items, productos, proveedores,          │  │
+│  │  requerimientos_mensuales, requerimiento_items,           │  │
+│  │  cuadros_importacion, sla_data, validacion_contrato_pim, │  │
+│  │  diferencia_contrato, work_orders, notificaciones        │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │     Auth     │  │   Storage    │  │     RLS      │          │
-│  │  (Pendiente) │  │  (Pendiente) │  │   (Activo)   │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │     Auth     │  │   Storage    │  │     RLS      │         │
+│  │  (Mock)      │  │ pim-docs ✅  │  │   (Activo)   │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -127,25 +141,35 @@ El Sistema de Gestión de Planta es una aplicación web modular diseñada para g
 | **Validación** | Zod | 3.25.76 | Schema validation |
 | **Fechas** | date-fns | 3.6.0 | Manipulación de fechas |
 | **Iconos** | Lucide React | 0.462.0 | Iconografía |
+| **Excel** | xlsx | 0.18.5 | Importar/exportar Excel/CSV |
 
 ## Estructura de Carpetas
 
 ```
 src/
 ├── components/
-│   ├── dashboard/          # Componentes del dashboard (StatCard, etc.)
-│   ├── layout/             # Layouts y sidebars
-│   ├── ui/                 # Componentes shadcn/ui (40+)
-│   └── workOrders/         # Componentes de OTs
+│   ├── dashboard/          # StatCard, SLAIndicator, PIMStatusBadge, RecentPIMsTable
+│   ├── layout/             # ComexLayout, WorkOrdersLayout, Sidebars, Header
+│   ├── maestros/           # TableStructureCard, tableSchemas
+│   ├── pim/                # PIMForm, PIMEditItemsTable, PIMItemSelector, AddSupplierDialog, etc.
+│   ├── requirements/       # RequirementEntryForm, ProductAutocomplete
+│   ├── tracking/           # TrackingStageBar, TrackingChecklist, TrackingTimeline, DHLTrackingPanel, etc.
+│   ├── ui/                 # shadcn/ui (40+ componentes)
+│   └── workOrders/         # PriorityBadge, WorkOrderStatusBadge
 ├── contexts/
 │   └── AuthContext.tsx     # Contexto de autenticación (mock)
 ├── hooks/
 │   ├── useDashboardStats.ts  # Stats del dashboard (Edge Function)
 │   ├── usePIMs.ts            # Lista de PIMs
+│   ├── usePIMCreation.ts     # Crear PIM con items y consumo
+│   ├── usePIMItems.ts        # Items de un PIM
+│   ├── usePIMDocuments.ts    # Documentos de un PIM
+│   ├── usePIMTracking.ts     # Etapas, checklist, timeline, operaciones
 │   ├── useWorkOrders.ts      # Órdenes de trabajo
 │   ├── useProducts.ts        # Productos
 │   ├── useSuppliers.ts       # Proveedores
 │   ├── useRequirements.ts    # Requerimientos
+│   ├── useCuadros.ts         # Cuadros de importación
 │   ├── useNotifications.ts   # Notificaciones
 │   └── useSLAData.ts         # Datos SLA
 ├── integrations/
@@ -153,40 +177,44 @@ src/
 │       ├── client.ts       # Cliente Supabase
 │       └── types.ts        # Tipos auto-generados
 ├── lib/
-│   └── utils.ts            # Utilidades (cn, etc.)
+│   ├── utils.ts            # Utilidades (cn, etc.)
+│   ├── trackingChecklists.ts # Definición de etapas y checklist items
+│   ├── cuadrosUnidad.ts    # Mapeo de cuadros y unidades
+│   └── parseCsvExcel.ts    # Parser de archivos CSV/Excel
 ├── pages/
-│   ├── workOrders/         # Páginas módulo OTs
+│   ├── comex/
+│   │   ├── CreatePIMPage.tsx     # Crear nuevo PIM
+│   │   ├── EditPIMPage.tsx       # Editar PIM existente
+│   │   └── PIMTrackingPage.tsx   # Seguimiento de PIM por etapas
+│   ├── workOrders/
+│   │   ├── WorkOrdersDashboardPage.tsx
+│   │   ├── WorkOrdersListPage.tsx
+│   │   ├── WorkOrderDetailPage.tsx
+│   │   └── CreateWorkOrderPage.tsx
 │   ├── DashboardPage.tsx   # Dashboard COMEX
 │   ├── LoginPage.tsx       # Login
-│   └── ModulesPage.tsx     # Selector de módulos
+│   ├── ModulesPage.tsx     # Selector de módulos
+│   ├── PIMsPage.tsx        # Lista de PIMs
+│   ├── ProductsPage.tsx    # Catálogo de productos
+│   ├── SuppliersPage.tsx   # Proveedores
+│   ├── RequirementsPage.tsx # Requerimientos
+│   └── MaestrosPage.tsx    # Tablas maestras
 ├── types/
 │   ├── comex.ts            # Tipos COMEX
 │   └── workOrders.ts       # Tipos OTs
+├── test/                   # Tests
 ├── App.tsx                 # Rutas
 ├── index.css               # Variables CSS
 └── main.tsx                # Entry point
 
 supabase/
 ├── functions/
-│   ├── get-dashboard-stats/  # Stats dashboard
+│   ├── get-dashboard-stats/  # Stats dashboard COMEX
 │   ├── get-work-order-stats/ # Stats OTs
-│   └── create-work-order/    # Crear OT
+│   ├── create-work-order/    # Crear OT
+│   └── dhl-tracking/         # Tracking DHL (API externa)
 ├── migrations/               # Migraciones SQL
 └── config.toml               # Configuración
-```
-
-## Flujo de Navegación
-
-```
-Usuario no autenticado:
-  /login ──▶ Introduce credenciales ──▶ Autenticación (mock)
-
-Usuario autenticado:
-  / (ModulesPage) ──▶ Selecciona módulo ──▶ /[modulo]/dashboard
-                                                    │
-                                          ┌─────────┴─────────┐
-                                          ▼                   ▼
-                                     /comex/*          /work-orders/*
 ```
 
 ## Principios de Diseño
@@ -197,13 +225,14 @@ Usuario autenticado:
 4. **Responsive**: Diseño adaptable a diferentes tamaños de pantalla
 5. **Accesibilidad**: Componentes accesibles con soporte para teclado y screen readers
 6. **Cálculos en Servidor**: Lógica pesada ejecutada en SQL/Edge Functions
+7. **Separación de Concerns**: Hooks para datos, componentes para UI, libs para utilidades
 
 ## Próximos Pasos
 
 1. **Migrar a Supabase Auth real** (ver [Implementar Autenticación](../guides/implementing-auth.md))
 2. **Implementar RLS robusto** para seguridad por usuario/rol
-3. **Integrar Supabase Storage** para documentos
+3. **Notificaciones push** en tiempo real
 
 ---
 
-*Última actualización: Enero 2026*
+*Última actualización: Febrero 2026*

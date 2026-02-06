@@ -38,24 +38,6 @@ El sistema utiliza React Query para el manejo de estado del servidor. Todos los 
 
 **Fuente de datos**: Edge Function `get-dashboard-stats`
 
-```typescript
-import { useDashboardStats } from '@/hooks/useDashboardStats';
-
-function Dashboard() {
-  const { data, isLoading, error } = useDashboardStats();
-  
-  if (isLoading) return <Skeleton />;
-  if (error) return <Alert>{error.message}</Alert>;
-  
-  return (
-    <div>
-      <StatCard value={data.pimStats.totalPIMs} />
-      <Chart data={data.statusDistribution} />
-    </div>
-  );
-}
-```
-
 **Hooks derivados**:
 - `usePIMStatsFromDashboard()` - Solo estadísticas de PIMs
 - `useStatusDistribution()` - Solo distribución por estado
@@ -73,24 +55,59 @@ function Dashboard() {
 
 **Fuente de datos**: Supabase directo (`from('pims')`)
 
-```typescript
-import { usePIMs } from '@/hooks/usePIMs';
+---
 
-function PIMsList() {
-  const { data: pims, isLoading } = usePIMs();
-  
-  return (
-    <Table>
-      {pims?.map(pim => (
-        <TableRow key={pim.id}>
-          <TableCell>{pim.codigo}</TableCell>
-          <TableCell>{pim.descripcion}</TableCell>
-        </TableRow>
-      ))}
-    </Table>
-  );
-}
-```
+### usePIMCreation
+
+**Ubicación**: `src/hooks/usePIMCreation.ts`
+
+**Propósito**: Crear un nuevo PIM con items y consumo de requerimiento.
+
+**Operaciones**:
+- `useCreatePIM()` — Mutation para crear PIM completo (PIM + items + consumo de requerimiento)
+
+---
+
+### usePIMItems
+
+**Ubicación**: `src/hooks/usePIMItems.ts`
+
+**Propósito**: Items de un PIM específico.
+
+**Fuente de datos**: Supabase directo (`from('pim_items')`)
+
+---
+
+### usePIMDocuments
+
+**Ubicación**: `src/hooks/usePIMDocuments.ts`
+
+**Propósito**: Gestión de documentos de un PIM.
+
+**Operaciones**:
+- Query para listar documentos por PIM y etapa
+- Mutation para subir documentos al Storage
+- Mutation para eliminar documentos
+
+---
+
+### usePIMTracking
+
+**Ubicación**: `src/hooks/usePIMTracking.ts`
+
+**Propósito**: Sistema completo de seguimiento por etapas de un PIM.
+
+**Queries**:
+- `useTrackingStages(pimId)` — Etapas del PIM con su estado
+- `useChecklistItems(pimId, stageKey?)` — Items de checklist (filtrados por etapa o todos)
+- `useActivityLog(pimId)` — Timeline de actividad
+
+**Mutations**:
+- `useInitializeTracking()` — Inicializa etapas y checklist items para un PIM
+- `useToggleChecklistItem()` — Marca/desmarca un item del checklist
+- `useUpdateStageStatus()` — Cambia estado de una etapa (pendiente → en_progreso → completado)
+- `useAddNote()` — Agrega nota al activity log
+- `useSplitPIM()` — Divide un PIM en sub-PIMs
 
 ---
 
@@ -98,33 +115,14 @@ function PIMsList() {
 
 **Ubicación**: `src/hooks/useWorkOrders.ts`
 
-**Propósito**: Lista de órdenes de trabajo y estadísticas.
+**Propósito**: Lista de órdenes de trabajo y operaciones.
 
 **Fuente de datos**: Supabase directo + Edge Function
 
-```typescript
-import { useWorkOrders, useWorkOrderStats, useCreateWorkOrder } from '@/hooks/useWorkOrders';
-
-function WorkOrdersPage() {
-  const { data: orders, isLoading } = useWorkOrders();
-  const { data: stats } = useWorkOrderStats();
-  const createMutation = useCreateWorkOrder();
-  
-  const handleCreate = (data) => {
-    createMutation.mutate(data, {
-      onSuccess: () => toast({ title: 'OT creada' })
-    });
-  };
-  
-  return (
-    <div>
-      <StatsCards stats={stats} />
-      <OrdersList orders={orders} />
-      <CreateForm onSubmit={handleCreate} />
-    </div>
-  );
-}
-```
+**Exports**:
+- `useWorkOrders()` — Lista de OTs
+- `useWorkOrderStats()` — Estadísticas via Edge Function
+- `useCreateWorkOrder()` — Mutation para crear OT
 
 ---
 
@@ -136,15 +134,6 @@ function WorkOrdersPage() {
 
 **Fuente de datos**: Supabase directo (`from('productos')`)
 
-```typescript
-import { useProducts } from '@/hooks/useProducts';
-
-function ProductsPage() {
-  const { data: products, isLoading } = useProducts();
-  // ...
-}
-```
-
 ---
 
 ### useSuppliers
@@ -154,15 +143,6 @@ function ProductsPage() {
 **Propósito**: Lista de proveedores.
 
 **Fuente de datos**: Supabase directo (`from('proveedores')`)
-
-```typescript
-import { useSuppliers } from '@/hooks/useSuppliers';
-
-function SuppliersPage() {
-  const { data: suppliers, isLoading } = useSuppliers();
-  // ...
-}
-```
 
 ---
 
@@ -174,14 +154,15 @@ function SuppliersPage() {
 
 **Fuente de datos**: Supabase directo + RPC (`fn_requirement_pim_count`)
 
-```typescript
-import { useRequirements } from '@/hooks/useRequirements';
+---
 
-function RequirementsPage() {
-  const { data: requirements, isLoading } = useRequirements();
-  // ...
-}
-```
+### useCuadros
+
+**Ubicación**: `src/hooks/useCuadros.ts`
+
+**Propósito**: Cuadros de importación (agrupaciones de productos).
+
+**Fuente de datos**: Supabase directo (`from('cuadros_importacion')`)
 
 ---
 
@@ -193,18 +174,9 @@ function RequirementsPage() {
 
 **Fuente de datos**: Supabase directo (`from('notificaciones')`)
 
-```typescript
-import { useNotifications } from '@/hooks/useNotifications';
-
-function NotificationsMenu() {
-  const { data: notifications, isLoading } = useNotifications();
-  // ...
-}
-```
-
 ---
 
-### useSLAData (Deprecado)
+### useSLAData
 
 **Ubicación**: `src/hooks/useSLAData.ts`
 
@@ -220,11 +192,16 @@ function NotificationsMenu() {
 |------|-----------|--------|-------|
 | `useDashboardStats()` | Dashboard completo | Edge Function | 30s |
 | `usePIMs()` | Lista PIMs | Supabase | 5min |
+| `usePIMCreation()` | Crear PIM | Supabase (mutation) | - |
+| `usePIMItems()` | Items de PIM | Supabase | 5min |
+| `usePIMDocuments()` | Documentos de PIM | Supabase + Storage | 5min |
+| `usePIMTracking()` | Seguimiento por etapas | Supabase | 5min |
 | `useWorkOrders()` | Lista OTs | Supabase | 5min |
 | `useWorkOrderStats()` | Stats OTs | Edge Function | 30s |
 | `useProducts()` | Productos | Supabase | 5min |
 | `useSuppliers()` | Proveedores | Supabase | 5min |
 | `useRequirements()` | Requerimientos | Supabase + RPC | 5min |
+| `useCuadros()` | Cuadros importación | Supabase | 5min |
 | `useNotifications()` | Notificaciones | Supabase | 1min |
 | `useSLAData()` | SLA crudo | Supabase | 5min |
 
@@ -269,4 +246,4 @@ if (isError) {
 
 ---
 
-*Última actualización: Enero 2026*
+*Última actualización: Febrero 2026*
