@@ -4,8 +4,11 @@ import { Header } from '@/components/layout/Header';
 import { usePIMs, useDeletePIM } from '@/hooks/usePIMs';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { usePIMSLA, formatSLAForPIM } from '@/hooks/useSLAData';
+import { usePIMItems } from '@/hooks/usePIMItems';
 import { PIMStatusBadge } from '@/components/dashboard/PIMStatusBadge';
 import { SLAIndicator } from '@/components/dashboard/SLAIndicator';
+import { PIMDetailItems } from '@/components/pim/PIMDetailItems';
+import { PIMDetailContract } from '@/components/pim/PIMDetailContract';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +47,9 @@ import {
   Package,
   Trash2,
   AlertCircle,
+  Pencil,
+  Weight,
+  Box,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PIM } from '@/hooks/usePIMs';
@@ -60,9 +66,17 @@ export default function PIMsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch SLA data for selected PIM
+  // Fetch SLA and items data for selected PIM
   const { data: slaData, isLoading: isLoadingSLA } = usePIMSLA(selectedPIM?.id);
+  const { data: pimItems } = usePIMItems(selectedPIM?.id);
   const formattedSLA = formatSLAForPIM(slaData);
+
+  // Compute real totals from items
+  const UNIT_TYPES = ['u', 'und', 'pza', 'pieza', 'unidad'];
+  const isUnit = (u: string) => UNIT_TYPES.includes(u.toLowerCase());
+  const computedTotalTon = (pimItems || []).filter(i => !isUnit(i.unidad)).reduce((s, i) => s + i.cantidad / 1000, 0);
+  const computedTotalUnits = (pimItems || []).filter(i => isUnit(i.unidad)).reduce((s, i) => s + i.cantidad, 0);
+  const computedTotalUsd = (pimItems || []).reduce((s, i) => s + (i.total_usd || 0), 0);
 
   // Set first PIM as selected when data loads
   if (pims && pims.length > 0 && !selectedPIM) {
@@ -214,6 +228,11 @@ export default function PIMsPage() {
                             <span className="text-xs text-muted-foreground">
                               {formatCurrency(pim.total_usd || 0)}
                             </span>
+                            {(pim.total_toneladas || 0) > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                {pim.total_toneladas} t
+                              </span>
+                            )}
                           </div>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -239,31 +258,41 @@ export default function PIMsPage() {
                     </div>
                     <p className="text-muted-foreground">{selectedPIM.descripcion}</p>
                   </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm">
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Eliminar
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar PIM?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta acción no se puede deshacer. Se eliminarán el PIM y todos sus items asociados.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeletePIM(selectedPIM.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/comex/pim/editar/${selectedPIM.id}`)}
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="h-4 w-4 mr-1" />
                           Eliminar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Eliminar PIM?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción no se puede deshacer. Se eliminarán el PIM y todos sus items asociados.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeletePIM(selectedPIM.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <Tabs defaultValue="general" className="w-full">
@@ -286,28 +315,34 @@ export default function PIMsPage() {
                         </div>
                         <div className="p-4 rounded-lg bg-muted/50">
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <Calendar className="h-4 w-4" />
-                            <span className="text-xs">Fecha Creación</span>
-                          </div>
-                          <p className="font-medium">{formatDate(selectedPIM.fecha_creacion)}</p>
-                        </div>
-                        <div className="p-4 rounded-lg bg-muted/50">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
                             <DollarSign className="h-4 w-4" />
                             <span className="text-xs">Monto Total</span>
                           </div>
-                          <p className="font-medium text-lg">{formatCurrency(selectedPIM.total_usd || 0)}</p>
+                          <p className="font-medium text-lg">{formatCurrency(computedTotalUsd || selectedPIM.total_usd || 0)}</p>
                         </div>
                         <div className="p-4 rounded-lg bg-muted/50">
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <Package className="h-4 w-4" />
+                            <Weight className="h-4 w-4" />
                             <span className="text-xs">Toneladas</span>
                           </div>
-                          <p className="font-medium text-lg">{selectedPIM.total_toneladas || 0} t</p>
+                          <p className="font-medium text-lg">
+                            {computedTotalTon > 0 
+                              ? `${computedTotalTon.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} t` 
+                              : `${selectedPIM.total_toneladas || 0} t`}
+                          </p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-muted/50">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Box className="h-4 w-4" />
+                            <span className="text-xs">Unidades</span>
+                          </div>
+                          <p className="font-medium text-lg">
+                            {computedTotalUnits > 0 ? computedTotalUnits.toLocaleString('es-CL') : '-'}
+                          </p>
                         </div>
                       </div>
 
-                      {/* Contract & Payment Info */}
+                      {/* Date & Payment row */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded-lg border border-border">
                           <h4 className="font-medium mb-3 flex items-center gap-2">
@@ -347,6 +382,9 @@ export default function PIMsPage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Contract conditions */}
+                      <PIMDetailContract pim={selectedPIM} />
                     </TabsContent>
 
                     <TabsContent value="sla" className="space-y-4">
@@ -399,10 +437,7 @@ export default function PIMsPage() {
                     </TabsContent>
 
                     <TabsContent value="items">
-                      <div className="text-center py-12 text-muted-foreground">
-                        <Package className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                        <p>Lista de items del PIM próximamente...</p>
-                      </div>
+                      <PIMDetailItems pimId={selectedPIM.id} />
                     </TabsContent>
 
                     <TabsContent value="documentos">
