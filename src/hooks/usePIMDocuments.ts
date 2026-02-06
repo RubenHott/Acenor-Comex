@@ -1,0 +1,164 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface PIMDocument {
+  id: string;
+  pim_id: string;
+  tipo: string;
+  nombre: string;
+  url: string;
+  subido_por: string;
+  observaciones: string | null;
+  fecha_subida: string | null;
+  stage_key: string | null;
+  version: number;
+  version_group: string | null;
+}
+
+const DOCUMENT_TYPES = [
+  { value: 'bl', label: 'Bill of Lading (BL)' },
+  { value: 'certificado_calidad', label: 'Certificado de Calidad' },
+  { value: 'swift', label: 'SWIFT' },
+  { value: 'comprobante_pago', label: 'Comprobante de Pago' },
+  { value: 'enmienda', label: 'Enmienda' },
+  { value: 'contrato', label: 'Contrato' },
+  { value: 'factura', label: 'Factura Comercial' },
+  { value: 'packing_list', label: 'Packing List' },
+  { value: 'certificado_origen', label: 'Certificado de Origen' },
+  { value: 'otro', label: 'Otro' },
+] as const;
+
+export { DOCUMENT_TYPES };
+
+function generateId() {
+  return crypto.randomUUID();
+}
+
+export function usePIMDocuments(pimId?: string, stageKey?: string) {
+  return useQuery({
+    queryKey: ['pim-documents', pimId, stageKey],
+    queryFn: async () => {
+      let query = supabase
+        .from('pim_documentos')
+        .select('*')
+        .eq('pim_id', pimId!);
+      if (stageKey) query = query.eq('stage_key', stageKey);
+      query = query.order('created_at', { ascending: false });
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as PIMDocument[];
+    },
+    enabled: !!pimId,
+  });
+}
+
+export function useUploadDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      pimId,
+      file,
+      tipo,
+      stageKey,
+      observaciones,
+      usuario,
+      versionGroup,
+      version,
+    }: {
+      pimId: string;
+      file: File;
+      tipo: string;
+      stageKey: string;
+      observaciones?: string;
+      usuario: string;
+      versionGroup?: string;
+      version?: number;
+    }) => {
+      const ext = file.name.split('.').pop();
+      const filePath = `${pimId}/${stageKey}/${generateId()}.${ext}`;
+
+      // Upload to storage
+      const { error: uploadErr } = await supabase.storage
+        .from('pim-documentos')
+        .upload(filePath, file);
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage
+        .from('pim-documentos')
+        .getPublicUrl(filePath);
+
+      const docId = generateId();
+      const group = versionGroup || generateId();
+
+      // Save metadata
+      const { error: insertErr } = await supabase
+        .from('pim_documentos')
+        .insert({
+          id: docId,
+          pim_id: pimId,
+          tipo,
+          nombre: file.name,
+          url: urlData.publicUrl,
+          subido_por: usuario,
+          observaciones: observaciones || null,
+          stage_key: stageKey,
+          version: version || 1,
+          version_group: group,
+        });
+      if (insertErr) throw insertErr;
+
+      // Log activity
+      await supabase.from('pim_activity_log').insert({
+        id: generateId(),
+        pim_id: pimId,
+        stage_key: stageKey,
+        tipo: 'note',
+        descripcion: `Documento subido: ${file.name} (${tipo}${version && version > 1 ? ` v${version}` : ''})`,
+        usuario,
+      });
+
+      return { docId, group };
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['pim-documents', vars.pimId] });
+      queryClient.invalidateQueries({ queryKey: ['activity-log', vars.pimId] });
+    },
+  });
+}
+
+export function useDeleteDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ docId, pimId }: { docId: string; pimId: string }) => {
+      const { error } = await supabase
+        .from('pim_documentos')
+        .delete()
+        .eq('id', docId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['pim-documents', vars.pimId] });
+    },
+  });
+}
+
+// DHL Tracking
+export function useDHLTracking() {
+  return useMutation({
+    mutationFn: async ({
+      trackingNumber,
+      pimId,
+    }: {
+      trackingNumber: string;
+      pimId: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('dhl-tracking', {
+        body: { trackingNumber, pimId },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}

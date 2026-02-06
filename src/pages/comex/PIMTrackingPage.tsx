@@ -10,6 +10,8 @@ import { TrackingChecklist } from '@/components/tracking/TrackingChecklist';
 import { TrackingTimeline } from '@/components/tracking/TrackingTimeline';
 import { TrackingNoteDialog } from '@/components/tracking/TrackingNoteDialog';
 import { SplitPIMDialog } from '@/components/tracking/SplitPIMDialog';
+import { DocumentUploadPanel } from '@/components/tracking/DocumentUploadPanel';
+import { DHLTrackingPanel } from '@/components/tracking/DHLTrackingPanel';
 import {
   useTrackingStages,
   useChecklistItems,
@@ -233,7 +235,7 @@ export default function PIMTrackingPage() {
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Checklist panel */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 space-y-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -280,6 +282,24 @@ export default function PIMTrackingPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Documents panel */}
+            <DocumentUploadPanel
+              pimId={id!}
+              stageKey={activeStageKey}
+              stageName={activeStageDef?.name}
+              usuario={currentUser}
+            />
+
+            {/* DHL Tracking - show on embarque stage or always */}
+            {(activeStageKey === 'embarque' || activeStageKey === 'internacion') && (
+              <DHLTrackingPanel
+                pimId={id!}
+                currentTrackingCode={pim.dhl_tracking_code}
+                lastStatus={pim.dhl_last_status}
+                lastCheckedAt={pim.dhl_last_checked_at}
+              />
+            )}
           </div>
 
           {/* Timeline panel */}

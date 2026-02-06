@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.create-work-order]
 verify_jwt = false
+
+[functions.dhl-tracking]
+verify_jwt = false
