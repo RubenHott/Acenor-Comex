@@ -40,9 +40,9 @@ const PAISES = [
 ];
 
 const TIPOS_PROVEEDOR = [
-  { value: 'trader', label: 'Trader' },
-  { value: 'fabricante', label: 'Fabricante' },
-  { value: 'distribuidor', label: 'Distribuidor' },
+  { value: 'Trader', label: 'Trader' },
+  { value: 'Fabricante', label: 'Fabricante' },
+  { value: 'Distribuidor', label: 'Distribuidor' },
 ];
 
 export function AddSupplierDialog({ onSupplierCreated }: AddSupplierDialogProps) {
@@ -52,7 +52,7 @@ export function AddSupplierDialog({ onSupplierCreated }: AddSupplierDialogProps)
     codigo: '',
     pais: '',
     ciudad: '',
-    tipoProveedor: 'trader',
+    tipoProveedor: 'Trader',
     contacto: '',
     email: '',
     telefono: '',
@@ -98,15 +98,20 @@ export function AddSupplierDialog({ onSupplierCreated }: AddSupplierDialogProps)
         codigo: '',
         pais: '',
         ciudad: '',
-        tipoProveedor: 'trader',
+        tipoProveedor: 'Trader',
         contacto: '',
         email: '',
         telefono: '',
       });
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Error al crear proveedor',
+        title: 'Error al crear proveedor',
+        description: errorMsg.includes('duplicate') 
+          ? 'Ya existe un proveedor con ese código' 
+          : errorMsg.includes('check constraint')
+          ? 'Tipo de proveedor no válido'
+          : errorMsg,
         variant: 'destructive',
       });
     }

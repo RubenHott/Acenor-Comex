@@ -103,6 +103,22 @@ export function PIMItemSelector({
     [selections, onSelectionsChange]
   );
 
+  const updatePrice = useCallback(
+    (itemId: string, precio: number) => {
+      onSelectionsChange(
+        selections.map((s) => {
+          if (s.itemId !== itemId) return s;
+          return {
+            ...s,
+            precioUnitarioUsd: precio,
+            totalUsd: precio * s.cantidadAConsumir,
+          };
+        })
+      );
+    },
+    [selections, onSelectionsChange]
+  );
+
   const formatNumber = (n: number, decimals = 2) =>
     new Intl.NumberFormat('es-PE', {
       minimumFractionDigits: decimals,
@@ -239,7 +255,20 @@ export function PIMItemSelector({
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(item.precio_unitario_usd ?? 0)}
+                          {selected ? (
+                            <Input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              value={sel?.precioUnitarioUsd ?? 0}
+                              onChange={(e) =>
+                                updatePrice(item.id, parseFloat(e.target.value) || 0)
+                              }
+                              className="w-28 text-right"
+                            />
+                          ) : (
+                            formatCurrency(item.precio_unitario_usd ?? 0)
+                          )}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {selected ? formatCurrency(sel?.totalUsd ?? 0) : '-'}

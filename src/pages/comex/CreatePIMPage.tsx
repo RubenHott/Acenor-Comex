@@ -52,7 +52,8 @@ export default function CreatePIMPage() {
   });
   const [contractConditions, setContractConditions] = useState<ContractConditionsData>({
     condicionPrecio: '',
-    fechaEmbarque: '',
+    fechaEmbarqueInicio: undefined,
+    fechaEmbarqueFin: undefined,
     origen: '',
     fabricasOrigen: '',
     notasPago: '',
