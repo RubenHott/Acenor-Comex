@@ -5,7 +5,9 @@ import { usePIMs, useDeletePIM } from '@/hooks/usePIMs';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { usePIMSLA, formatSLAForPIM } from '@/hooks/useSLAData';
 import { usePIMItems } from '@/hooks/usePIMItems';
+import { useAllTrackingStages } from '@/hooks/usePIMTracking';
 import { PIMStatusBadge } from '@/components/dashboard/PIMStatusBadge';
+import { TrackingProgressMini } from '@/components/tracking/TrackingProgressMini';
 import { SLAIndicator } from '@/components/dashboard/SLAIndicator';
 import { PIMDetailItems } from '@/components/pim/PIMDetailItems';
 import { PIMDetailContract } from '@/components/pim/PIMDetailContract';
@@ -60,6 +62,7 @@ import { toast } from 'sonner';
 export default function PIMsPage() {
   const navigate = useNavigate();
   const { data: pims, isLoading, error } = usePIMs();
+  const { data: allStagesMap } = useAllTrackingStages();
   const { data: suppliers } = useSuppliers();
   const deletePIMMutation = useDeletePIM();
   
@@ -235,6 +238,12 @@ export default function PIMsPage() {
                               </span>
                             )}
                           </div>
+                          {allStagesMap?.has(pim.id) && (
+                            <TrackingProgressMini
+                              stages={allStagesMap.get(pim.id)!}
+                              className="mt-2"
+                            />
+                          )}
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </button>
