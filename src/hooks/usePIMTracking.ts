@@ -99,7 +99,7 @@ export function useInitializeTracking() {
   });
 }
 
-// Fetch stages
+// Fetch stages for a single PIM
 export function useTrackingStages(pimId?: string) {
   return useQuery({
     queryKey: ['tracking-stages', pimId],
@@ -113,6 +113,28 @@ export function useTrackingStages(pimId?: string) {
       return data as TrackingStage[];
     },
     enabled: !!pimId,
+  });
+}
+
+// Fetch tracking stages for ALL PIMs (for list/dashboard views)
+export function useAllTrackingStages() {
+  return useQuery({
+    queryKey: ['tracking-stages', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pim_tracking_stages')
+        .select('pim_id, stage_key, status')
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      // Group by pim_id
+      const map = new Map<string, { stage_key: string; status: string }[]>();
+      for (const row of data) {
+        if (!map.has(row.pim_id)) map.set(row.pim_id, []);
+        map.get(row.pim_id)!.push({ stage_key: row.stage_key, status: row.status });
+      }
+      return map;
+    },
+    staleTime: 15000,
   });
 }
 

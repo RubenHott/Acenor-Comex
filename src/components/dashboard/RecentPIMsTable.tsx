@@ -1,6 +1,8 @@
 import { usePIMs } from '@/hooks/usePIMs';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { useAllTrackingStages } from '@/hooks/usePIMTracking';
 import { PIMStatusBadge } from './PIMStatusBadge';
+import { TrackingProgressMini } from '@/components/tracking/TrackingProgressMini';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Eye, MoreHorizontal } from 'lucide-react';
@@ -23,6 +25,7 @@ import type { PIMStatus } from '@/types/comex';
 export function RecentPIMsTable() {
   const { data: pims, isLoading } = usePIMs();
   const { data: suppliers } = useSuppliers();
+  const { data: allStagesMap } = useAllTrackingStages();
 
   const getSupplierName = (id: string) => {
     return suppliers?.find(s => s.id === id)?.nombre ?? 'N/A';
@@ -52,6 +55,7 @@ export function RecentPIMsTable() {
             <TableHead className="text-right">Monto USD</TableHead>
             <TableHead className="text-right">Toneladas</TableHead>
             <TableHead>Estado</TableHead>
+            <TableHead>Avance</TableHead>
             <TableHead className="w-[80px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -65,6 +69,7 @@ export function RecentPIMsTable() {
                 <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-12 ml-auto" /></TableCell>
                 <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-2 w-20" /></TableCell>
                 <TableCell><Skeleton className="h-8 w-8" /></TableCell>
               </TableRow>
             ))
@@ -78,6 +83,16 @@ export function RecentPIMsTable() {
                 <TableCell className="text-right">{pim.total_toneladas || 0} t</TableCell>
                 <TableCell>
                   <PIMStatusBadge status={pim.estado as PIMStatus} />
+                </TableCell>
+                <TableCell>
+                  {allStagesMap?.has(pim.id) ? (
+                    <TrackingProgressMini
+                      stages={allStagesMap.get(pim.id)!}
+                      className="w-20"
+                    />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
