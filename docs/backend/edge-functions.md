@@ -1,6 +1,6 @@
 # Edge Functions
 
-Funciones serverless ejecutadas en Deno para orquestar lógica de negocio compleja.
+Funciones serverless ejecutadas en Deno para orquestar lógica de negocio compleja e integraciones externas.
 
 ## Arquitectura
 
@@ -9,12 +9,19 @@ Funciones serverless ejecutadas en Deno para orquestar lógica de negocio comple
 │    Frontend     │────▶│  Edge Function  │────▶│   PostgreSQL    │
 │  (React Query)  │     │     (Deno)      │     │ (SQL Functions) │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │
+                               ▼
+                        ┌─────────────────┐
+                        │  APIs Externas  │
+                        │  (DHL, etc.)    │
+                        └─────────────────┘
 ```
 
 Las Edge Functions actúan como capa intermedia que:
 - Orquesta múltiples llamadas a funciones SQL
 - Consolida respuestas en un solo JSON
-- Puede conectar con APIs externas (Stripe, OpenAI, etc.)
+- Conecta con APIs externas (DHL Shipment Tracking)
+- Actualiza la base de datos con información externa
 
 ## Configuración
 
@@ -30,6 +37,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.create-work-order]
+verify_jwt = false
+
+[functions.dhl-tracking]
 verify_jwt = false
 ```
 
@@ -50,45 +60,6 @@ Consolida todas las estadísticas del dashboard COMEX en una sola llamada.
 const { data, error } = await supabase.functions.invoke('get-dashboard-stats');
 ```
 
-**Respuesta**:
-```typescript
-interface DashboardStats {
-  pimStats: {
-    totalPIMs: number;
-    pimsActivos: number;
-    pimsPendientes: number;
-    alertasSLA: number;
-    montoTotalUSD: number;
-    toneladasMes: number;
-  };
-  statusDistribution: Array<{
-    estado: string;
-    cantidad: number;
-  }>;
-  monthlyTrend: Array<{
-    mes: string;
-    anio: number;
-    mes_orden: string;
-    total_pims: number;
-    total_toneladas: number;
-  }>;
-  slaStats: {
-    negociacion: { estimados: number; reales: number | null; alerta: string };
-    contrato: { estimados: number; reales: number | null; alerta: string };
-    transito: { estimados: number; reales: number | null; alerta: string };
-    produccion: { estimados: number; reales: number | null; alerta: string };
-    aduana: { estimados: number; reales: number | null; alerta: string };
-    total: { estimados: number; reales: number | null; alerta: string };
-  };
-  criticalPim: {
-    id: string;
-    codigo: string;
-    descripcion: string;
-    estado: string;
-  } | null;
-}
-```
-
 **Funciones SQL que invoca**:
 - `fn_pim_stats()`
 - `fn_pim_status_distribution()`
@@ -107,17 +78,6 @@ Obtiene estadísticas de órdenes de trabajo.
 **Invocación**:
 ```typescript
 const { data, error } = await supabase.functions.invoke('get-work-order-stats');
-```
-
-**Respuesta**:
-```typescript
-interface WorkOrderStats {
-  total: number;
-  pendientes: number;
-  en_progreso: number;
-  completadas: number;
-  urgentes: number;
-}
 ```
 
 **Funciones SQL que invoca**:
@@ -147,12 +107,52 @@ const { data, error } = await supabase.functions.invoke('create-work-order', {
 
 **Lógica del servidor**:
 1. Genera código automático con `fn_generate_work_order_code()` → `OT-2026-001`
-2. Calcula fecha límite con `fn_calculate_due_date(prioridad)`:
-   - Crítica: +1 día
-   - Alta: +3 días
-   - Media: +7 días
-   - Baja: +14 días
+2. Calcula fecha límite con `fn_calculate_due_date(prioridad)`
 3. Inserta en tabla `work_orders`
+
+---
+
+### dhl-tracking
+
+Consulta la API de DHL Shipment Tracking para obtener el estado de un envío y actualiza el PIM correspondiente.
+
+**Ubicación**: `supabase/functions/dhl-tracking/index.ts`
+
+**Secretos requeridos**: `DHL_API_KEY` (desde [DHL Developer Portal](https://developer.dhl.com/))
+
+**Invocación**:
+```typescript
+const { data, error } = await supabase.functions.invoke('dhl-tracking', {
+  body: {
+    trackingNumber: '1234567890',
+    pimId: 'uuid-del-pim' // opcional
+  }
+});
+```
+
+**Respuesta**:
+```typescript
+{
+  trackingNumber: string;
+  status: string;           // Código de estado DHL
+  statusDescription: string; // Descripción en texto
+  shipment: object | null;   // Datos completos del envío
+  events: Array<{            // Historial de eventos
+    timestamp: string;
+    location: object;
+    description: string;
+  }>;
+}
+```
+
+**Lógica del servidor**:
+1. Llama a `https://api-eu.dhl.com/track/shipments` con el tracking number
+2. Si se proporciona `pimId`:
+   - Actualiza `dhl_tracking_code`, `dhl_last_status`, `dhl_last_checked_at` en tabla `pims`
+   - Registra actividad en `pim_activity_log`
+3. Retorna datos del envío al frontend
+
+**API de DHL utilizada**: [Shipment Tracking - Unified](https://developer.dhl.com/api-reference/shipment-tracking)
 
 ---
 
@@ -169,42 +169,39 @@ supabase/functions/
 ### Template Básico
 
 ```typescript
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
-serve(async (req) => {
-  // Handle CORS preflight
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
 
     // Tu lógica aquí
-    const { data, error } = await supabase.rpc('mi_funcion_sql');
-
-    if (error) throw error;
+    const { data, error } = await supabase.rpc('mi_funcion_sql')
+    if (error) throw error
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
+    })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    });
+    })
   }
-});
+})
 ```
 
 ---
@@ -230,6 +227,7 @@ Las Edge Functions se despliegan automáticamente al hacer push en Lovable. No s
 | `FunctionsHttpError` | Error HTTP de la función | Ver logs para detalles |
 | `FunctionsRelayError` | Problema de red | Reintentar |
 | `FunctionsFetchError` | Función no encontrada | Verificar nombre y despliegue |
+| `DHL API 401` | API Key inválida o sin permisos | Verificar key en DHL Developer Portal |
 
 ---
 
@@ -238,11 +236,11 @@ Las Edge Functions se despliegan automáticamente al hacer push en Lovable. No s
 | Escenario | Usar Edge Function | Usar SQL Function |
 |-----------|-------------------|-------------------|
 | Orquestar múltiples queries | ✅ | ❌ |
-| Llamar APIs externas | ✅ | ❌ |
+| Llamar APIs externas (DHL, etc.) | ✅ | ❌ |
 | Cálculos pesados sobre datos | ❌ | ✅ |
 | Triggers automáticos | ❌ | ✅ |
 | Lógica de negocio simple | ❌ | ✅ |
 
 ---
 
-*Última actualización: Enero 2026*
+*Última actualización: Febrero 2026*

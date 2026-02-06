@@ -87,12 +87,13 @@ npm run dev
 - **Backend**: Supabase (PostgreSQL + Edge Functions)
 - **Edge Functions**: Deno (TypeScript serverless)
 - **Routing**: React Router v6
+- **Integraciones**: DHL Shipment Tracking API
 
 ## 📦 Módulos Disponibles
 
 | Módulo | Estado | Descripción |
 |--------|--------|-------------|
-| COMEX | ✅ Activo | Seguimiento de importaciones y PIMs |
+| COMEX | ✅ Activo | Seguimiento de importaciones, PIMs, tracking DHL |
 | Órdenes de Trabajo | ✅ Activo | Gestión de OTs de mantenimiento |
 | Producción | 🚧 Pendiente | Control de producción |
 | Mantenimiento | 🚧 Pendiente | Programación de mantenimiento |
@@ -103,16 +104,20 @@ npm run dev
 
 ### ✅ Implementado
 
-- **Base de datos Supabase**: 13 tablas con datos reales
+- **Base de datos Supabase**: 17+ tablas con datos reales
 - **Funciones SQL**: 9 funciones para cálculos en servidor
-- **Edge Functions**: 3 funciones para orquestación
+- **Edge Functions**: 4 funciones (dashboard stats, work orders, DHL tracking)
 - **Trigger SLA**: Cálculo automático de alertas
+- **Sistema de seguimiento por etapas**: Checklist, timeline, documentos
+- **Integración DHL**: Tracking de envíos en tiempo real
+- **Gestión documental**: Organizado por etapa y categoría con versionamiento
+- **Storage**: Bucket `pim-documentos` para archivos
 
 ### 🚧 Pendiente
 
 1. **Autenticación Real**: La autenticación actual es mock (simulada)
-2. **RLS Robusto**: Políticas permitivas para desarrollo, ajustar para producción
-3. **Storage**: Integración con Supabase Storage para documentos
+2. **RLS Robusto**: Políticas permisivas para desarrollo, ajustar para producción
+3. **Notificaciones push**: Sistema de alertas en tiempo real
 
 > **Importante**: Revisa el [Checklist de Seguridad](./security/checklist.md) antes de desplegar a producción.
 

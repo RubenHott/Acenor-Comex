@@ -7,6 +7,7 @@ Gestión de órdenes de trabajo para mantenimiento y producción.
 - Crear y asignar órdenes de trabajo
 - Seguimiento de estado y prioridad
 - Control de tiempos y recursos
+- Código auto-generado y fecha límite calculada
 
 ## Páginas
 
@@ -17,6 +18,9 @@ Gestión de órdenes de trabajo para mantenimiento y producción.
 | Detalle OT | `/work-orders/orders/:id` | ✅ Implementado |
 | Crear OT | `/work-orders/create` | ✅ Implementado |
 | Mantenimiento | `/work-orders/maintenance` | ⏳ Coming Soon |
+| Producción | `/work-orders/production` | ⏳ Coming Soon |
+| Calidad | `/work-orders/quality` | ⏳ Coming Soon |
+| Reportes | `/work-orders/reports` | ⏳ Coming Soon |
 
 ## Tipos de OT
 
@@ -32,7 +36,16 @@ Gestión de órdenes de trabajo para mantenimiento y producción.
 
 | Prioridad | SLA |
 |-----------|-----|
-| Baja | 7 días |
-| Media | 3 días |
-| Alta | 24 horas |
-| Urgente | 4 horas |
+| Baja | 14 días |
+| Media | 7 días |
+| Alta | 3 días |
+| Urgente/Crítica | 1 día |
+
+## Edge Functions
+
+- `create-work-order` — Crea OT con código auto-generado (`OT-YYYY-NNN`) y fecha límite calculada
+- `get-work-order-stats` — Estadísticas agregadas (total, pendientes, en progreso, completadas, urgentes)
+
+---
+
+*Última actualización: Febrero 2026*

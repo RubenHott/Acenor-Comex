@@ -21,8 +21,12 @@ El enrutamiento utiliza React Router v6 con layouts anidados y protección de ru
       <Route path="dashboard" element={<DashboardPage />} />
       <Route path="requirements" element={<RequirementsPage />} />
       <Route path="pims" element={<PIMsPage />} />
+      <Route path="pim/crear" element={<CreatePIMPage />} />
+      <Route path="pim/editar/:id" element={<EditPIMPage />} />
+      <Route path="pim/seguimiento/:id" element={<PIMTrackingPage />} />
       <Route path="products" element={<ProductsPage />} />
       <Route path="suppliers" element={<SuppliersPage />} />
+      <Route path="maestros" element={<MaestrosPage />} />
       <Route path="contracts" element={<ComingSoonPage />} />
       <Route path="payments" element={<ComingSoonPage />} />
       <Route path="prices" element={<ComingSoonPage />} />
@@ -72,14 +76,15 @@ El enrutamiento utiliza React Router v6 con layouts anidados y protección de ru
 | `/comex/dashboard` | `DashboardPage` | KPIs y resumen | ✅ Implementado |
 | `/comex/requirements` | `RequirementsPage` | Requerimientos mensuales | ✅ Implementado |
 | `/comex/pims` | `PIMsPage` | Lista de PIMs | ✅ Implementado |
+| `/comex/pim/crear` | `CreatePIMPage` | Crear nuevo PIM | ✅ Implementado |
+| `/comex/pim/editar/:id` | `EditPIMPage` | Editar PIM existente | ✅ Implementado |
+| `/comex/pim/seguimiento/:id` | `PIMTrackingPage` | Seguimiento por etapas | ✅ Implementado |
 | `/comex/products` | `ProductsPage` | Catálogo de productos | ✅ Implementado |
 | `/comex/suppliers` | `SuppliersPage` | Gestión de proveedores | ✅ Implementado |
+| `/comex/maestros` | `MaestrosPage` | Tablas maestras | ✅ Implementado |
 | `/comex/contracts` | `ComingSoonPage` | Validación de contratos | ⏳ Pendiente |
 | `/comex/payments` | `ComingSoonPage` | Control de pagos | ⏳ Pendiente |
 | `/comex/prices` | `ComingSoonPage` | Histórico de precios | ⏳ Pendiente |
-| `/comex/users` | `ComingSoonPage` | Gestión de usuarios | ⏳ Pendiente |
-| `/comex/notifications` | `ComingSoonPage` | Notificaciones | ⏳ Pendiente |
-| `/comex/settings` | `ComingSoonPage` | Configuración | ⏳ Pendiente |
 
 ### Módulo Órdenes de Trabajo (`/work-orders/*`)
 
@@ -94,14 +99,8 @@ El enrutamiento utiliza React Router v6 con layouts anidados y protección de ru
 | `/work-orders/production` | `ComingSoonPage` | OTs de producción | ⏳ Pendiente |
 | `/work-orders/quality` | `ComingSoonPage` | Control de calidad | ⏳ Pendiente |
 | `/work-orders/reports` | `ComingSoonPage` | Reportes | ⏳ Pendiente |
-| `/work-orders/templates` | `ComingSoonPage` | Plantillas de OT | ⏳ Pendiente |
-| `/work-orders/notifications` | `ComingSoonPage` | Notificaciones | ⏳ Pendiente |
-| `/work-orders/users` | `ComingSoonPage` | Usuarios | ⏳ Pendiente |
-| `/work-orders/settings` | `ComingSoonPage` | Configuración | ⏳ Pendiente |
 
 ## Layouts Anidados
-
-Los layouts anidados permiten compartir UI común (sidebar, header) entre páginas de un mismo módulo.
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -111,66 +110,15 @@ Los layouts anidados permiten compartir UI común (sidebar, header) entre págin
 │   Sidebar  │              <Outlet />                 │
 │            │                                         │
 │            │  ┌─────────────────────────────────┐   │
-│ Dashboard  │  │                                 │   │
-│ PIMs       │  │     DashboardPage               │   │
-│ Products   │  │     RequirementsPage            │   │
-│ Suppliers  │  │     PIMsPage                    │   │
-│ ...        │  │     etc.                        │   │
-│            │  │                                 │   │
-│            │  └─────────────────────────────────┘   │
+│ Dashboard  │  │     DashboardPage               │   │
+│ PIMs       │  │     PIMsPage                    │   │
+│ Crear PIM  │  │     CreatePIMPage               │   │
+│ Seguimiento│  │     PIMTrackingPage             │   │
+│ Products   │  │     etc.                        │   │
+│ Suppliers  │  │                                 │   │
+│ Maestros   │  └─────────────────────────────────┘   │
 │            │                                         │
 └────────────┴────────────────────────────────────────┘
-```
-
-### Implementación del Layout
-
-```typescript
-// src/components/layout/ComexLayout.tsx
-
-export function ComexLayout() {
-  const { isAuthenticated } = useAuth();
-
-  // Protección de ruta
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <ComexSidebar />
-      <main className="flex-1 overflow-y-auto">
-        <Outlet /> {/* Aquí se renderizan las páginas hijas */}
-      </main>
-    </div>
-  );
-}
-```
-
-## Protección de Rutas
-
-La protección se implementa directamente en los layouts:
-
-```typescript
-function ProtectedLayout() {
-  const { isAuthenticated, hasModuleAccess } = useAuth();
-
-  // Redirigir a login si no está autenticado
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Redirigir a home si no tiene acceso al módulo
-  if (!hasModuleAccess('module-id')) {
-    return <Navigate to="/" replace />;
-  }
-
-  return (
-    <div>
-      <Sidebar />
-      <Outlet />
-    </div>
-  );
-}
 ```
 
 ## Navegación Programática
@@ -181,11 +129,10 @@ import { useNavigate } from 'react-router-dom';
 function Component() {
   const navigate = useNavigate();
 
-  const handleClick = () => {
-    navigate('/comex/pims');           // Navegar a ruta
-    navigate(-1);                       // Ir atrás
-    navigate('/comex/orders/123');      // Ruta con parámetros
-  };
+  navigate('/comex/pims');                      // Navegar a lista
+  navigate('/comex/pim/seguimiento/uuid-123');  // Tracking de PIM
+  navigate('/comex/pim/crear');                 // Crear nuevo PIM
+  navigate(-1);                                 // Ir atrás
 }
 ```
 
@@ -194,65 +141,12 @@ function Component() {
 ```typescript
 import { useParams } from 'react-router-dom';
 
-function WorkOrderDetailPage() {
+function PIMTrackingPage() {
   const { id } = useParams<{ id: string }>();
-  
-  // Usar el ID para cargar datos
-  return <div>Orden de trabajo: {id}</div>;
+  // id = UUID del PIM para seguimiento
 }
 ```
 
-## Flujo de Navegación
+---
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Usuario Anónimo                          │
-│                            │                                 │
-│                            ▼                                 │
-│                      /login                                  │
-│                            │                                 │
-│              ┌─────────────┴─────────────┐                  │
-│              ▼                           ▼                  │
-│     Login exitoso               Login fallido               │
-│              │                           │                  │
-│              ▼                           ▼                  │
-│      Redirige a /                Muestra error              │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                    Usuario Autenticado                       │
-│                            │                                 │
-│                            ▼                                 │
-│               / (ModulesPage)                               │
-│                            │                                 │
-│              Selecciona módulo                               │
-│                            │                                 │
-│         ┌──────────────────┼──────────────────┐             │
-│         ▼                  ▼                  ▼             │
-│    /comex/*         /work-orders/*      /[otro]/*           │
-│         │                  │                  │             │
-│         ▼                  ▼                  ▼             │
-│  ComexLayout      WorkOrdersLayout      OtroLayout          │
-│         │                  │                  │             │
-│         ▼                  ▼                  ▼             │
-│   Páginas del       Páginas del       Páginas del          │
-│    módulo            módulo            módulo              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Componente ComingSoonPage
-
-Para páginas pendientes de implementación:
-
-```typescript
-// src/pages/ComingSoonPage.tsx
-
-function ComingSoonPage() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full">
-      <h1>Próximamente</h1>
-      <p>Esta funcionalidad está en desarrollo</p>
-    </div>
-  );
-}
-```
+*Última actualización: Febrero 2026*
