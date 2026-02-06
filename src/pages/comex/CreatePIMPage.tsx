@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { useRequirementsWithItems } from '@/hooks/useRequirements';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useCuadros } from '@/hooks/useCuadros';
+import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
 import { useCreatePIMWithItems } from '@/hooks/usePIMCreation';
 import {
   PIMItemSelector,
@@ -114,9 +115,9 @@ export default function CreatePIMPage() {
   const totalUsd = totalReqUsd + totalExtraUsd;
 
   const totalToneladas = selections.reduce((sum, s) => {
-    if (s.unidad === 'TON') return sum + s.cantidadAConsumir;
+    if (isCuadroPorUnidad(s.cuadroCodigo)) return sum;
     if (s.unidad === 'KG') return sum + s.cantidadAConsumir / 1000;
-    return sum;
+    return sum + s.cantidadAConsumir;
   }, 0);
 
   // Validation

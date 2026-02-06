@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
 import type { RequirementItem } from '@/hooks/useRequirements';
 
 export interface PIMItemSelection {
@@ -45,6 +46,39 @@ interface PIMItemSelectorProps {
   onSelectionsChange: (selections: PIMItemSelection[]) => void;
 }
 
+/**
+ * Returns the display unit and converts a raw quantity (stored in KG or original unit)
+ * to the display unit. Weight-based cuadros always display in TON.
+ */
+function toDisplayUnit(
+  cuadroCodigo: string,
+  rawUnit: string,
+  rawQty: number
+): { displayUnit: string; displayQty: number } {
+  const porUnidad = isCuadroPorUnidad(cuadroCodigo);
+  if (porUnidad) {
+    // Unit-based cuadros keep their original unit (UND, PZA, etc.)
+    return { displayUnit: rawUnit, displayQty: rawQty };
+  }
+  // Weight-based: always show in TON
+  if (rawUnit === 'KG') {
+    return { displayUnit: 'TON', displayQty: rawQty / 1000 };
+  }
+  return { displayUnit: 'TON', displayQty: rawQty };
+}
+
+/** Convert display quantity back to storage quantity (KG for weight cuadros stored in KG). */
+function fromDisplayQty(
+  cuadroCodigo: string,
+  rawUnit: string,
+  displayQty: number
+): number {
+  const porUnidad = isCuadroPorUnidad(cuadroCodigo);
+  if (porUnidad) return displayQty;
+  if (rawUnit === 'KG') return displayQty * 1000;
+  return displayQty;
+}
+
 export function PIMItemSelector({
   items,
   selections,
@@ -70,10 +104,10 @@ export function PIMItemSelector({
           codigoProducto: item.codigo_producto,
           descripcion: item.descripcion,
           unidad: item.unidad,
-          precioUnitarioUsd: item.precio_unitario_usd,
+          precioUnitarioUsd: null, // will be calculated from totalUsd
           cantidadDisponible: item.kilos_disponibles,
           cantidadAConsumir: item.kilos_disponibles,
-          totalUsd: (item.precio_unitario_usd ?? 0) * item.kilos_disponibles,
+          totalUsd: 0, // user must enter the total
           exceedsLimit: false,
         };
         onSelectionsChange([...selections, newSel]);
@@ -85,16 +119,19 @@ export function PIMItemSelector({
   );
 
   const updateQuantity = useCallback(
-    (itemId: string, cantidad: number) => {
+    (itemId: string, displayQty: number, cuadroCodigo: string, rawUnit: string) => {
+      const storedQty = fromDisplayQty(cuadroCodigo, rawUnit, displayQty);
       onSelectionsChange(
         selections.map((s) => {
           if (s.itemId !== itemId) return s;
-          const validCantidad = Math.max(0, cantidad);
+          const validCantidad = Math.max(0, storedQty);
           const exceedsLimit = validCantidad > s.cantidadDisponible;
+          const precioUnitarioUsd =
+            validCantidad > 0 ? s.totalUsd / validCantidad : null;
           return {
             ...s,
             cantidadAConsumir: validCantidad,
-            totalUsd: (s.precioUnitarioUsd ?? 0) * validCantidad,
+            precioUnitarioUsd,
             exceedsLimit,
           };
         })
@@ -103,15 +140,18 @@ export function PIMItemSelector({
     [selections, onSelectionsChange]
   );
 
-  const updatePrice = useCallback(
-    (itemId: string, precio: number) => {
+  /** User enters the TOTAL USD; we derive precioUnitarioUsd from it. */
+  const updateTotalUsd = useCallback(
+    (itemId: string, total: number) => {
       onSelectionsChange(
         selections.map((s) => {
           if (s.itemId !== itemId) return s;
+          const precioUnitarioUsd =
+            s.cantidadAConsumir > 0 ? total / s.cantidadAConsumir : null;
           return {
             ...s,
-            precioUnitarioUsd: precio,
-            totalUsd: precio * s.cantidadAConsumir,
+            totalUsd: Math.max(0, total),
+            precioUnitarioUsd,
           };
         })
       );
@@ -145,9 +185,14 @@ export function PIMItemSelector({
 
   // Totals
   const totalToneladas = selections.reduce((sum, s) => {
-    if (s.unidad === 'TON') return sum + s.cantidadAConsumir;
-    if (s.unidad === 'KG') return sum + s.cantidadAConsumir / 1000;
-    return sum;
+    const { displayQty } = toDisplayUnit(s.cuadroCodigo, s.unidad, s.cantidadAConsumir);
+    if (isCuadroPorUnidad(s.cuadroCodigo)) return sum; // don't add units to toneladas
+    return sum + displayQty;
+  }, 0);
+
+  const totalUnidades = selections.reduce((sum, s) => {
+    if (!isCuadroPorUnidad(s.cuadroCodigo)) return sum;
+    return sum + s.cantidadAConsumir;
   }, 0);
 
   const totalUsd = selections.reduce((sum, s) => sum + s.totalUsd, 0);
@@ -177,6 +222,8 @@ export function PIMItemSelector({
 
       {Object.entries(groupedItems).map(([groupKey, groupItems]) => {
         const [cuadroCodigo, mes] = groupKey.split('|');
+        const porUnidad = isCuadroPorUnidad(cuadroCodigo);
+
         return (
           <div key={groupKey} className="space-y-2">
             <div className="flex items-center gap-2">
@@ -184,6 +231,9 @@ export function PIMItemSelector({
                 {cuadroCodigo}
               </Badge>
               <span className="text-sm text-muted-foreground">{mes}</span>
+              <Badge variant="outline" className="text-xs">
+                {porUnidad ? 'Unidades' : 'Toneladas'}
+              </Badge>
             </div>
             
             <div className="rounded-lg border overflow-hidden">
@@ -193,10 +243,16 @@ export function PIMItemSelector({
                     <TableHead className="w-12"></TableHead>
                     <TableHead>Código</TableHead>
                     <TableHead>Descripción</TableHead>
-                    <TableHead className="text-right">Disponible</TableHead>
-                    <TableHead className="text-right">A Consumir</TableHead>
-                    <TableHead className="text-right">Precio USD</TableHead>
+                    <TableHead className="text-right">
+                      Disponible ({porUnidad ? 'UND' : 'TON'})
+                    </TableHead>
+                    <TableHead className="text-right">
+                      A Consumir ({porUnidad ? 'UND' : 'TON'})
+                    </TableHead>
                     <TableHead className="text-right">Total USD</TableHead>
+                    <TableHead className="text-right">
+                      Precio / {porUnidad ? 'UND' : 'TON'}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -204,6 +260,22 @@ export function PIMItemSelector({
                     const selected = isSelected(item.id);
                     const sel = getSelection(item.id);
                     const exceedsLimit = sel?.exceedsLimit ?? false;
+
+                    const { displayUnit, displayQty: dispDisponible } = toDisplayUnit(
+                      item.cuadroCodigo,
+                      item.unidad,
+                      item.kilos_disponibles
+                    );
+
+                    const dispConsumir = sel
+                      ? toDisplayUnit(item.cuadroCodigo, item.unidad, sel.cantidadAConsumir).displayQty
+                      : 0;
+
+                    // Calculated unit price (total / display qty for meaningful per-ton/unit price)
+                    const calcUnitPrice =
+                      sel && dispConsumir > 0
+                        ? sel.totalUsd / dispConsumir
+                        : null;
 
                     return (
                       <TableRow
@@ -227,13 +299,10 @@ export function PIMItemSelector({
                         <TableCell>
                           <div className="max-w-[200px]">
                             <p className="truncate text-sm">{item.descripcion}</p>
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {item.unidad}
-                            </Badge>
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatNumber(item.kilos_disponibles)}
+                          {formatNumber(dispDisponible)}
                         </TableCell>
                         <TableCell className="text-right">
                           {selected ? (
@@ -241,9 +310,14 @@ export function PIMItemSelector({
                               type="number"
                               min={0}
                               step={0.01}
-                              value={sel?.cantidadAConsumir ?? 0}
+                              value={dispConsumir}
                               onChange={(e) =>
-                                updateQuantity(item.id, parseFloat(e.target.value) || 0)
+                                updateQuantity(
+                                  item.id,
+                                  parseFloat(e.target.value) || 0,
+                                  item.cuadroCodigo,
+                                  item.unidad
+                                )
                               }
                               className={cn(
                                 'w-28 text-right',
@@ -260,18 +334,20 @@ export function PIMItemSelector({
                               type="number"
                               min={0}
                               step={0.01}
-                              value={sel?.precioUnitarioUsd ?? 0}
+                              value={sel?.totalUsd ?? 0}
                               onChange={(e) =>
-                                updatePrice(item.id, parseFloat(e.target.value) || 0)
+                                updateTotalUsd(item.id, parseFloat(e.target.value) || 0)
                               }
-                              className="w-28 text-right"
+                              className="w-32 text-right"
                             />
                           ) : (
-                            formatCurrency(item.precio_unitario_usd ?? 0)
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {selected ? formatCurrency(sel?.totalUsd ?? 0) : '-'}
+                        <TableCell className="text-right text-sm text-muted-foreground">
+                          {calcUnitPrice != null
+                            ? formatCurrency(calcUnitPrice)
+                            : '-'}
                         </TableCell>
                       </TableRow>
                     );
@@ -286,12 +362,20 @@ export function PIMItemSelector({
       {/* Totals */}
       <div className="flex justify-end">
         <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-muted/50 min-w-[300px]">
+          {totalToneladas > 0 && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Total Toneladas</Label>
+              <p className="text-lg font-bold">{formatNumber(totalToneladas)} t</p>
+            </div>
+          )}
+          {totalUnidades > 0 && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Total Unidades</Label>
+              <p className="text-lg font-bold">{formatNumber(totalUnidades, 0)}</p>
+            </div>
+          )}
           <div>
-            <Label className="text-xs text-muted-foreground">Total Toneladas</Label>
-            <p className="text-lg font-bold">{formatNumber(totalToneladas)} t</p>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Total USD (Requerimiento)</Label>
+            <Label className="text-xs text-muted-foreground">Total USD</Label>
             <p className="text-lg font-bold text-primary">{formatCurrency(totalUsd)}</p>
           </div>
         </div>
