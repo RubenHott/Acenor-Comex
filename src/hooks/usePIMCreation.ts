@@ -104,7 +104,9 @@ export function useCreatePIMWithItems() {
         total_usd: totalUsd,
         // Contract conditions
         condicion_precio: contractConditions?.condicionPrecio || null,
-        fecha_embarque: contractConditions?.fechaEmbarque || null,
+        fecha_embarque: contractConditions?.fechaEmbarqueInicio 
+          ? `${contractConditions.fechaEmbarqueInicio.toISOString().split('T')[0]}${contractConditions.fechaEmbarqueFin ? ' - ' + contractConditions.fechaEmbarqueFin.toISOString().split('T')[0] : ''}`
+          : null,
         origen: contractConditions?.origen || null,
         fabricas_origen: contractConditions?.fabricasOrigen || null,
         notas_pago: contractConditions?.notasPago || null,
