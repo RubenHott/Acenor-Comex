@@ -201,7 +201,7 @@ export function PIMContractConditions({
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {data.fechaEmbarqueInicio
-                    ? format(data.fechaEmbarqueInicio, 'MMM yyyy', { locale: es })
+                    ? format(data.fechaEmbarqueInicio, 'dd MMM yyyy', { locale: es })
                     : 'Seleccionar'}
                 </Button>
               </PopoverTrigger>
@@ -229,7 +229,7 @@ export function PIMContractConditions({
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {data.fechaEmbarqueFin
-                    ? format(data.fechaEmbarqueFin, 'MMM yyyy', { locale: es })
+                    ? format(data.fechaEmbarqueFin, 'dd MMM yyyy', { locale: es })
                     : 'Seleccionar'}
                 </Button>
               </PopoverTrigger>
