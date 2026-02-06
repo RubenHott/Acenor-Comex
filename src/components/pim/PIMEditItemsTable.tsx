@@ -27,6 +27,7 @@ import {
 import { Plus, Trash2, Search, Package } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import type { Product } from '@/hooks/useProducts';
+import { AddFromRequirementDialog } from './AddFromRequirementDialog';
 
 export interface EditableItem {
   id: string;
@@ -130,19 +131,24 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
 
   return (
     <div className="space-y-4">
-      {/* Add product button */}
-      <div className="flex items-center justify-between">
+      {/* Add product buttons */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-muted-foreground" />
           <Label className="text-sm font-medium">
             {items.length} producto(s) en este PIM
           </Label>
         </div>
-        <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-          <PopoverTrigger asChild>
-            <Button size="sm" variant="outline">
-              <Plus className="h-4 w-4 mr-1" />
-              Agregar Producto
+        <div className="flex gap-2">
+          <AddFromRequirementDialog
+            existingProductIds={items.map((i) => i.producto_id).filter(Boolean) as string[]}
+            onItemsSelected={(newItems) => onItemsChange([...items, ...newItems])}
+          />
+          <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline">
+                <Plus className="h-4 w-4 mr-1" />
+                Producto Adicional
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[400px] p-0" align="end">
@@ -177,6 +183,7 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
             </Command>
           </PopoverContent>
         </Popover>
+        </div>
       </div>
 
       {items.length === 0 ? (
