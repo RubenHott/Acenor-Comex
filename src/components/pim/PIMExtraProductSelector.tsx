@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/popover';
 import { Plus, Trash2, Search, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
 import type { Product } from '@/hooks/useProducts';
 
 export interface PIMExtraItem {
@@ -35,6 +36,7 @@ export interface PIMExtraItem {
   codigoProducto: string;
   descripcion: string;
   unidad: string;
+  cuadro: string | null;
   cantidad: number;
   precioUnitarioUsd: number;
   totalUsd: number;
@@ -43,6 +45,23 @@ export interface PIMExtraItem {
 interface PIMExtraProductSelectorProps {
   extraItems: PIMExtraItem[];
   onExtraItemsChange: (items: PIMExtraItem[]) => void;
+}
+
+/** Display quantity in TON for weight-based products */
+function toDisplayExtra(cuadro: string | null, rawUnit: string, rawQty: number) {
+  const porUnidad = isCuadroPorUnidad(cuadro ?? '');
+  if (porUnidad) return { displayUnit: rawUnit, displayQty: rawQty };
+  if (rawUnit === 'KG') return { displayUnit: 'TON', displayQty: rawQty / 1000 };
+  if (rawUnit === 'TON') return { displayUnit: 'TON', displayQty: rawQty };
+  // Default weight
+  return { displayUnit: rawUnit, displayQty: rawQty };
+}
+
+function fromDisplayExtra(cuadro: string | null, rawUnit: string, displayQty: number) {
+  const porUnidad = isCuadroPorUnidad(cuadro ?? '');
+  if (porUnidad) return displayQty;
+  if (rawUnit === 'KG') return displayQty * 1000;
+  return displayQty;
 }
 
 export function PIMExtraProductSelector({
@@ -75,9 +94,10 @@ export function PIMExtraProductSelector({
         codigoProducto: product.codigo,
         descripcion: product.descripcion,
         unidad: product.unidad,
+        cuadro: product.cuadro,
         cantidad: 1,
-        precioUnitarioUsd: product.ultimo_precio_usd ?? 0,
-        totalUsd: product.ultimo_precio_usd ?? 0,
+        precioUnitarioUsd: 0,
+        totalUsd: 0,
       };
 
       onExtraItemsChange([...extraItems, newItem]);
@@ -87,14 +107,31 @@ export function PIMExtraProductSelector({
     [extraItems, onExtraItemsChange]
   );
 
-  const updateItem = useCallback(
-    (tempId: string, field: 'cantidad' | 'precioUnitarioUsd', value: number) => {
+  /** Update display quantity → store raw quantity; recalculate unit price from totalUsd */
+  const updateQuantity = useCallback(
+    (tempId: string, displayQty: number) => {
       onExtraItemsChange(
         extraItems.map((item) => {
           if (item.tempId !== tempId) return item;
-          const updated = { ...item, [field]: value };
-          updated.totalUsd = updated.cantidad * updated.precioUnitarioUsd;
-          return updated;
+          const rawQty = fromDisplayExtra(item.cuadro, item.unidad, displayQty);
+          const cantidad = Math.max(0, rawQty);
+          const precioUnitarioUsd = cantidad > 0 ? item.totalUsd / cantidad : 0;
+          return { ...item, cantidad, precioUnitarioUsd };
+        })
+      );
+    },
+    [extraItems, onExtraItemsChange]
+  );
+
+  /** User enters Total USD; we derive unit price */
+  const updateTotalUsd = useCallback(
+    (tempId: string, total: number) => {
+      onExtraItemsChange(
+        extraItems.map((item) => {
+          if (item.tempId !== tempId) return item;
+          const totalUsd = Math.max(0, total);
+          const precioUnitarioUsd = item.cantidad > 0 ? totalUsd / item.cantidad : 0;
+          return { ...item, totalUsd, precioUnitarioUsd };
         })
       );
     },
@@ -115,7 +152,26 @@ export function PIMExtraProductSelector({
       minimumFractionDigits: 2,
     }).format(n);
 
+  const formatNumber = (n: number, decimals = 2) =>
+    new Intl.NumberFormat('es-PE', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(n);
+
   const totalUsd = extraItems.reduce((sum, i) => sum + i.totalUsd, 0);
+
+  const totalToneladas = extraItems.reduce((sum, i) => {
+    const porUnidad = isCuadroPorUnidad(i.cuadro ?? '');
+    if (porUnidad) return sum;
+    const { displayQty } = toDisplayExtra(i.cuadro, i.unidad, i.cantidad);
+    return sum + displayQty;
+  }, 0);
+
+  const totalUnidades = extraItems.reduce((sum, i) => {
+    const porUnidad = isCuadroPorUnidad(i.cuadro ?? '');
+    if (!porUnidad) return sum;
+    return sum + i.cantidad;
+  }, 0);
 
   return (
     <div className="space-y-4">
@@ -184,74 +240,100 @@ export function PIMExtraProductSelector({
                   <TableHead>Código</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-center">Cantidad</TableHead>
-                  <TableHead className="text-right">Precio USD</TableHead>
                   <TableHead className="text-right">Total USD</TableHead>
+                  <TableHead className="text-right">Precio / Unidad</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {extraItems.map((item) => (
-                  <TableRow key={item.tempId}>
-                    <TableCell className="font-mono text-sm">
-                      {item.codigoProducto}
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-[200px]">
-                        <p className="truncate text-sm">{item.descripcion}</p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {item.unidad}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min={0.01}
-                        step={0.01}
-                        value={item.cantidad}
-                        onChange={(e) =>
-                          updateItem(item.tempId, 'cantidad', parseFloat(e.target.value) || 0)
-                        }
-                        className="w-24 text-center"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={item.precioUnitarioUsd}
-                        onChange={(e) =>
-                          updateItem(item.tempId, 'precioUnitarioUsd', parseFloat(e.target.value) || 0)
-                        }
-                        className="w-28 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(item.totalUsd)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeItem(item.tempId)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {extraItems.map((item) => {
+                  const { displayUnit, displayQty } = toDisplayExtra(
+                    item.cuadro,
+                    item.unidad,
+                    item.cantidad
+                  );
+                  const calcUnitPrice =
+                    displayQty > 0 ? item.totalUsd / displayQty : 0;
+
+                  return (
+                    <TableRow key={item.tempId}>
+                      <TableCell className="font-mono text-sm">
+                        {item.codigoProducto}
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[200px]">
+                          <p className="truncate text-sm">{item.descripcion}</p>
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {displayUnit}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0.01}
+                          step={0.01}
+                          value={displayQty}
+                          onChange={(e) =>
+                            updateQuantity(item.tempId, parseFloat(e.target.value) || 0)
+                          }
+                          className="w-24 text-center"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={item.totalUsd}
+                          onChange={(e) =>
+                            updateTotalUsd(item.tempId, parseFloat(e.target.value) || 0)
+                          }
+                          className="w-32 text-right"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {calcUnitPrice > 0
+                          ? `${formatCurrency(calcUnitPrice)} / ${displayUnit}`
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeItem(item.tempId)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
 
           <div className="flex justify-end">
-            <div className="p-3 rounded-lg bg-accent/50 min-w-[200px]">
-              <Label className="text-xs text-muted-foreground">Total Extras USD</Label>
-              <p className="text-lg font-bold text-accent-foreground">
-                {formatCurrency(totalUsd)}
-              </p>
+            <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-accent/50 min-w-[300px]">
+              {totalToneladas > 0 && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Toneladas Extras</Label>
+                  <p className="text-lg font-bold">{formatNumber(totalToneladas)} t</p>
+                </div>
+              )}
+              {totalUnidades > 0 && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Unidades Extras</Label>
+                  <p className="text-lg font-bold">{formatNumber(totalUnidades, 0)}</p>
+                </div>
+              )}
+              <div>
+                <Label className="text-xs text-muted-foreground">Total Extras USD</Label>
+                <p className="text-lg font-bold text-accent-foreground">
+                  {formatCurrency(totalUsd)}
+                </p>
+              </div>
             </div>
           </div>
         </>
