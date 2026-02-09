@@ -17,7 +17,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
+import { useActiveMolinos } from '@/hooks/useMolinos';
+import { AddFabricaMolinoDialog } from './AddFabricaMolinoDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -28,12 +30,14 @@ export interface ContractConditionsData {
   fechaEmbarqueFin: Date | undefined;
   origen: string;
   fabricasOrigen: string;
+  molinoId: string;
   notasPago: string;
 }
 
 interface PIMContractConditionsProps {
   data: ContractConditionsData;
   onChange: (data: ContractConditionsData) => void;
+  onMolinoCreated?: (molinoId: string) => void;
 }
 
 const PRECIO_OPTIONS = [
@@ -67,7 +71,9 @@ const ORIGEN_OPTIONS = [
 export function PIMContractConditions({
   data,
   onChange,
+  onMolinoCreated,
 }: PIMContractConditionsProps) {
+  const { data: molinos } = useActiveMolinos();
   const [showCustomPrecio, setShowCustomPrecio] = useState(false);
   const [customPrecio, setCustomPrecio] = useState('');
   const [showCustomOrigen, setShowCustomOrigen] = useState(false);
@@ -301,16 +307,33 @@ export function PIMContractConditions({
 
       {/* Fábricas / Molinos */}
       <div className="space-y-2">
-        <Label htmlFor="fabricasOrigen">Fábricas / Molinos Autorizados</Label>
-        <Textarea
-          id="fabricasOrigen"
-          placeholder="Ej: RNAV (Yanshan-Benxi), PGR (Yingkou), RLF (Jingye, Tiantie)..."
-          value={data.fabricasOrigen}
-          onChange={(e) => handleChange('fabricasOrigen', e.target.value)}
-          rows={3}
-        />
+        <Label htmlFor="molinoId">Fábrica / Molino Autorizado</Label>
+        <div className="flex gap-2 items-center">
+          <Select
+            value={data.molinoId || '__none__'}
+            onValueChange={(v) => handleChange('molinoId', v === '__none__' ? '' : v)}
+          >
+            <SelectTrigger id="molinoId" className="flex-1">
+              <SelectValue placeholder="Seleccionar fábrica/molino" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Sin fábrica asignada</SelectItem>
+              {(molinos ?? []).map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.codigo} — {m.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <AddFabricaMolinoDialog
+            onMolinoCreated={(id) => {
+              handleChange('molinoId', id);
+              onMolinoCreated?.(id);
+            }}
+          />
+        </div>
         <p className="text-xs text-muted-foreground">
-          Separar múltiples fábricas por categoría de producto
+          Seleccione la fábrica o molino autorizado para este PIM
         </p>
       </div>
 

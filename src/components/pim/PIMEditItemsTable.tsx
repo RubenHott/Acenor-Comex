@@ -24,8 +24,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Trash2, Search, Package } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
+import { useActiveMolinos } from '@/hooks/useMolinos';
 import type { Product } from '@/hooks/useProducts';
 import { AddFromRequirementDialog } from './AddFromRequirementDialog';
 
@@ -39,6 +47,7 @@ export interface EditableItem {
   precio_unitario_usd: number;
   total_usd: number;
   toneladas: number;
+  molino_id?: string | null;
   isNew?: boolean; // marks items added during edit
 }
 
@@ -47,6 +56,8 @@ interface PIMEditItemsTableProps {
   onItemsChange: (items: EditableItem[]) => void;
   removedItemIds: string[];
   onRemovedItemIdsChange: (ids: string[]) => void;
+  /** Molino general del PIM; si el ítem no tiene molino_id, se usa este */
+  molinoId?: string;
 }
 
 function toDisplayUnit(rawUnit: string, rawQty: number): { unit: string; qty: number } {
@@ -59,8 +70,9 @@ function fromDisplayQty(rawUnit: string, displayQty: number): number {
   return displayQty;
 }
 
-export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemovedItemIdsChange }: PIMEditItemsTableProps) {
+export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemovedItemIdsChange, molinoId }: PIMEditItemsTableProps) {
   const { data: products, isLoading: isLoadingProducts } = useProducts();
+  const { data: molinos = [] } = useActiveMolinos();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -84,13 +96,14 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
         precio_unitario_usd: 0,
         total_usd: 0,
         toneladas: product.unidad === 'KG' ? 1 : product.unidad === 'TON' ? 1 : 0,
+        molino_id: molinoId || null,
         isNew: true,
       };
       onItemsChange([...items, newItem]);
       setSearchOpen(false);
       setSearchQuery('');
     },
-    [items, onItemsChange]
+    [items, onItemsChange, molinoId]
   );
 
   const removeItem = useCallback(
@@ -105,21 +118,29 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
   );
 
   const updateItem = useCallback(
-    (id: string, field: 'displayQty' | 'total_usd', value: number) => {
+    (id: string, field: 'displayQty' | 'total_usd' | 'molino_id', value: number | string | null) => {
       onItemsChange(
         items.map((item) => {
           if (item.id !== id) return item;
 
           if (field === 'displayQty') {
-            const rawQty = fromDisplayQty(item.unidad, value);
+            const rawQty = fromDisplayQty(item.unidad, value as number);
             const precio = rawQty > 0 ? item.total_usd / rawQty : 0;
             const toneladas = item.unidad === 'KG' ? rawQty / 1000 : item.unidad === 'TON' ? rawQty : 0;
             return { ...item, cantidad: rawQty, precio_unitario_usd: precio, toneladas };
           }
 
-          const total = Math.max(0, value);
-          const precio = item.cantidad > 0 ? total / item.cantidad : 0;
-          return { ...item, total_usd: total, precio_unitario_usd: precio };
+          if (field === 'total_usd') {
+            const total = Math.max(0, value as number);
+            const precio = item.cantidad > 0 ? total / item.cantidad : 0;
+            return { ...item, total_usd: total, precio_unitario_usd: precio };
+          }
+
+          if (field === 'molino_id') {
+            return { ...item, molino_id: value === '' || value === null ? null : (value as string) };
+          }
+
+          return item;
         })
       );
     },
@@ -201,6 +222,7 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
                 <TableHead className="text-center">Cantidad</TableHead>
                 <TableHead className="text-right">Total USD</TableHead>
                 <TableHead className="text-right">Precio / Unidad</TableHead>
+                <TableHead>Fábrica/Molino</TableHead>
                 <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
@@ -245,6 +267,42 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
                     </TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
                       {calcUnitPrice > 0 ? `${formatCurrency(calcUnitPrice)} / ${displayUnit}` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={item.molino_id ?? (molinoId || '__sin_asignar__')}
+                        onValueChange={(v) => {
+                          const storeNull = v === '__sin_asignar__' || v === molinoId;
+                          updateItem(item.id, 'molino_id', storeNull ? null : v);
+                        }}
+                      >
+                        <SelectTrigger className="h-9 min-w-[140px]">
+                          <SelectValue placeholder="Sin asignar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {molinoId ? (
+                            (() => {
+                              const defaultMolino = molinos.find((m) => m.id === molinoId);
+                              return (
+                                <SelectItem value={molinoId} key={molinoId}>
+                                  {defaultMolino
+                                    ? `${defaultMolino.codigo} - ${defaultMolino.nombre} (por defecto del PIM)`
+                                    : 'Por defecto del PIM'}
+                                </SelectItem>
+                              );
+                            })()
+                          ) : (
+                            <SelectItem value="__sin_asignar__">Sin asignar</SelectItem>
+                          )}
+                          {molinos
+                            .filter((m) => m.id !== molinoId)
+                            .map((m) => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.codigo} - {m.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       <Button

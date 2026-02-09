@@ -54,6 +54,18 @@ export function useCreatePIMWithItems() {
         .eq('id', formData.proveedorId)
         .single();
 
+      // Get molino name if selected
+      const molinoId = contractConditions?.molinoId || null;
+      let molinoNombre: string | null = null;
+      if (molinoId) {
+        const { data: molino } = await supabase
+          .from('fabricas_molinos')
+          .select('nombre')
+          .eq('id', molinoId)
+          .single();
+        molinoNombre = molino?.nombre ?? null;
+      }
+
       const codigo = await generatePIMCode();
       const pimId = crypto.randomUUID();
 
@@ -109,6 +121,8 @@ export function useCreatePIMWithItems() {
           : null,
         origen: contractConditions?.origen || null,
         fabricas_origen: contractConditions?.fabricasOrigen || null,
+        molino_id: contractConditions?.molinoId || null,
+        molino_nombre: molinoNombre,
         notas_pago: contractConditions?.notasPago || null,
       });
 
@@ -132,6 +146,7 @@ export function useCreatePIMWithItems() {
               : item.unidad === 'KG'
               ? item.cantidadAConsumir / 1000
               : 0,
+          molino_id: item.molinoId ?? molinoId,
         }));
 
         const { error: itemsError } = await supabase.from('pim_items').insert(pimItems);
@@ -235,6 +250,7 @@ export function useCreatePIMWithItems() {
               : item.unidad === 'KG'
               ? item.cantidad / 1000
               : 0,
+          molino_id: item.molinoId ?? molinoId,
         }));
 
         const { error: extraItemsError } = await supabase

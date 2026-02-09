@@ -43,6 +43,7 @@ export default function EditPIMPage() {
     fechaEmbarqueFin: undefined,
     origen: '',
     fabricasOrigen: '',
+    molinoId: '',
     notasPago: '',
   });
 
@@ -76,6 +77,7 @@ export default function EditPIMPage() {
         fechaEmbarqueFin: fechaFin,
         origen: pim.origen ?? '',
         fabricasOrigen: pim.fabricas_origen ?? '',
+        molinoId: pim.molino_id ?? '',
         notasPago: pim.notas_pago ?? '',
       });
 
@@ -96,6 +98,7 @@ export default function EditPIMPage() {
         precio_unitario_usd: item.precio_unitario_usd,
         total_usd: item.total_usd,
         toneladas: item.toneladas,
+        molino_id: item.molino_id ?? undefined,
       })));
     }
   }, [pimItems, initialized, editedItems.length]);
@@ -136,6 +139,17 @@ export default function EditPIMPage() {
         .eq('id', formData.proveedorId)
         .single();
 
+      // Get molino name if selected
+      let molinoNombre: string | null = null;
+      if (contractConditions.molinoId) {
+        const { data: molino } = await supabase
+          .from('fabricas_molinos')
+          .select('nombre')
+          .eq('id', contractConditions.molinoId)
+          .single();
+        molinoNombre = molino?.nombre ?? null;
+      }
+
       // Update PIM header
       await updatePIM.mutateAsync({
         id,
@@ -152,6 +166,8 @@ export default function EditPIMPage() {
             : null,
           origen: contractConditions.origen || null,
           fabricas_origen: contractConditions.fabricasOrigen || null,
+          molino_id: contractConditions.molinoId || null,
+          molino_nombre: molinoNombre,
           notas_pago: contractConditions.notasPago || null,
           total_toneladas: totalToneladas,
           total_usd: totalUsd,
@@ -167,6 +183,7 @@ export default function EditPIMPage() {
       for (const item of editedItems) {
         const toneladas = item.unidad === 'KG' ? item.cantidad / 1000 : item.unidad === 'TON' ? item.cantidad : 0;
 
+        const molinoId = item.molino_id ?? (contractConditions.molinoId || null);
         if (item.isNew) {
           // Insert new item
           await supabase.from('pim_items').insert({
@@ -180,6 +197,7 @@ export default function EditPIMPage() {
             precio_unitario_usd: item.precio_unitario_usd,
             total_usd: item.total_usd,
             toneladas,
+            molino_id: molinoId,
           });
         } else {
           // Update existing
@@ -190,6 +208,7 @@ export default function EditPIMPage() {
               precio_unitario_usd: item.precio_unitario_usd,
               total_usd: item.total_usd,
               toneladas,
+              molino_id: molinoId,
             })
             .eq('id', item.id);
         }
@@ -345,6 +364,7 @@ export default function EditPIMPage() {
                   onItemsChange={setEditedItems}
                   removedItemIds={removedItemIds}
                   onRemovedItemIdsChange={setRemovedItemIds}
+                  molinoId={contractConditions.molinoId || undefined}
                 />
               </CardContent>
             </Card>

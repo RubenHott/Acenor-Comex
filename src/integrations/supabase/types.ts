@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fabricas_molinos: {
+        Row: {
+          id: string
+          codigo: string
+          nombre: string
+          pais: string
+          ciudad: string | null
+          activo: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          codigo: string
+          nombre: string
+          pais: string
+          ciudad?: string | null
+          activo?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          codigo?: string
+          nombre?: string
+          pais?: string
+          ciudad?: string | null
+          activo?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       diferencia_contrato: {
         Row: {
           campo: string
@@ -287,6 +320,7 @@ export type Database = {
           created_at: string | null
           descripcion: string
           id: string
+          molino_id: string | null
           pim_id: string
           precio_unitario_usd: number
           producto_id: string
@@ -302,6 +336,7 @@ export type Database = {
           created_at?: string | null
           descripcion: string
           id: string
+          molino_id?: string | null
           pim_id: string
           precio_unitario_usd: number
           producto_id: string
@@ -317,6 +352,7 @@ export type Database = {
           created_at?: string | null
           descripcion?: string
           id?: string
+          molino_id?: string | null
           pim_id?: string
           precio_unitario_usd?: number
           producto_id?: string
@@ -338,6 +374,13 @@ export type Database = {
             columns: ["producto_id"]
             isOneToOne: false
             referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pim_items_molino_id_fkey"
+            columns: ["molino_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas_molinos"
             referencedColumns: ["id"]
           },
         ]

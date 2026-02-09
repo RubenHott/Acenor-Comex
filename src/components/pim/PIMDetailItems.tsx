@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { usePIMItems } from '@/hooks/usePIMItems';
+import { useMolinos } from '@/hooks/useMolinos';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -48,6 +50,12 @@ interface PIMDetailItemsProps {
 
 export function PIMDetailItems({ pimId }: PIMDetailItemsProps) {
   const { data: items, isLoading } = usePIMItems(pimId);
+  const { data: molinos = [] } = useMolinos();
+  const molinoById = useMemo(() => {
+    const m: Record<string, string> = {};
+    molinos.forEach((mol) => { m[mol.id] = `${mol.codigo} - ${mol.nombre}`; });
+    return m;
+  }, [molinos]);
 
   if (isLoading) {
     return (
@@ -102,6 +110,7 @@ export function PIMDetailItems({ pimId }: PIMDetailItemsProps) {
             <TableRow>
               <TableHead className="w-[140px]">Código</TableHead>
               <TableHead>Descripción</TableHead>
+              <TableHead className="w-[160px]">Fábrica/Molino</TableHead>
               <TableHead className="text-right w-[120px]">Cantidad</TableHead>
               <TableHead className="text-right w-[120px]">Total USD</TableHead>
               <TableHead className="text-right w-[130px]">Precio Unit.</TableHead>
@@ -112,6 +121,9 @@ export function PIMDetailItems({ pimId }: PIMDetailItemsProps) {
               <TableRow key={item.id}>
                 <TableCell className="font-mono text-xs">{item.codigo_producto}</TableCell>
                 <TableCell className="text-sm">{item.descripcion}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {item.molino_id ? (molinoById[item.molino_id] ?? '—') : 'General'}
+                </TableCell>
                 <TableCell className="text-right text-sm font-medium">
                   {formatQty(item.cantidad, item.unidad)}
                 </TableCell>

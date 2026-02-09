@@ -110,7 +110,7 @@ Procesos de Importación.
 | `requerimiento_id` | text | No | - | FK → requerimientos_mensuales |
 | `proveedor_id` | text | No | - | FK → proveedores |
 | `proveedor_nombre` | text | Sí | - | Nombre desnormalizado |
-| `molino_id` | text | Sí | - | ID del molino/fábrica |
+| `molino_id` | uuid | Sí | - | FK → fabricas_molinos |
 | `molino_nombre` | text | Sí | - | Nombre desnormalizado |
 | `modalidad_pago` | text | No | - | Modalidad de pago |
 | `dias_credito` | integer | Sí | - | Días de crédito |
@@ -152,6 +152,26 @@ Items/productos de un PIM.
 | `precio_unitario_usd` | numeric | No | - | Precio por unidad |
 | `total_usd` | numeric | No | - | Total en USD |
 | `cantidad_recibida` | numeric | Sí | `0` | Cantidad recibida |
+| `molino_id` | uuid | Sí | - | FK → fabricas_molinos (override; si null, usa molino del PIM) |
+
+---
+
+### fabricas_molinos
+
+Maestro de fábricas/molinos autorizados.
+
+| Columna | Tipo | Nullable | Default | Descripción |
+|---------|------|----------|---------|-------------|
+| `id` | uuid | No | `gen_random_uuid()` | PK |
+| `codigo` | text | No | - | Código único (ej: RNAV, PGR) |
+| `nombre` | text | No | - | Nombre o razón social |
+| `pais` | text | No | - | País |
+| `ciudad` | text | Sí | - | Ciudad |
+| `activo` | boolean | No | `true` | Estado activo |
+| `created_at` | timestamptz | Sí | `now()` | Fecha creación |
+| `updated_at` | timestamptz | Sí | `now()` | Fecha actualización |
+
+RLS habilitado con políticas de lectura, inserción, actualización y eliminación.
 
 ---
 

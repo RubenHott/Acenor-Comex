@@ -335,7 +335,7 @@ export function useSplitPIM() {
       const newTotalUsd = itemsToMove.reduce((s: number, i: any) => s + (i.total_usd || 0), 0);
       const newTotalTon = itemsToMove.reduce((s: number, i: any) => s + (i.toneladas || 0), 0);
 
-      // 4. Create new PIM
+      // 4. Create new PIM (con mismas condiciones de contrato que el original)
       const { error: createErr } = await supabase.from('pims').insert({
         id: newPimId,
         codigo: newCode,
@@ -350,6 +350,15 @@ export function useSplitPIM() {
         modalidad_pago: originalPim.modalidad_pago,
         total_usd: newTotalUsd,
         total_toneladas: newTotalTon,
+        condicion_precio: originalPim.condicion_precio,
+        fecha_embarque: originalPim.fecha_embarque,
+        origen: originalPim.origen,
+        fabricas_origen: originalPim.fabricas_origen,
+        molino_id: originalPim.molino_id,
+        molino_nombre: originalPim.molino_nombre,
+        notas_pago: originalPim.notas_pago,
+        dias_credito: originalPim.dias_credito,
+        porcentaje_anticipo: originalPim.porcentaje_anticipo,
       });
       if (createErr) throw createErr;
 

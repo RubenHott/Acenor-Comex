@@ -314,20 +314,41 @@ export function useDeleteRequirement() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // First delete associated items
+      // 1. Obtener ids de requerimiento_items de este requerimiento
+      const { data: reqItems } = await supabase
+        .from('requerimiento_items')
+        .select('id')
+        .eq('requerimiento_id', id);
+      const reqItemIds = (reqItems ?? []).map((r) => r.id);
+
+      // 2. Eliminar pim_requirement_items que referencian esos ítems (evita FK conflict)
+      if (reqItemIds.length > 0) {
+        const { error: errPimReq } = await supabase
+          .from('pim_requirement_items')
+          .delete()
+          .in('requirement_item_id', reqItemIds);
+        if (errPimReq) throw errPimReq;
+      }
+
+      // 3. Eliminar requerimiento_items
       const { error: errItems } = await supabase
         .from('requerimiento_items')
         .delete()
         .eq('requerimiento_id', id);
-      
       if (errItems) throw errItems;
 
-      // Then delete the requirement
+      // 4. Desvincular PIMs que referencian este requerimiento (evita FK pims_requerimiento_id_fkey)
+      const { error: errPims } = await supabase
+        .from('pims')
+        .update({ requerimiento_id: null })
+        .eq('requerimiento_id', id);
+      if (errPims) throw errPims;
+
+      // 5. Eliminar el requerimiento
       const { error } = await supabase
         .from('requerimientos_mensuales')
         .delete()
         .eq('id', id);
-      
       if (error) throw error;
       return id;
     },

@@ -110,13 +110,16 @@ supabase/
 - **Dashboard** con KPIs en tiempo real (PIMs activos, alertas SLA, toneladas, USD)
 - **Requerimientos mensuales** con autocompletado de productos
 - **Gestión de PIMs** — Crear, editar, dividir PIMs
+- **Maestro de Fábricas/Molinos** — Tabla maestra con CRUD y carga CSV; asignación por PIM e ítem
+- **Condiciones de contrato** — Fábrica/molino general por PIM, override por ítem (crear y editar)
 - **Seguimiento por etapas** — Contrato → Financiero → Producción → Embarque → Internación → Entrega
 - **Checklist por etapa** con items críticos y opcionales
 - **Gestión documental** organizada por etapa y categoría (BL, SWIFT, Certificados, etc.)
 - **Tracking DHL** integrado para seguimiento de envíos
 - **Timeline de actividad** con historial completo
 - **Catálogo de productos** y **proveedores**
-- **Tablas maestras** (cuadros de importación)
+- **Tablas maestras** (cuadros, productos, proveedores, fábricas/molinos)
+- **Integridad referencial** — Al eliminar PIMs se liberan kilos en requerimientos; al eliminar requerimientos se desvinculan PIMs
 
 ### Módulo Órdenes de Trabajo
 - **Dashboard** con estadísticas

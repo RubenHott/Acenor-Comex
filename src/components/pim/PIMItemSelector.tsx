@@ -3,6 +3,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -14,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useActiveMolinos } from '@/hooks/useMolinos';
 import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
 import type { RequirementItem } from '@/hooks/useRequirements';
 
@@ -31,6 +39,7 @@ export interface PIMItemSelection {
   cantidadAConsumir: number;
   totalUsd: number;
   exceedsLimit: boolean;
+  molinoId?: string | null;
 }
 
 export interface RequirementItemWithContext extends RequirementItem {
@@ -44,6 +53,8 @@ interface PIMItemSelectorProps {
   items: RequirementItemWithContext[];
   selections: PIMItemSelection[];
   onSelectionsChange: (selections: PIMItemSelection[]) => void;
+  /** Molino por defecto del PIM; si el ítem no tiene molinoId, se usa este */
+  molinoId?: string;
 }
 
 /**
@@ -83,7 +94,9 @@ export function PIMItemSelector({
   items,
   selections,
   onSelectionsChange,
+  molinoId,
 }: PIMItemSelectorProps) {
+  const { data: molinos = [] } = useActiveMolinos();
   const availableItems = items.filter((item) => item.kilos_disponibles > 0);
 
   const isSelected = (itemId: string) =>
@@ -109,13 +122,14 @@ export function PIMItemSelector({
           cantidadAConsumir: item.kilos_disponibles,
           totalUsd: 0, // user must enter the total
           exceedsLimit: false,
+          molinoId: molinoId || null,
         };
         onSelectionsChange([...selections, newSel]);
       } else {
         onSelectionsChange(selections.filter((s) => s.itemId !== item.id));
       }
     },
-    [selections, onSelectionsChange]
+    [selections, onSelectionsChange, molinoId]
   );
 
   const updateQuantity = useCallback(
@@ -157,6 +171,19 @@ export function PIMItemSelector({
       );
     },
     [selections, onSelectionsChange]
+  );
+
+  const updateMolino = useCallback(
+    (itemId: string, value: string) => {
+      const storeNull = value === '__sin_asignar__' || value === molinoId;
+      onSelectionsChange(
+        selections.map((s) => {
+          if (s.itemId !== itemId) return s;
+          return { ...s, molinoId: storeNull ? null : value };
+        })
+      );
+    },
+    [selections, onSelectionsChange, molinoId]
   );
 
   const formatNumber = (n: number, decimals = 2) =>
@@ -250,6 +277,7 @@ export function PIMItemSelector({
                       A Consumir ({porUnidad ? 'UND' : 'TON'})
                     </TableHead>
                     <TableHead className="text-right">Total USD</TableHead>
+                    <TableHead>Fábrica/Molino</TableHead>
                     <TableHead className="text-right">
                       Precio / {porUnidad ? 'UND' : 'TON'}
                     </TableHead>
@@ -340,6 +368,43 @@ export function PIMItemSelector({
                               }
                               className="w-32 text-right"
                             />
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {selected && sel ? (
+                            <Select
+                              value={sel.molinoId ?? (molinoId || '__sin_asignar__')}
+                              onValueChange={(v) => updateMolino(item.id, v)}
+                            >
+                              <SelectTrigger className="h-9 min-w-[140px]">
+                                <SelectValue placeholder="Sin asignar" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {molinoId ? (
+                                  (() => {
+                                    const defaultMolino = molinos.find((m) => m.id === molinoId);
+                                    return (
+                                      <SelectItem value={molinoId} key={molinoId}>
+                                        {defaultMolino
+                                          ? `${defaultMolino.codigo} - ${defaultMolino.nombre} (por defecto del PIM)`
+                                          : 'Por defecto del PIM'}
+                                      </SelectItem>
+                                    );
+                                  })()
+                                ) : (
+                                  <SelectItem value="__sin_asignar__">Sin asignar</SelectItem>
+                                )}
+                                {molinos
+                                  .filter((m) => m.id !== molinoId)
+                                  .map((m) => (
+                                    <SelectItem key={m.id} value={m.id}>
+                                      {m.codigo} - {m.nombre}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}

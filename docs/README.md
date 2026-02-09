@@ -104,7 +104,7 @@ npm run dev
 
 ### ✅ Implementado
 
-- **Base de datos Supabase**: 17+ tablas con datos reales
+- **Base de datos Supabase**: 18+ tablas (incl. fabricas_molinos)
 - **Funciones SQL**: 9 funciones para cálculos en servidor
 - **Edge Functions**: 4 funciones (dashboard stats, work orders, DHL tracking)
 - **Trigger SLA**: Cálculo automático de alertas

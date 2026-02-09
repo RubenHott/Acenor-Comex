@@ -4,6 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,6 +34,7 @@ import {
 } from '@/components/ui/popover';
 import { Plus, Trash2, Search, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useActiveMolinos } from '@/hooks/useMolinos';
 import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
 import type { Product } from '@/hooks/useProducts';
 
@@ -40,11 +48,14 @@ export interface PIMExtraItem {
   cantidad: number;
   precioUnitarioUsd: number;
   totalUsd: number;
+  molinoId?: string | null;
 }
 
 interface PIMExtraProductSelectorProps {
   extraItems: PIMExtraItem[];
   onExtraItemsChange: (items: PIMExtraItem[]) => void;
+  /** Molino por defecto del PIM */
+  molinoId?: string;
 }
 
 /** Display quantity in TON for weight-based products */
@@ -67,8 +78,10 @@ function fromDisplayExtra(cuadro: string | null, rawUnit: string, displayQty: nu
 export function PIMExtraProductSelector({
   extraItems,
   onExtraItemsChange,
+  molinoId,
 }: PIMExtraProductSelectorProps) {
   const { data: products, isLoading } = useProducts();
+  const { data: molinos = [] } = useActiveMolinos();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -98,13 +111,14 @@ export function PIMExtraProductSelector({
         cantidad: 1,
         precioUnitarioUsd: 0,
         totalUsd: 0,
+        molinoId: molinoId || null,
       };
 
       onExtraItemsChange([...extraItems, newItem]);
       setSearchOpen(false);
       setSearchQuery('');
     },
-    [extraItems, onExtraItemsChange]
+    [extraItems, onExtraItemsChange, molinoId]
   );
 
   /** Update display quantity → store raw quantity; recalculate unit price from totalUsd */
@@ -143,6 +157,19 @@ export function PIMExtraProductSelector({
       onExtraItemsChange(extraItems.filter((i) => i.tempId !== tempId));
     },
     [extraItems, onExtraItemsChange]
+  );
+
+  const updateMolino = useCallback(
+    (tempId: string, value: string) => {
+      const storeNull = value === '__sin_asignar__' || value === molinoId;
+      onExtraItemsChange(
+        extraItems.map((i) => {
+          if (i.tempId !== tempId) return i;
+          return { ...i, molinoId: storeNull ? null : value };
+        })
+      );
+    },
+    [extraItems, onExtraItemsChange, molinoId]
   );
 
   const formatCurrency = (n: number) =>
@@ -241,6 +268,7 @@ export function PIMExtraProductSelector({
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-center">Cantidad</TableHead>
                   <TableHead className="text-right">Total USD</TableHead>
+                  <TableHead>Fábrica/Molino</TableHead>
                   <TableHead className="text-right">Precio / Unidad</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
@@ -291,6 +319,39 @@ export function PIMExtraProductSelector({
                           }
                           className="w-32 text-right"
                         />
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={item.molinoId ?? (molinoId || '__sin_asignar__')}
+                          onValueChange={(v) => updateMolino(item.tempId, v)}
+                        >
+                          <SelectTrigger className="h-9 min-w-[140px]">
+                            <SelectValue placeholder="Sin asignar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {molinoId ? (
+                              (() => {
+                                const defaultMolino = molinos.find((m) => m.id === molinoId);
+                                return (
+                                  <SelectItem value={molinoId} key={molinoId}>
+                                    {defaultMolino
+                                      ? `${defaultMolino.codigo} - ${defaultMolino.nombre} (por defecto del PIM)`
+                                      : 'Por defecto del PIM'}
+                                  </SelectItem>
+                                );
+                              })()
+                            ) : (
+                              <SelectItem value="__sin_asignar__">Sin asignar</SelectItem>
+                            )}
+                            {molinos
+                              .filter((m) => m.id !== molinoId)
+                              .map((m) => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.codigo} - {m.nombre}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {calcUnitPrice > 0

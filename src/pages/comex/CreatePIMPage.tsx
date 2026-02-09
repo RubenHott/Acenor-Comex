@@ -57,6 +57,7 @@ export default function CreatePIMPage() {
     fechaEmbarqueFin: undefined,
     origen: '',
     fabricasOrigen: '',
+    molinoId: '',
     notasPago: '',
   });
 
@@ -438,6 +439,7 @@ export default function CreatePIMPage() {
                     items={allAvailableItems}
                     selections={selections}
                     onSelectionsChange={setSelections}
+                    molinoId={contractConditions.molinoId || undefined}
                   />
                 )}
               </CardContent>
@@ -455,6 +457,7 @@ export default function CreatePIMPage() {
                 <PIMExtraProductSelector
                   extraItems={extraItems}
                   onExtraItemsChange={setExtraItems}
+                  molinoId={contractConditions.molinoId || undefined}
                 />
               </CardContent>
             </Card>

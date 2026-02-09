@@ -39,3 +39,11 @@ export const proveedoresColumns: ColumnDefinition[] = [
   { name: 'tipo_proveedor', type: 'texto', required: false, description: 'Tipo: Fabricante/Trader/Distribuidor' },
   { name: 'activo', type: 'boolean', required: false, description: 'Estado activo (true/false, default: true)' },
 ];
+
+export const fabricasMolinosColumns: ColumnDefinition[] = [
+  { name: 'codigo', type: 'texto', required: true, description: 'Código único (ej: RNAV, PGR)' },
+  { name: 'nombre', type: 'texto', required: true, description: 'Nombre o razón social' },
+  { name: 'pais', type: 'texto', required: true, description: 'País' },
+  { name: 'ciudad', type: 'texto', required: false, description: 'Ciudad' },
+  { name: 'activo', type: 'boolean', required: false, description: 'Estado activo (true/false, default: true)' },
+];

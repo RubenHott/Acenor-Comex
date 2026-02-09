@@ -28,7 +28,8 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
 }
 
 export function PIMDetailContract({ pim }: PIMDetailContractProps) {
-  const hasContractInfo = pim.condicion_precio || pim.fecha_embarque || pim.origen || pim.fabricas_origen || pim.notas_pago;
+  const fabricasDisplay = pim.molino_nombre || pim.fabricas_origen;
+  const hasContractInfo = pim.condicion_precio || pim.fecha_embarque || pim.origen || fabricasDisplay || pim.notas_pago;
 
   if (!hasContractInfo) {
     return (
@@ -64,7 +65,7 @@ export function PIMDetailContract({ pim }: PIMDetailContractProps) {
       <InfoRow icon={Ship} label="Condición de Precio (Incoterm)" value={pim.condicion_precio} />
       <InfoRow icon={CalendarDays} label="Fecha de Embarque" value={embarqueDisplay} />
       <InfoRow icon={MapPin} label="País de Origen" value={pim.origen} />
-      <InfoRow icon={Factory} label="Fábricas / Molinos" value={pim.fabricas_origen} />
+      <InfoRow icon={Factory} label="Fábricas / Molinos" value={fabricasDisplay} />
       <InfoRow icon={CreditCard} label="Notas de Pago" value={pim.notas_pago} />
     </div>
   );

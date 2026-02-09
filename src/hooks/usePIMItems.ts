@@ -13,6 +13,7 @@ export interface PIMItem {
   total_usd: number;
   toneladas: number;
   cantidad_recibida: number | null;
+  molino_id: string | null;
 }
 
 export function usePIMItems(pimId: string | undefined) {

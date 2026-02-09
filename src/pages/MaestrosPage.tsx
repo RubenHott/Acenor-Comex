@@ -32,10 +32,12 @@ import type { SupplierInsert } from '@/hooks/useSuppliers';
 import { parseFile, type ParsedRow } from '@/lib/parseCsvExcel';
 import { toast } from 'sonner';
 import { TableStructureCard } from '@/components/maestros/TableStructureCard';
-import { cuadrosColumns, productosColumns, proveedoresColumns } from '@/components/maestros/tableSchemas';
+import { cuadrosColumns, productosColumns, proveedoresColumns, fabricasMolinosColumns } from '@/components/maestros/tableSchemas';
+import { useMolinos, useDeleteMolino, useBulkInsertMolinos } from '@/hooks/useMolinos';
+import type { MolinoInsert } from '@/hooks/useMolinos';
 import { productTipoFromCategoria, tipoMaterialLabel } from '@/components/requirements/ProductAutocomplete';
 
-type MasterTab = 'cuadros' | 'productos' | 'proveedores';
+type MasterTab = 'cuadros' | 'productos' | 'proveedores' | 'fabricas_molinos';
 
 export default function MaestrosPage() {
   const [activeTab, setActiveTab] = useState<MasterTab>('cuadros');
@@ -54,6 +56,9 @@ export default function MaestrosPage() {
   const createSupplier = useCreateSupplier();
   const deleteSupplier = useDeleteSupplier();
   const bulkSuppliers = useBulkInsertSuppliers();
+  const { data: molinos, isLoading: loadingMolinos } = useMolinos();
+  const deleteMolino = useDeleteMolino();
+  const bulkMolinos = useBulkInsertMolinos();
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -61,6 +66,7 @@ export default function MaestrosPage() {
       if (deleteTarget.type === 'cuadros') await deleteCuadro.mutateAsync(deleteTarget.id);
       if (deleteTarget.type === 'productos') await deleteProduct.mutateAsync(deleteTarget.id);
       if (deleteTarget.type === 'proveedores') await deleteSupplier.mutateAsync(deleteTarget.id);
+      if (deleteTarget.type === 'fabricas_molinos') await deleteMolino.mutateAsync(deleteTarget.id);
       toast.success('Registro eliminado');
     } catch (e) {
       toast.error((e as Error).message);
@@ -112,6 +118,15 @@ export default function MaestrosPage() {
         await bulkSuppliers.mutateAsync(toInsert);
         toast.success(`${toInsert.length} proveedor(es) cargado(s). Los ID se generaron automáticamente.`);
       }
+      if (activeTab === 'fabricas_molinos') {
+        const toInsert = rows.map((r) => mapRowToMolino(r)).filter((m) => m.codigo && m.nombre && m.pais) as Omit<MolinoInsert, 'id'>[];
+        if (toInsert.length === 0) {
+          toast.warning('Faltan columnas obligatorias: codigo, nombre, pais.');
+          return;
+        }
+        await bulkMolinos.mutateAsync(toInsert);
+        toast.success(`${toInsert.length} fábrica(s)/molino(s) cargado(s). Los ID se generaron automáticamente.`);
+      }
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -128,7 +143,7 @@ export default function MaestrosPage() {
     <div className="min-h-screen bg-background page-enter">
       <Header
         title="Maestros"
-        subtitle="Gestione las tablas maestras: cuadros de importación, productos y proveedores."
+        subtitle="Gestione las tablas maestras: cuadros de importación, productos, proveedores y fábricas/molinos."
       />
 
       <div className="p-6">
@@ -141,10 +156,11 @@ export default function MaestrosPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MasterTab)}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="cuadros">Cuadros de importación</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="cuadros">Cuadros</TabsTrigger>
                 <TabsTrigger value="productos">Productos</TabsTrigger>
                 <TabsTrigger value="proveedores">Proveedores</TabsTrigger>
+                <TabsTrigger value="fabricas_molinos">Fábricas / Molinos</TabsTrigger>
               </TabsList>
 
               {/* CUADROS TAB */}
@@ -399,6 +415,77 @@ export default function MaestrosPage() {
                   </div>
                 )}
               </TabsContent>
+
+              {/* FÁBRICAS / MOLINOS TAB */}
+              <TabsContent value="fabricas_molinos" className="mt-4 space-y-4">
+                <TableStructureCard
+                  tableName="fabricas_molinos"
+                  columns={fabricasMolinosColumns}
+                  templateFilename="plantilla_fabricas_molinos.csv"
+                />
+
+                <div className="flex items-center justify-between">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={bulkMolinos.isPending}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Cargar CSV / Excel
+                  </Button>
+                  <Badge variant="secondary">
+                    {molinos?.length ?? 0} registros
+                  </Badge>
+                </div>
+
+                {loadingMolinos ? (
+                  <Skeleton className="h-64 w-full" />
+                ) : (
+                  <div className="border rounded-md overflow-auto max-h-[50vh]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="sticky left-0 bg-muted/50 z-10">Código</TableHead>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>País</TableHead>
+                          <TableHead>Ciudad</TableHead>
+                          <TableHead>Activo</TableHead>
+                          <TableHead className="w-[60px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(molinos ?? []).map((m) => (
+                          <TableRow key={m.id}>
+                            <TableCell className="sticky left-0 bg-background font-mono font-medium z-10">{m.codigo}</TableCell>
+                            <TableCell>{m.nombre}</TableCell>
+                            <TableCell>{m.pais}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatValue(m.ciudad)}</TableCell>
+                            <TableCell>{m.activo ? <Badge variant="default">Sí</Badge> : <Badge variant="secondary">No</Badge>}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => setDeleteTarget({ type: 'fabricas_molinos', id: m.id, name: m.nombre })}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(molinos ?? []).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                              No hay fábricas/molinos. Use la plantilla para cargar datos masivamente.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
             </Tabs>
 
             <input
@@ -469,6 +556,20 @@ function mapRowToProduct(r: ParsedRow): Record<string, unknown> {
     ancho: num('ancho') ?? null,
     peso: num('peso') ?? null,
     peso_compra: num('peso_compra') ?? null,
+  };
+}
+
+function mapRowToMolino(r: ParsedRow): Record<string, unknown> {
+  const str = (key: string, ...alt: string[]) => {
+    const v = r[key] ?? alt.map((a) => r[a]).find((x) => x != null);
+    return v != null ? String(v).trim() : '';
+  };
+  return {
+    codigo: str('codigo', 'Codigo'),
+    nombre: str('nombre', 'Nombre'),
+    pais: str('pais', 'Pais'),
+    ciudad: str('ciudad', 'Ciudad') || null,
+    activo: true,
   };
 }
 
