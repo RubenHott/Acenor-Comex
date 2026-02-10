@@ -75,6 +75,22 @@ function fromDisplayExtra(cuadro: string | null, rawUnit: string, displayQty: nu
   return displayQty;
 }
 
+/** Convert display price (per TON or per UND) to raw storage price (per KG or per UND). */
+function displayPriceToRawPrice(cuadro: string | null, rawUnit: string, displayPrice: number): number {
+  const porUnidad = isCuadroPorUnidad(cuadro ?? '');
+  if (porUnidad) return displayPrice;
+  if (rawUnit === 'KG') return displayPrice / 1000;
+  return displayPrice;
+}
+
+/** Convert raw storage price to display price (per TON or per UND). */
+function rawPriceToDisplayPrice(cuadro: string | null, rawUnit: string, rawPrice: number): number {
+  const porUnidad = isCuadroPorUnidad(cuadro ?? '');
+  if (porUnidad) return rawPrice;
+  if (rawUnit === 'KG') return rawPrice * 1000;
+  return rawPrice;
+}
+
 export function PIMExtraProductSelector({
   extraItems,
   onExtraItemsChange,
@@ -108,7 +124,7 @@ export function PIMExtraProductSelector({
         descripcion: product.descripcion,
         unidad: product.unidad,
         cuadro: product.cuadro,
-        cantidad: 1,
+        cantidad: product.unidad === 'KG' ? 1000 : 1, // 1 TON default for KG, 1 for others
         precioUnitarioUsd: 0,
         totalUsd: 0,
         molinoId: molinoId || null,
@@ -121,7 +137,7 @@ export function PIMExtraProductSelector({
     [extraItems, onExtraItemsChange, molinoId]
   );
 
-  /** Update display quantity → store raw quantity; recalculate unit price from totalUsd */
+  /** Update display quantity → store raw quantity; recalculate totalUsd keeping display price constant */
   const updateQuantity = useCallback(
     (tempId: string, displayQty: number) => {
       onExtraItemsChange(
@@ -129,23 +145,28 @@ export function PIMExtraProductSelector({
           if (item.tempId !== tempId) return item;
           const rawQty = fromDisplayExtra(item.cuadro, item.unidad, displayQty);
           const cantidad = Math.max(0, rawQty);
-          const precioUnitarioUsd = cantidad > 0 ? item.totalUsd / cantidad : 0;
-          return { ...item, cantidad, precioUnitarioUsd };
+          // Keep display price constant, recalculate total
+          const currentDisplayPrice = rawPriceToDisplayPrice(item.cuadro, item.unidad, item.precioUnitarioUsd);
+          const newDisplayQty = toDisplayExtra(item.cuadro, item.unidad, cantidad).displayQty;
+          const totalUsd = currentDisplayPrice * newDisplayQty;
+          return { ...item, cantidad, totalUsd };
         })
       );
     },
     [extraItems, onExtraItemsChange]
   );
 
-  /** User enters Total USD; we derive unit price */
-  const updateTotalUsd = useCallback(
-    (tempId: string, total: number) => {
+  /** User enters display price (per TON or per UND); we derive totalUsd and raw precioUnitarioUsd */
+  const updatePrecioUnitario = useCallback(
+    (tempId: string, displayPrice: number) => {
       onExtraItemsChange(
         extraItems.map((item) => {
           if (item.tempId !== tempId) return item;
-          const totalUsd = Math.max(0, total);
-          const precioUnitarioUsd = item.cantidad > 0 ? totalUsd / item.cantidad : 0;
-          return { ...item, totalUsd, precioUnitarioUsd };
+          const price = Math.max(0, displayPrice);
+          const rawPrice = displayPriceToRawPrice(item.cuadro, item.unidad, price);
+          const { displayQty } = toDisplayExtra(item.cuadro, item.unidad, item.cantidad);
+          const totalUsd = price * displayQty;
+          return { ...item, precioUnitarioUsd: rawPrice, totalUsd };
         })
       );
     },
@@ -267,9 +288,9 @@ export function PIMExtraProductSelector({
                   <TableHead>Código</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-center">Cantidad</TableHead>
+                  <TableHead className="text-right">Precio / Unidad</TableHead>
                   <TableHead className="text-right">Total USD</TableHead>
                   <TableHead>Fábrica/Molino</TableHead>
-                  <TableHead className="text-right">Precio / Unidad</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -280,8 +301,7 @@ export function PIMExtraProductSelector({
                     item.unidad,
                     item.cantidad
                   );
-                  const calcUnitPrice =
-                    displayQty > 0 ? item.totalUsd / displayQty : 0;
+                  const displayPrice = rawPriceToDisplayPrice(item.cuadro, item.unidad, item.precioUnitarioUsd);
 
                   return (
                     <TableRow key={item.tempId}>
@@ -313,12 +333,15 @@ export function PIMExtraProductSelector({
                           type="number"
                           min={0}
                           step={0.01}
-                          value={item.totalUsd}
+                          value={displayPrice}
                           onChange={(e) =>
-                            updateTotalUsd(item.tempId, parseFloat(e.target.value) || 0)
+                            updatePrecioUnitario(item.tempId, parseFloat(e.target.value) || 0)
                           }
                           className="w-32 text-right"
                         />
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-medium">
+                        {formatCurrency(item.totalUsd)}
                       </TableCell>
                       <TableCell>
                         <Select
@@ -352,11 +375,6 @@ export function PIMExtraProductSelector({
                               ))}
                           </SelectContent>
                         </Select>
-                      </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
-                        {calcUnitPrice > 0
-                          ? `${formatCurrency(calcUnitPrice)} / ${displayUnit}`
-                          : '-'}
                       </TableCell>
                       <TableCell>
                         <Button

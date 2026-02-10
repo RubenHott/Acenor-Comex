@@ -70,6 +70,18 @@ function fromDisplayQty(rawUnit: string, displayQty: number): number {
   return displayQty;
 }
 
+/** Convert raw storage price (per KG) to display price (per TON). */
+function rawPriceToDisplayPrice(rawUnit: string, rawPrice: number): number {
+  if (rawUnit === 'KG') return rawPrice * 1000;
+  return rawPrice;
+}
+
+/** Convert display price (per TON) to raw storage price (per KG). */
+function displayPriceToRawPrice(rawUnit: string, displayPrice: number): number {
+  if (rawUnit === 'KG') return displayPrice / 1000;
+  return displayPrice;
+}
+
 export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemovedItemIdsChange, molinoId }: PIMEditItemsTableProps) {
   const { data: products, isLoading: isLoadingProducts } = useProducts();
   const { data: molinos = [] } = useActiveMolinos();
@@ -108,7 +120,6 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
 
   const removeItem = useCallback(
     (itemId: string) => {
-      // If it's an existing DB item (not new), track it for deletion
       if (!itemId.startsWith('new-')) {
         onRemovedItemIdsChange([...removedItemIds, itemId]);
       }
@@ -118,22 +129,27 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
   );
 
   const updateItem = useCallback(
-    (id: string, field: 'displayQty' | 'total_usd' | 'molino_id', value: number | string | null) => {
+    (id: string, field: 'displayQty' | 'displayPrice' | 'molino_id', value: number | string | null) => {
       onItemsChange(
         items.map((item) => {
           if (item.id !== id) return item;
 
           if (field === 'displayQty') {
             const rawQty = fromDisplayQty(item.unidad, value as number);
-            const precio = rawQty > 0 ? item.total_usd / rawQty : 0;
             const toneladas = item.unidad === 'KG' ? rawQty / 1000 : item.unidad === 'TON' ? rawQty : 0;
-            return { ...item, cantidad: rawQty, precio_unitario_usd: precio, toneladas };
+            // Keep display price constant, recalculate total
+            const currentDisplayPrice = rawPriceToDisplayPrice(item.unidad, item.precio_unitario_usd);
+            const newDisplayQty = toDisplayUnit(item.unidad, rawQty).qty;
+            const total_usd = currentDisplayPrice * newDisplayQty;
+            return { ...item, cantidad: rawQty, total_usd, toneladas };
           }
 
-          if (field === 'total_usd') {
-            const total = Math.max(0, value as number);
-            const precio = item.cantidad > 0 ? total / item.cantidad : 0;
-            return { ...item, total_usd: total, precio_unitario_usd: precio };
+          if (field === 'displayPrice') {
+            const displayPrice = Math.max(0, value as number);
+            const rawPrice = displayPriceToRawPrice(item.unidad, displayPrice);
+            const { qty: displayQty } = toDisplayUnit(item.unidad, item.cantidad);
+            const total_usd = displayPrice * displayQty;
+            return { ...item, precio_unitario_usd: rawPrice, total_usd };
           }
 
           if (field === 'molino_id') {
@@ -220,8 +236,8 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
                 <TableHead>Código</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead className="text-center">Cantidad</TableHead>
-                <TableHead className="text-right">Total USD</TableHead>
                 <TableHead className="text-right">Precio / Unidad</TableHead>
+                <TableHead className="text-right">Total USD</TableHead>
                 <TableHead>Fábrica/Molino</TableHead>
                 <TableHead className="w-10"></TableHead>
               </TableRow>
@@ -229,7 +245,7 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
             <TableBody>
               {items.map((item) => {
                 const { unit: displayUnit, qty: displayQty } = toDisplayUnit(item.unidad, item.cantidad);
-                const calcUnitPrice = displayQty > 0 ? item.total_usd / displayQty : 0;
+                const displayPrice = rawPriceToDisplayPrice(item.unidad, item.precio_unitario_usd);
 
                 return (
                   <TableRow key={item.id} className={item.isNew ? 'bg-accent/30' : ''}>
@@ -260,13 +276,13 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
                         type="number"
                         min={0}
                         step={0.01}
-                        value={item.total_usd}
-                        onChange={(e) => updateItem(item.id, 'total_usd', parseFloat(e.target.value) || 0)}
+                        value={displayPrice}
+                        onChange={(e) => updateItem(item.id, 'displayPrice', parseFloat(e.target.value) || 0)}
                         className="w-32 text-right"
                       />
                     </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {calcUnitPrice > 0 ? `${formatCurrency(calcUnitPrice)} / ${displayUnit}` : '-'}
+                    <TableCell className="text-right text-sm font-medium">
+                      {formatCurrency(item.total_usd)}
                     </TableCell>
                     <TableCell>
                       <Select

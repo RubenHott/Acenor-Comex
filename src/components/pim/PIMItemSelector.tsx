@@ -90,6 +90,35 @@ function fromDisplayQty(
   return displayQty;
 }
 
+/**
+ * Convert display price (per TON or per UND) to raw storage price (per KG or per UND).
+ * In the DB we store precio_unitario_usd per raw unit (KG or UND).
+ */
+function displayPriceToRawPrice(
+  cuadroCodigo: string,
+  rawUnit: string,
+  displayPrice: number
+): number {
+  const porUnidad = isCuadroPorUnidad(cuadroCodigo);
+  if (porUnidad) return displayPrice; // price per UND stays as-is
+  if (rawUnit === 'KG') return displayPrice / 1000; // price/TON → price/KG
+  return displayPrice; // already per TON
+}
+
+/**
+ * Convert raw storage price (per KG or per UND) to display price (per TON or per UND).
+ */
+function rawPriceToDisplayPrice(
+  cuadroCodigo: string,
+  rawUnit: string,
+  rawPrice: number
+): number {
+  const porUnidad = isCuadroPorUnidad(cuadroCodigo);
+  if (porUnidad) return rawPrice;
+  if (rawUnit === 'KG') return rawPrice * 1000; // price/KG → price/TON
+  return rawPrice;
+}
+
 export function PIMItemSelector({
   items,
   selections,
@@ -117,10 +146,10 @@ export function PIMItemSelector({
           codigoProducto: item.codigo_producto,
           descripcion: item.descripcion,
           unidad: item.unidad,
-          precioUnitarioUsd: null, // will be calculated from totalUsd
+          precioUnitarioUsd: null,
           cantidadDisponible: item.kilos_disponibles,
           cantidadAConsumir: item.kilos_disponibles,
-          totalUsd: 0, // user must enter the total
+          totalUsd: 0,
           exceedsLimit: false,
           molinoId: molinoId || null,
         };
@@ -132,6 +161,7 @@ export function PIMItemSelector({
     [selections, onSelectionsChange, molinoId]
   );
 
+  /** User changes quantity; recalculate totalUsd keeping the display price constant. */
   const updateQuantity = useCallback(
     (itemId: string, displayQty: number, cuadroCodigo: string, rawUnit: string) => {
       const storedQty = fromDisplayQty(cuadroCodigo, rawUnit, displayQty);
@@ -140,12 +170,16 @@ export function PIMItemSelector({
           if (s.itemId !== itemId) return s;
           const validCantidad = Math.max(0, storedQty);
           const exceedsLimit = validCantidad > s.cantidadDisponible;
-          const precioUnitarioUsd =
-            validCantidad > 0 ? s.totalUsd / validCantidad : null;
+          // Keep display price constant, recalculate total
+          const currentDisplayPrice = s.precioUnitarioUsd != null
+            ? rawPriceToDisplayPrice(cuadroCodigo, rawUnit, s.precioUnitarioUsd)
+            : 0;
+          const newDisplayQty = toDisplayUnit(cuadroCodigo, rawUnit, validCantidad).displayQty;
+          const totalUsd = currentDisplayPrice * newDisplayQty;
           return {
             ...s,
             cantidadAConsumir: validCantidad,
-            precioUnitarioUsd,
+            totalUsd,
             exceedsLimit,
           };
         })
@@ -154,18 +188,20 @@ export function PIMItemSelector({
     [selections, onSelectionsChange]
   );
 
-  /** User enters the TOTAL USD; we derive precioUnitarioUsd from it. */
-  const updateTotalUsd = useCallback(
-    (itemId: string, total: number) => {
+  /** User enters the display price (per TON or per UND); we derive totalUsd and raw precioUnitarioUsd. */
+  const updatePrecioUnitario = useCallback(
+    (itemId: string, displayPrice: number, cuadroCodigo: string, rawUnit: string) => {
       onSelectionsChange(
         selections.map((s) => {
           if (s.itemId !== itemId) return s;
-          const precioUnitarioUsd =
-            s.cantidadAConsumir > 0 ? total / s.cantidadAConsumir : null;
+          const price = Math.max(0, displayPrice);
+          const rawPrice = displayPriceToRawPrice(cuadroCodigo, rawUnit, price);
+          const displayQty = toDisplayUnit(cuadroCodigo, rawUnit, s.cantidadAConsumir).displayQty;
+          const totalUsd = price * displayQty;
           return {
             ...s,
-            totalUsd: Math.max(0, total),
-            precioUnitarioUsd,
+            precioUnitarioUsd: rawPrice,
+            totalUsd,
           };
         })
       );
@@ -276,11 +312,11 @@ export function PIMItemSelector({
                     <TableHead className="text-right">
                       A Consumir ({porUnidad ? 'UND' : 'TON'})
                     </TableHead>
-                    <TableHead className="text-right">Total USD</TableHead>
-                    <TableHead>Fábrica/Molino</TableHead>
                     <TableHead className="text-right">
                       Precio / {porUnidad ? 'UND' : 'TON'}
                     </TableHead>
+                    <TableHead className="text-right">Total USD</TableHead>
+                    <TableHead>Fábrica/Molino</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -299,11 +335,11 @@ export function PIMItemSelector({
                       ? toDisplayUnit(item.cuadroCodigo, item.unidad, sel.cantidadAConsumir).displayQty
                       : 0;
 
-                    // Calculated unit price (total / display qty for meaningful per-ton/unit price)
-                    const calcUnitPrice =
-                      sel && dispConsumir > 0
-                        ? sel.totalUsd / dispConsumir
-                        : null;
+                    // Display price (per TON or per UND)
+                    const displayPrice =
+                      sel && sel.precioUnitarioUsd != null
+                        ? rawPriceToDisplayPrice(item.cuadroCodigo, item.unidad, sel.precioUnitarioUsd)
+                        : 0;
 
                     return (
                       <TableRow
@@ -362,15 +398,25 @@ export function PIMItemSelector({
                               type="number"
                               min={0}
                               step={0.01}
-                              value={sel?.totalUsd ?? 0}
+                              value={displayPrice}
                               onChange={(e) =>
-                                updateTotalUsd(item.id, parseFloat(e.target.value) || 0)
+                                updatePrecioUnitario(
+                                  item.id,
+                                  parseFloat(e.target.value) || 0,
+                                  item.cuadroCodigo,
+                                  item.unidad
+                                )
                               }
                               className="w-32 text-right"
                             />
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium">
+                          {selected && sel
+                            ? formatCurrency(sel.totalUsd)
+                            : '-'}
                         </TableCell>
                         <TableCell>
                           {selected && sel ? (
@@ -408,11 +454,6 @@ export function PIMItemSelector({
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
-                        </TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">
-                          {calcUnitPrice != null
-                            ? formatCurrency(calcUnitPrice)
-                            : '-'}
                         </TableCell>
                       </TableRow>
                     );

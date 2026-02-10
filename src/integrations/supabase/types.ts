@@ -44,39 +44,6 @@ export type Database = {
         }
         Relationships: []
       }
-      fabricas_molinos: {
-        Row: {
-          id: string
-          codigo: string
-          nombre: string
-          pais: string
-          ciudad: string | null
-          activo: boolean
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          codigo: string
-          nombre: string
-          pais: string
-          ciudad?: string | null
-          activo?: boolean
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          codigo?: string
-          nombre?: string
-          pais?: string
-          ciudad?: string | null
-          activo?: boolean
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       diferencia_contrato: {
         Row: {
           campo: string
@@ -117,6 +84,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fabricas_molinos: {
+        Row: {
+          activo: boolean
+          ciudad: string | null
+          codigo: string
+          created_at: string | null
+          id: string
+          nombre: string
+          pais: string
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean
+          ciudad?: string | null
+          codigo: string
+          created_at?: string | null
+          id?: string
+          nombre: string
+          pais: string
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean
+          ciudad?: string | null
+          codigo?: string
+          created_at?: string | null
+          id?: string
+          nombre?: string
+          pais?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       notificaciones: {
         Row: {
@@ -363,6 +363,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "pim_items_molino_id_fkey"
+            columns: ["molino_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas_molinos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pim_items_pim_id_fkey"
             columns: ["pim_id"]
             isOneToOne: false
@@ -374,13 +381,6 @@ export type Database = {
             columns: ["producto_id"]
             isOneToOne: false
             referencedRelation: "productos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pim_items_molino_id_fkey"
-            columns: ["molino_id"]
-            isOneToOne: false
-            referencedRelation: "fabricas_molinos"
             referencedColumns: ["id"]
           },
         ]
@@ -605,6 +605,13 @@ export type Database = {
             columns: ["cuadro_id"]
             isOneToOne: false
             referencedRelation: "cuadros_importacion"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pims_molino_id_fkey"
+            columns: ["molino_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas_molinos"
             referencedColumns: ["id"]
           },
           {
