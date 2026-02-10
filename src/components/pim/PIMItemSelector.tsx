@@ -67,12 +67,11 @@ function toDisplayUnit(
   rawQty: number
 ): { displayUnit: string; displayQty: number } {
   const porUnidad = isCuadroPorUnidad(cuadroCodigo);
+  const upperUnit = rawUnit.toUpperCase();
   if (porUnidad) {
-    // Unit-based cuadros keep their original unit (UND, PZA, etc.)
     return { displayUnit: rawUnit, displayQty: rawQty };
   }
-  // Weight-based: always show in TON
-  if (rawUnit === 'KG') {
+  if (upperUnit === 'KG') {
     return { displayUnit: 'TON', displayQty: rawQty / 1000 };
   }
   return { displayUnit: 'TON', displayQty: rawQty };
@@ -86,7 +85,7 @@ function fromDisplayQty(
 ): number {
   const porUnidad = isCuadroPorUnidad(cuadroCodigo);
   if (porUnidad) return displayQty;
-  if (rawUnit === 'KG') return displayQty * 1000;
+  if (rawUnit.toUpperCase() === 'KG') return displayQty * 1000;
   return displayQty;
 }
 
@@ -100,9 +99,9 @@ function displayPriceToRawPrice(
   displayPrice: number
 ): number {
   const porUnidad = isCuadroPorUnidad(cuadroCodigo);
-  if (porUnidad) return displayPrice; // price per UND stays as-is
-  if (rawUnit === 'KG') return displayPrice / 1000; // price/TON → price/KG
-  return displayPrice; // already per TON
+  if (porUnidad) return displayPrice;
+  if (rawUnit.toUpperCase() === 'KG') return displayPrice / 1000;
+  return displayPrice;
 }
 
 /**
@@ -115,7 +114,7 @@ function rawPriceToDisplayPrice(
 ): number {
   const porUnidad = isCuadroPorUnidad(cuadroCodigo);
   if (porUnidad) return rawPrice;
-  if (rawUnit === 'KG') return rawPrice * 1000; // price/KG → price/TON
+  if (rawUnit.toUpperCase() === 'KG') return rawPrice * 1000;
   return rawPrice;
 }
 

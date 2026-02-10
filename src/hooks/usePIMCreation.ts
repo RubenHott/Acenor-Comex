@@ -71,8 +71,8 @@ export function useCreatePIMWithItems() {
 
       // Calculate totals from requirement items
       const totalToneladasReq = items.reduce((sum, item) => {
-        if (item.unidad === 'TON') return sum + item.cantidadAConsumir;
-        if (item.unidad === 'KG') return sum + item.cantidadAConsumir / 1000;
+        if (item.unidad.toUpperCase() === 'TON') return sum + item.cantidadAConsumir;
+        if (item.unidad.toUpperCase() === 'KG') return sum + item.cantidadAConsumir / 1000;
         return sum;
       }, 0);
 
@@ -80,8 +80,8 @@ export function useCreatePIMWithItems() {
 
       // Calculate totals from extra items
       const totalToneladasExtra = extraItems.reduce((sum, item) => {
-        if (item.unidad === 'TON') return sum + item.cantidad;
-        if (item.unidad === 'KG') return sum + item.cantidad / 1000;
+        if (item.unidad.toUpperCase() === 'TON') return sum + item.cantidad;
+        if (item.unidad.toUpperCase() === 'KG') return sum + item.cantidad / 1000;
         return sum;
       }, 0);
 
@@ -141,9 +141,9 @@ export function useCreatePIMWithItems() {
           precio_unitario_usd: item.precioUnitarioUsd ?? 0,
           total_usd: item.totalUsd,
           toneladas:
-            item.unidad === 'TON'
+            item.unidad.toUpperCase() === 'TON'
               ? item.cantidadAConsumir
-              : item.unidad === 'KG'
+              : item.unidad.toUpperCase() === 'KG'
               ? item.cantidadAConsumir / 1000
               : 0,
           molino_id: item.molinoId ?? molinoId,
@@ -245,9 +245,9 @@ export function useCreatePIMWithItems() {
           precio_unitario_usd: item.precioUnitarioUsd,
           total_usd: item.totalUsd,
           toneladas:
-            item.unidad === 'TON'
+            item.unidad.toUpperCase() === 'TON'
               ? item.cantidad
-              : item.unidad === 'KG'
+              : item.unidad.toUpperCase() === 'KG'
               ? item.cantidad / 1000
               : 0,
           molino_id: item.molinoId ?? molinoId,

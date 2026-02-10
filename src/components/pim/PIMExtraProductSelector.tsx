@@ -61,9 +61,10 @@ interface PIMExtraProductSelectorProps {
 /** Display quantity in TON for weight-based products */
 function toDisplayExtra(cuadro: string | null, rawUnit: string, rawQty: number) {
   const porUnidad = isCuadroPorUnidad(cuadro ?? '');
+  const upperUnit = rawUnit.toUpperCase();
   if (porUnidad) return { displayUnit: rawUnit, displayQty: rawQty };
-  if (rawUnit === 'KG') return { displayUnit: 'TON', displayQty: rawQty / 1000 };
-  if (rawUnit === 'TON') return { displayUnit: 'TON', displayQty: rawQty };
+  if (upperUnit === 'KG') return { displayUnit: 'TON', displayQty: rawQty / 1000 };
+  if (upperUnit === 'TON') return { displayUnit: 'TON', displayQty: rawQty };
   // Default weight
   return { displayUnit: rawUnit, displayQty: rawQty };
 }
@@ -71,7 +72,7 @@ function toDisplayExtra(cuadro: string | null, rawUnit: string, rawQty: number) 
 function fromDisplayExtra(cuadro: string | null, rawUnit: string, displayQty: number) {
   const porUnidad = isCuadroPorUnidad(cuadro ?? '');
   if (porUnidad) return displayQty;
-  if (rawUnit === 'KG') return displayQty * 1000;
+  if (rawUnit.toUpperCase() === 'KG') return displayQty * 1000;
   return displayQty;
 }
 
@@ -79,7 +80,7 @@ function fromDisplayExtra(cuadro: string | null, rawUnit: string, displayQty: nu
 function displayPriceToRawPrice(cuadro: string | null, rawUnit: string, displayPrice: number): number {
   const porUnidad = isCuadroPorUnidad(cuadro ?? '');
   if (porUnidad) return displayPrice;
-  if (rawUnit === 'KG') return displayPrice / 1000;
+  if (rawUnit.toUpperCase() === 'KG') return displayPrice / 1000;
   return displayPrice;
 }
 
@@ -87,7 +88,7 @@ function displayPriceToRawPrice(cuadro: string | null, rawUnit: string, displayP
 function rawPriceToDisplayPrice(cuadro: string | null, rawUnit: string, rawPrice: number): number {
   const porUnidad = isCuadroPorUnidad(cuadro ?? '');
   if (porUnidad) return rawPrice;
-  if (rawUnit === 'KG') return rawPrice * 1000;
+  if (rawUnit.toUpperCase() === 'KG') return rawPrice * 1000;
   return rawPrice;
 }
 
@@ -124,7 +125,7 @@ export function PIMExtraProductSelector({
         descripcion: product.descripcion,
         unidad: product.unidad,
         cuadro: product.cuadro,
-        cantidad: product.unidad === 'KG' ? 1000 : 1, // 1 TON default for KG, 1 for others
+        cantidad: product.unidad.toUpperCase() === 'KG' ? 1000 : 1, // 1 TON default for KG, 1 for others
         precioUnitarioUsd: 0,
         totalUsd: 0,
         molinoId: molinoId || null,
