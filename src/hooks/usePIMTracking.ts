@@ -328,8 +328,19 @@ export function useSplitPIM() {
         .in('id', itemIds);
       if (itemsErr) throw itemsErr;
 
-      // 3. Create new PIM code
-      const newCode = originalPim.codigo + '-B';
+      // 3. Create new PIM code (base + sufijo único: B, C, D... según divisiones existentes)
+      const baseCode = /^(.+)-[A-Z]$/.test(originalPim.codigo)
+        ? originalPim.codigo.replace(/-[A-Z]$/, '')
+        : originalPim.codigo;
+
+      const { count, error: countErr } = await supabase
+        .from('pims')
+        .select('id', { count: 'exact', head: true })
+        .like('codigo', baseCode + '-%');
+      if (countErr) throw countErr;
+
+      const suffix = String.fromCharCode(66 + (count ?? 0));
+      const newCode = baseCode + '-' + suffix;
       const newPimId = generateId();
 
       const newTotalUsd = itemsToMove.reduce((s: number, i: any) => s + (i.total_usd || 0), 0);
