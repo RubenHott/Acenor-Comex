@@ -108,6 +108,14 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario }: Pro
   const typeLabel = (val: string) =>
     DOCUMENT_TYPES.find((t) => t.value === val)?.label || val;
 
+  const handleDownload = (url: string, filename: string) => {
+    // Append ?download= to Supabase Storage URLs to force file download
+    const downloadUrl = url.includes('supabase.co/storage/')
+      ? `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`
+      : url;
+    window.open(downloadUrl, '_blank');
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -171,11 +179,9 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario }: Pro
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7"
-                            asChild
+                            onClick={() => handleDownload(latest.url, latest.nombre)}
                           >
-                            <a href={latest.url} target="_blank" rel="noopener noreferrer">
-                              <Download className="h-3.5 w-3.5" />
-                            </a>
+                            <Download className="h-3.5 w-3.5" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Descargar</TooltipContent>
@@ -221,14 +227,13 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario }: Pro
                         <div key={v.id} className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>v{v.version}</span>
                           <span className="truncate">{v.nombre}</span>
-                          <a
-                            href={v.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => handleDownload(v.url, v.nombre)}
                             className="text-primary hover:underline shrink-0"
                           >
                             Descargar
-                          </a>
+                          </button>
                         </div>
                       ))}
                     </div>
