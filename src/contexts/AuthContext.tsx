@@ -14,6 +14,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SUPABASE_URL = 'https://ykzeuukqhliuslycjcxc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlremV1dWtxaGxpdXNseWNqY3hjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NDk4MTAsImV4cCI6MjA4NDQyNTgxMH0.SbBmdah7I86XBtelWgIUJLE30GsEcsTJzA9S3iJPe_c';
+
 // Map roles to default module access
 function getModulesForRole(role: UserRole, modules?: string[]): string[] {
   if (modules && modules.length > 0) return modules;
@@ -34,29 +37,58 @@ function getModulesForRole(role: UserRole, modules?: string[]): string[] {
   }
 }
 
-async function fetchUserProfile(userId: string): Promise<User | null> {
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
+// Use direct fetch instead of Supabase client query builder for reliability
+async function fetchUserProfile(userId: string, accessToken: string): Promise<User | null> {
+  console.log('[Auth] fetchUserProfile start:', userId);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-  if (error || !data) return null;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/user_profiles?select=*&id=eq.${userId}`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+        'Accept-Profile': 'public',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
 
-  const role = data.role as UserRole;
-  const department = data.department as Department;
-  const modules = getModulesForRole(role, data.modules as string[]);
+    if (!res.ok) {
+      console.error('[Auth] fetchUserProfile HTTP error:', res.status);
+      return null;
+    }
 
-  return {
-    id: data.id,
-    email: data.email,
-    name: data.name,
-    role,
-    department,
-    avatar: data.avatar_url || undefined,
-    modules,
-    createdAt: new Date(data.created_at),
-  };
+    const rows = await res.json();
+    console.log('[Auth] fetchUserProfile rows:', rows?.length);
+    const data = rows?.[0];
+    if (!data) return null;
+
+    const role = data.role as UserRole;
+    const department = data.department as Department;
+    const modules = getModulesForRole(role, data.modules as string[]);
+
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      role,
+      department,
+      avatar: data.avatar_url || undefined,
+      modules,
+      createdAt: new Date(data.created_at),
+    };
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      console.error('[Auth] fetchUserProfile aborted (timeout)');
+    } else {
+      console.error('[Auth] fetchUserProfile error:', err);
+    }
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -77,8 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           supabase.auth.getSession(),
           timeout,
         ]);
-        if (session?.user && mounted) {
-          const profile = await fetchUserProfile(session.user.id);
+        if (session?.user && session.access_token && mounted) {
+          const profile = await fetchUserProfile(session.user.id, session.access_token);
           if (mounted) setUser(profile);
         }
       } catch (err) {
@@ -93,8 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: string, session: Session | null) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await fetchUserProfile(session.user.id);
+        if (event === 'SIGNED_IN' && session?.user && session.access_token) {
+          const profile = await fetchUserProfile(session.user.id, session.access_token);
           if (mounted) setUser(profile);
         } else if (event === 'SIGNED_OUT') {
           if (mounted) setUser(null);
@@ -109,10 +141,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    console.log('[Auth] login start:', email);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.user) return false;
+    console.log('[Auth] signIn result:', { user: !!data?.user, error: error?.message });
+    if (error || !data.user || !data.session) return false;
 
-    const profile = await fetchUserProfile(data.user.id);
+    console.log('[Auth] fetching profile for:', data.user.id);
+    const profile = await fetchUserProfile(data.user.id, data.session.access_token);
+    console.log('[Auth] profile result:', { found: !!profile, name: profile?.name });
     if (!profile) return false;
 
     setUser(profile);

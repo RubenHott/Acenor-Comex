@@ -85,10 +85,15 @@ export function useUploadDocument() {
       const filePath = `${pimId}/${stageKey}/${generateId()}.${ext}`;
 
       // Upload to storage
+      console.log('[Upload] Starting storage upload:', filePath);
       const { error: uploadErr } = await supabase.storage
         .from('pim-documentos')
         .upload(filePath, file);
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) {
+        console.error('[Upload] Storage error:', uploadErr);
+        throw new Error(`Storage: ${uploadErr.message}`);
+      }
+      console.log('[Upload] Storage OK');
 
       const { data: urlData } = supabase.storage
         .from('pim-documentos')
@@ -98,6 +103,7 @@ export function useUploadDocument() {
       const group = versionGroup || generateId();
 
       // Save metadata
+      console.log('[Upload] Inserting metadata:', { docId, pimId, tipo, stageKey });
       const { error: insertErr } = await supabase
         .from('pim_documentos')
         .insert({
@@ -112,10 +118,14 @@ export function useUploadDocument() {
           version: version || 1,
           version_group: group,
         });
-      if (insertErr) throw insertErr;
+      if (insertErr) {
+        console.error('[Upload] Metadata insert error:', insertErr);
+        throw new Error(`Metadata: ${insertErr.message}`);
+      }
+      console.log('[Upload] Metadata OK');
 
       // Log activity
-      await supabase.from('pim_activity_log').insert({
+      const { error: logErr } = await supabase.from('pim_activity_log').insert({
         id: generateId(),
         pim_id: pimId,
         stage_key: stageKey,
@@ -123,6 +133,7 @@ export function useUploadDocument() {
         descripcion: `Documento subido: ${file.name} (${tipo}${version && version > 1 ? ` v${version}` : ''})`,
         usuario,
       });
+      if (logErr) console.warn('[Upload] Activity log error (non-fatal):', logErr);
 
       return { docId, group };
     },

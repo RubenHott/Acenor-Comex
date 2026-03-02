@@ -80,8 +80,10 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario }: Pro
       });
       toast.success('Documento subido');
       resetForm();
-    } catch {
-      toast.error('Error al subir documento');
+    } catch (err: any) {
+      const msg = err?.message || err?.error_description || JSON.stringify(err);
+      console.error('Upload error:', err);
+      toast.error(`Error al subir documento: ${msg}`);
     }
   };
 
