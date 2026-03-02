@@ -1,60 +1,77 @@
-# Sistema de Gestión de Planta
+# Sistema de Gestión de Planta - Documentación
 
-Sistema modular para la gestión de operaciones industriales, incluyendo comercio exterior (COMEX) y órdenes de trabajo.
+Documentación exhaustiva del Sistema de Gestión de Planta, una aplicación modular para la gestión de operaciones industriales.
 
-## Descripción
+## 📋 Índice de Documentación
 
-Aplicación web empresarial que funciona como un "lanzador" de módulos para gestionar diferentes áreas operativas de una planta industrial.
+### Arquitectura
 
-## Módulos Disponibles
-
-| Módulo | Estado | Descripción |
-|--------|--------|-------------|
-| COMEX | ✅ Activo | Gestión de importaciones, PIMs, seguimiento por etapas, tracking DHL y SLA |
-| Órdenes de Trabajo | ✅ Activo | Gestión de OTs de mantenimiento |
-| Producción | 🚧 Pendiente | Control de producción |
-| Mantenimiento | 🚧 Pendiente | Programación de mantenimiento |
-
-## Stack Tecnológico
+| Documento | Descripción |
+|-----------|-------------|
+| [Arquitectura General](./architecture/README.md) | Visión general del sistema, tecnologías y estructura |
+| [Sistema de Módulos](./architecture/module-system.md) | Cómo funcionan y se agregan módulos |
 
 ### Frontend
-- **React 18** + TypeScript + Vite
-- **Tailwind CSS** + shadcn/ui
-- **React Query** (TanStack Query v5)
-- **React Router v6**
-- **Framer Motion** para animaciones
+
+| Documento | Descripción |
+|-----------|-------------|
+| [Enrutamiento](./frontend/routing.md) | Estructura de rutas y navegación |
+| [Componentes](./frontend/components.md) | Componentes reutilizables del sistema |
+| [Librería UI](./frontend/ui-library.md) | Componentes shadcn/ui disponibles |
+| [Estado](./frontend/state-management.md) | Manejo de estado con Context y React Query |
+| [Hooks](./frontend/hooks.md) | React Query hooks disponibles |
+| [Estilos](./frontend/styling.md) | Sistema de diseño y Tailwind CSS |
+
+### Tipos de Datos
+
+| Documento | Descripción |
+|-----------|-------------|
+| [Tipos COMEX](./types/comex-types.md) | Interfaces del módulo de importaciones |
+| [Tipos Órdenes de Trabajo](./types/work-orders-types.md) | Interfaces del módulo de OTs |
 
 ### Backend (Supabase)
-- **PostgreSQL** - Base de datos (17+ tablas)
-- **Edge Functions** (Deno) - Lógica serverless (4 funciones)
-- **Funciones SQL** - Cálculos en servidor (9 funciones)
-- **Triggers** - Automatización de datos
-- **Storage** - Almacenamiento de documentos (bucket `pim-documentos`)
 
-### Integraciones Externas
-- **DHL Shipment Tracking API** - Seguimiento de envíos internacionales
+| Documento | Descripción |
+|-----------|-------------|
+| [Esquema de Base de Datos](./backend/database-schema.md) | Tablas, columnas, funciones SQL y triggers |
+| [Edge Functions](./backend/edge-functions.md) | Funciones serverless en Deno |
+| [Políticas RLS](./backend/rls-policies.md) | Seguridad a nivel de fila |
+| [Integración API](./backend/api-integration.md) | Cliente Supabase, Edge Functions y RPC |
+| [Autenticación](./backend/auth-implementation.md) | Estado actual y plan de migración |
 
-## Arquitectura
+### Módulos
 
-El sistema utiliza una arquitectura de 3 capas:
+| Documento | Descripción |
+|-----------|-------------|
+| [COMEX](./modules/comex/README.md) | Módulo de comercio exterior |
+| [Órdenes de Trabajo](./modules/work-orders/README.md) | Módulo de gestión de OTs |
 
-1. **Frontend (React)** → Componentes y hooks
-2. **Edge Functions (Deno)** → Orquestación de lógica + APIs externas (DHL)
-3. **PostgreSQL** → Funciones SQL y datos
+### Configuración
 
-## Inicio Rápido
+| Documento | Descripción |
+|-----------|-------------|
+| [Desarrollo](./setup/development.md) | Configuración del entorno local |
+| [Despliegue](./setup/deployment.md) | Build y publicación |
 
-### Requisitos
-- Node.js 18+
-- npm o bun
+### Seguridad
 
-### Instalación
+| Documento | Descripción |
+|-----------|-------------|
+| [Checklist de Seguridad](./security/checklist.md) | Problemas identificados y remediación |
+
+### Guías de Desarrollo
+
+| Documento | Descripción |
+|-----------|-------------|
+| [Agregar Nuevo Módulo](./guides/adding-new-module.md) | Pasos para crear un módulo |
+| [Agregar Tabla Supabase](./guides/adding-supabase-table.md) | Migraciones, funciones SQL y Edge Functions |
+| [Implementar Autenticación](./guides/implementing-auth.md) | Migración a Supabase Auth |
+
+---
+
+## 🚀 Inicio Rápido
 
 ```bash
-# Clonar repositorio
-git clone <YOUR_GIT_URL>
-cd <YOUR_PROJECT_NAME>
-
 # Instalar dependencias
 npm install
 
@@ -62,107 +79,47 @@ npm install
 npm run dev
 ```
 
-### Scripts Disponibles
+## 🏗️ Stack Tecnológico
 
-| Comando | Descripción |
-|---------|-------------|
-| `npm run dev` | Servidor de desarrollo |
-| `npm run build` | Build de producción |
-| `npm run preview` | Preview del build |
-| `npm run lint` | Ejecutar ESLint |
+- **Frontend**: React 18 + TypeScript + Vite
+- **Estilos**: Tailwind CSS + shadcn/ui
+- **Estado**: React Query + Context API
+- **Backend**: Supabase (PostgreSQL + Edge Functions)
+- **Edge Functions**: Deno (TypeScript serverless)
+- **Routing**: React Router v6
+- **Integraciones**: DHL Shipment Tracking API
 
-## Estructura del Proyecto
+## 📦 Módulos Disponibles
 
-```
-src/
-├── components/       # Componentes React
-│   ├── dashboard/    # Componentes del dashboard (StatCard, SLA, etc.)
-│   ├── layout/       # Layouts y sidebars (Comex, WorkOrders)
-│   ├── maestros/     # Componentes de tablas maestras
-│   ├── pim/          # Formularios y editores de PIM
-│   ├── requirements/ # Componentes de requerimientos
-│   ├── tracking/     # Sistema de seguimiento de PIMs
-│   ├── ui/           # shadcn/ui (40+ componentes)
-│   └── workOrders/   # Componentes de OTs
-├── contexts/         # React Context (Auth)
-├── hooks/            # React Query hooks (15+ hooks)
-├── integrations/     # Cliente Supabase
-├── lib/              # Utilidades (tracking checklists, CSV parser, etc.)
-├── pages/            # Páginas/rutas
-│   ├── comex/        # Crear, Editar y Seguimiento de PIMs
-│   └── workOrders/   # Páginas del módulo OTs
-├── types/            # TypeScript interfaces
-└── test/             # Tests
+| Módulo | Estado | Descripción |
+|--------|--------|-------------|
+| COMEX | ✅ Activo | Seguimiento de importaciones, PIMs, tracking DHL |
+| Órdenes de Trabajo | ✅ Activo | Gestión de OTs de mantenimiento |
+| Producción | 🚧 Pendiente | Control de producción |
+| Mantenimiento | 🚧 Pendiente | Programación de mantenimiento |
+| Analytics | 🚧 Pendiente | Reportes y métricas |
+| Logística | 🚧 Pendiente | Gestión de almacenes |
 
-supabase/
-├── functions/        # Edge Functions (Deno)
-│   ├── get-dashboard-stats/
-│   ├── get-work-order-stats/
-│   ├── create-work-order/
-│   └── dhl-tracking/
-├── migrations/       # Migraciones SQL
-└── config.toml       # Configuración
-```
+## ⚠️ Estado del Sistema
 
-## Funcionalidades Principales
+### ✅ Implementado
 
-### Módulo COMEX
-- **Dashboard** con KPIs en tiempo real (PIMs activos, alertas SLA, toneladas, USD)
-- **Requerimientos mensuales** con autocompletado de productos
-- **Gestión de PIMs** — Crear, editar, dividir PIMs
-- **Maestro de Fábricas/Molinos** — Tabla maestra con CRUD y carga CSV; asignación por PIM e ítem
-- **Condiciones de contrato** — Fábrica/molino general por PIM, override por ítem (crear y editar)
-- **Seguimiento por etapas** — Contrato → Financiero → Producción → Embarque → Internación → Entrega
-- **Checklist por etapa** con items críticos y opcionales
-- **Gestión documental** organizada por etapa y categoría (BL, SWIFT, Certificados, etc.)
-- **Tracking DHL** integrado para seguimiento de envíos
-- **Timeline de actividad** con historial completo
-- **Catálogo de productos** y **proveedores**
-- **Tablas maestras** (cuadros, productos, proveedores, fábricas/molinos)
-- **Integridad referencial** — Al eliminar PIMs se liberan kilos en requerimientos; al eliminar requerimientos se desvinculan PIMs
+- **Base de datos Supabase**: 18+ tablas (incl. fabricas_molinos)
+- **Funciones SQL**: 9 funciones para cálculos en servidor
+- **Edge Functions**: 4 funciones (dashboard stats, work orders, DHL tracking)
+- **Trigger SLA**: Cálculo automático de alertas
+- **Sistema de seguimiento por etapas**: Checklist, timeline, documentos
+- **Integración DHL**: Tracking de envíos en tiempo real
+- **Gestión documental**: Organizado por etapa y categoría con versionamiento
+- **Storage**: Bucket `pim-documentos` para archivos
 
-### Módulo Órdenes de Trabajo
-- **Dashboard** con estadísticas
-- **CRUD completo** de órdenes de trabajo
-- Código auto-generado (OT-YYYY-NNN)
-- Fecha límite calculada por prioridad
+### 🚧 Pendiente
 
-## Documentación
+1. **Autenticación Real**: La autenticación actual es mock (simulada)
+2. **RLS Robusto**: Políticas permisivas para desarrollo, ajustar para producción
+3. **Notificaciones push**: Sistema de alertas en tiempo real
 
-La documentación técnica completa está disponible en la carpeta `/docs`:
-
-- [Índice General](./docs/README.md)
-- [Arquitectura General](./docs/architecture/README.md)
-- [Edge Functions](./docs/backend/edge-functions.md)
-- [Esquema de Base de Datos](./docs/backend/database-schema.md)
-- [Hooks de React Query](./docs/frontend/hooks.md)
-- [Componentes](./docs/frontend/components.md)
-- [Routing](./docs/frontend/routing.md)
-- [Guía: Agregar Nuevo Módulo](./docs/guides/adding-new-module.md)
-
-## Despliegue
-
-### Lovable (Recomendado)
-1. Abrir el proyecto en Lovable
-2. Ir a Share → Publish
-
-### Dominio Personalizado
-Configurar en Project > Settings > Domains
-
-## URLs del Proyecto
-
-- **Preview**: https://id-preview--8c8fe5e1-414b-456a-81f6-aee39f6c7312.lovable.app
-- **Producción**: https://acenor-comex.lovable.app
-
-## Secretos Requeridos
-
-| Secreto | Descripción |
-|---------|-------------|
-| `DHL_API_KEY` | API Key del portal DHL Developer (Shipment Tracking - Unified) |
-
-## Licencia
-
-Proyecto privado - Todos los derechos reservados.
+> **Importante**: Revisa el [Checklist de Seguridad](./security/checklist.md) antes de desplegar a producción.
 
 ---
 

@@ -1,14 +1,18 @@
 // COMEX Application Types
 
-export type UserRole = 'admin' | 'manager' | 'operator' | 'viewer';
+export type UserRole = 'admin' | 'manager' | 'jefe_comex' | 'analista_comex' |
+  'jefe_finanzas' | 'analista_finanzas' | 'gerente' | 'viewer';
+
+export type Department = 'comex' | 'finanzas' | 'gerencia' | 'sistemas';
 
 export interface User {
   id: string;
   email: string;
   name: string;
   role: UserRole;
+  department: Department;
   avatar?: string;
-  modules: string[]; // IDs de módulos permitidos
+  modules: string[];
   createdAt: Date;
 }
 

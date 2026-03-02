@@ -1,5 +1,17 @@
 import type { ActivityLog } from '@/hooks/usePIMTracking';
-import { CheckCircle, MessageSquare, ArrowRight, Scissors, Settings, AlertTriangle } from 'lucide-react';
+import {
+  CheckCircle,
+  MessageSquare,
+  ArrowRight,
+  ArrowLeft,
+  Scissors,
+  Settings,
+  AlertTriangle,
+  XCircle,
+  Eye,
+  ShieldCheck,
+  UserCheck,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStageByKey } from '@/lib/trackingChecklists';
 
@@ -12,7 +24,13 @@ const typeConfig: Record<string, { icon: typeof CheckCircle; color: string }> = 
   note: { icon: MessageSquare, color: 'text-blue-500' },
   status_change: { icon: Settings, color: 'text-purple-500' },
   stage_advance: { icon: ArrowRight, color: 'text-indigo-500' },
+  stage_return: { icon: ArrowLeft, color: 'text-red-500' },
   split: { icon: Scissors, color: 'text-orange-500' },
+  nc_created: { icon: XCircle, color: 'text-red-500' },
+  nc_status_change: { icon: Eye, color: 'text-yellow-500' },
+  nc_resolved: { icon: ShieldCheck, color: 'text-green-600' },
+  nc_closed: { icon: CheckCircle, color: 'text-gray-500' },
+  nc_assigned: { icon: UserCheck, color: 'text-blue-600' },
 };
 
 export function TrackingTimeline({ logs }: Props) {

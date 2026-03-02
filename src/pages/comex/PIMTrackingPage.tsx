@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,17 +13,28 @@ import { TrackingNoteDialog } from '@/components/tracking/TrackingNoteDialog';
 import { SplitPIMDialog } from '@/components/tracking/SplitPIMDialog';
 import { DocumentUploadPanel } from '@/components/tracking/DocumentUploadPanel';
 import { DHLTrackingPanel } from '@/components/tracking/DHLTrackingPanel';
+import { NonConformityPanel } from '@/components/tracking/NonConformityPanel';
+import { StageGateSummary } from '@/components/tracking/StageGateSummary';
 import {
   useTrackingStages,
   useChecklistItems,
   useActivityLog,
   useInitializeTracking,
   useToggleChecklistItem,
-  useUpdateStageStatus,
+  useAdvanceStage,
   useAddNote,
   useSplitPIM,
+  useCanAdvanceStage,
+  type SplitItemConfig,
 } from '@/hooks/usePIMTracking';
-import { TRACKING_STAGES, getStageByKey } from '@/lib/trackingChecklists';
+import { useStageDocumentStatus } from '@/hooks/usePIMDocuments';
+import { useOpenNCCount } from '@/hooks/useNoConformidades';
+import {
+  TRACKING_STAGES,
+  getStageByKey,
+  getFilteredChecklist,
+  getRequiredDocuments,
+} from '@/lib/trackingChecklists';
 import {
   ArrowLeft,
   Scissors,
@@ -37,10 +49,11 @@ import { cn } from '@/lib/utils';
 export default function PIMTrackingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [pim, setPim] = useState<any>(null);
   const [loadingPim, setLoadingPim] = useState(true);
-  const [activeStageKey, setActiveStageKey] = useState('contrato');
+  const [activeStageKey, setActiveStageKey] = useState('revision_contrato');
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
 
@@ -51,11 +64,27 @@ export default function PIMTrackingPage() {
 
   const initTracking = useInitializeTracking();
   const toggleItem = useToggleChecklistItem();
-  const updateStage = useUpdateStageStatus();
+  const advanceStage = useAdvanceStage();
   const addNote = useAddNote();
   const splitPIM = useSplitPIM();
 
-  const currentUser = 'Usuario'; // placeholder until real auth
+  const modalidadPago = pim?.modalidad_pago || '';
+  const activeStageDef = getStageByKey(activeStageKey);
+  const requiredDocs = useMemo(
+    () => getRequiredDocuments(activeStageKey, modalidadPago),
+    [activeStageKey, modalidadPago]
+  );
+
+  const { data: canAdvanceResult, isLoading: loadingCanAdvance } = useCanAdvanceStage(
+    id,
+    activeStageKey,
+    modalidadPago
+  );
+  const { data: docStatus } = useStageDocumentStatus(id, requiredDocs);
+  const { data: openNCCount = 0 } = useOpenNCCount(id, activeStageKey);
+
+  const currentUser = user?.name || 'Usuario';
+  const currentUserId = user?.id;
 
   // Fetch PIM data
   useEffect(() => {
@@ -74,21 +103,36 @@ export default function PIMTrackingPage() {
 
   // Auto-initialize tracking if no stages exist
   useEffect(() => {
-    if (stages && stages.length === 0 && id && !initTracking.isPending) {
-      initTracking.mutate(id);
+    if (stages && stages.length === 0 && id && !initTracking.isPending && pim) {
+      initTracking.mutate({
+        pimId: id,
+        modalidadPago: pim.modalidad_pago || '',
+        userId: currentUserId,
+        userName: currentUser,
+      });
     }
-  }, [stages, id]);
+  }, [stages, id, pim]);
+
+  // Set active stage to first en_progreso when stages load
+  useEffect(() => {
+    if (stages && stages.length > 0) {
+      const enProgreso = stages.find((s) => s.status === 'en_progreso');
+      if (enProgreso) {
+        setActiveStageKey(enProgreso.stage_key);
+      }
+    }
+  }, [stages]);
 
   const activeStage = stages?.find((s) => s.stage_key === activeStageKey);
-  const activeStageDef = getStageByKey(activeStageKey);
   const stageItems = checklistItems || [];
 
   // Stage completion check
   const stageCompletedCount = stageItems.filter((i) => i.completado).length;
-  const stageCriticalPending = stageItems.filter(
-    (i) => i.critico && !i.completado
-  ).length;
-  const allStageCompleted = stageItems.length > 0 && stageCompletedCount === stageItems.length;
+  const stageCriticalItems = stageItems.filter((i) => i.critico);
+  const stageCriticalCompleted = stageCriticalItems.filter((i) => i.completado).length;
+  const stageCriticalPending = stageCriticalItems.length - stageCriticalCompleted;
+
+  const canAdvance = canAdvanceResult?.canAdvance ?? false;
 
   const handleToggle = (item: any) => {
     toggleItem.mutate({
@@ -96,44 +140,35 @@ export default function PIMTrackingPage() {
       pimId: id!,
       completado: !item.completado,
       usuario: currentUser,
+      usuarioId: currentUserId,
       texto: item.texto,
       stageKey: activeStageKey,
     });
   };
 
-  const handleCompleteStage = () => {
+  const handleAdvanceStage = () => {
     if (!activeStage || !activeStageDef) return;
-    if (stageCriticalPending > 0) {
-      toast.error(`Hay ${stageCriticalPending} items críticos pendientes`);
-      return;
-    }
 
-    updateStage.mutate({
-      stageId: activeStage.id,
-      pimId: id!,
-      status: 'completado',
-      usuario: currentUser,
-      stageName: activeStageDef.name,
-    });
-
-    // Auto-advance next stage
-    const currentIdx = TRACKING_STAGES.findIndex((s) => s.key === activeStageKey);
-    if (currentIdx < TRACKING_STAGES.length - 1) {
-      const nextKey = TRACKING_STAGES[currentIdx + 1].key;
-      const nextStage = stages?.find((s) => s.stage_key === nextKey);
-      if (nextStage && nextStage.status === 'pendiente') {
-        updateStage.mutate({
-          stageId: nextStage.id,
-          pimId: id!,
-          status: 'en_progreso',
-          usuario: currentUser,
-          stageName: TRACKING_STAGES[currentIdx + 1].name,
-        });
-        setActiveStageKey(nextKey);
+    advanceStage.mutate(
+      {
+        pimId: id!,
+        currentStageKey: activeStageKey,
+        modalidadPago,
+        usuario: currentUser,
+        usuarioId: currentUserId,
+      },
+      {
+        onSuccess: ({ nextStageKey }) => {
+          toast.success(`Etapa "${activeStageDef.name}" completada`);
+          if (nextStageKey) {
+            setActiveStageKey(nextStageKey);
+          }
+        },
+        onError: (err) => {
+          toast.error(err.message || 'No se puede avanzar');
+        },
       }
-    }
-
-    toast.success(`Etapa "${activeStageDef.name}" completada`);
+    );
   };
 
   const handleAddNote = (text: string) => {
@@ -142,13 +177,14 @@ export default function PIMTrackingPage() {
       stageKey: activeStageKey,
       texto: text,
       usuario: currentUser,
+      usuarioId: currentUserId,
     });
     toast.success('Nota agregada');
   };
 
-  const handleSplit = (itemIds: string[]) => {
+  const handleSplit = (splitItems: SplitItemConfig[]) => {
     splitPIM.mutate(
-      { originalPimId: id!, itemIds, usuario: currentUser },
+      { originalPimId: id!, splitItems, usuario: currentUser, usuarioId: currentUserId },
       {
         onSuccess: ({ newCode }) => {
           toast.success(`PIM dividido. Nuevo PIM: ${newCode}`);
@@ -234,8 +270,23 @@ export default function PIMTrackingPage() {
 
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Checklist panel */}
+          {/* Checklist + docs + NC panel */}
           <div className="lg:col-span-3 space-y-6">
+            {/* Gate Summary - only show for en_progreso stages */}
+            {activeStage?.status === 'en_progreso' && (
+              <StageGateSummary
+                canAdvanceResult={canAdvanceResult}
+                isLoading={loadingCanAdvance}
+                criticalCompleted={stageCriticalCompleted}
+                criticalTotal={stageCriticalItems.length}
+                docsUploaded={docStatus ? requiredDocs.length - docStatus.missingTypes.length : 0}
+                docsRequired={requiredDocs.length}
+                missingDocs={docStatus?.missingTypes}
+                openNCs={openNCCount}
+              />
+            )}
+
+            {/* Checklist */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -248,16 +299,25 @@ export default function PIMTrackingPage() {
                   {activeStageDef?.name} — Checklist
                 </CardTitle>
                 <div className="flex gap-2">
-                  {activeStage?.status === 'en_progreso' && allStageCompleted && (
-                    <Button size="sm" onClick={handleCompleteStage}>
+                  {activeStage?.status === 'en_progreso' && canAdvance && (
+                    <Button
+                      size="sm"
+                      onClick={handleAdvanceStage}
+                      disabled={advanceStage.isPending}
+                    >
                       <CheckCircle className="h-4 w-4 mr-1" />
-                      Completar Etapa
+                      {advanceStage.isPending ? 'Avanzando...' : 'Completar Etapa'}
                     </Button>
                   )}
-                  {activeStage?.status === 'en_progreso' && !allStageCompleted && stageCriticalPending === 0 && stageCompletedCount > 0 && (
-                    <Button size="sm" variant="outline" onClick={handleCompleteStage}>
+                  {activeStage?.status === 'en_progreso' && !canAdvance && stageCriticalPending === 0 && stageCompletedCount > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleAdvanceStage}
+                      disabled={advanceStage.isPending}
+                    >
                       <ArrowRight className="h-4 w-4 mr-1" />
-                      Avanzar
+                      Intentar Avanzar
                     </Button>
                   )}
                 </div>
@@ -283,6 +343,17 @@ export default function PIMTrackingPage() {
               </CardContent>
             </Card>
 
+            {/* Non-Conformity Panel */}
+            {currentUserId && (
+              <NonConformityPanel
+                pimId={id!}
+                stageKey={activeStageKey}
+                stageName={activeStageDef?.name}
+                userId={currentUserId}
+                userName={currentUser}
+              />
+            )}
+
             {/* Documents panel */}
             <DocumentUploadPanel
               pimId={id!}
@@ -291,8 +362,8 @@ export default function PIMTrackingPage() {
               usuario={currentUser}
             />
 
-            {/* DHL Tracking - show on embarque stage or always */}
-            {(activeStageKey === 'embarque' || activeStageKey === 'internacion') && (
+            {/* DHL Tracking */}
+            {(activeStageKey === 'documentacion_embarque' || activeStageKey === 'internacion_aduana') && (
               <DHLTrackingPanel
                 pimId={id!}
                 currentTrackingCode={pim.dhl_tracking_code}

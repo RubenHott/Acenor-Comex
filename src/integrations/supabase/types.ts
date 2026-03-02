@@ -168,6 +168,74 @@ export type Database = {
           },
         ]
       }
+      no_conformidades: {
+        Row: {
+          id: string
+          pim_id: string
+          stage_key: string
+          codigo: string
+          tipo: string
+          descripcion: string
+          estado: string
+          prioridad: string
+          departamento_asignado: string | null
+          asignado_a: string | null
+          creado_por: string
+          resuelto_por: string | null
+          cerrado_por: string | null
+          fecha_creacion: string
+          fecha_limite: string | null
+          fecha_resolucion: string | null
+          fecha_cierre: string | null
+          resolucion: string | null
+          evidencia_url: string | null
+          metadata: Json | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          pim_id: string
+          stage_key: string
+          codigo?: string
+          tipo: string
+          descripcion: string
+          estado?: string
+          prioridad?: string
+          departamento_asignado?: string | null
+          asignado_a?: string | null
+          creado_por: string
+          resuelto_por?: string | null
+          cerrado_por?: string | null
+          fecha_creacion?: string
+          fecha_limite?: string | null
+          resolucion?: string | null
+          evidencia_url?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          estado?: string
+          prioridad?: string
+          departamento_asignado?: string | null
+          asignado_a?: string | null
+          resuelto_por?: string | null
+          cerrado_por?: string | null
+          fecha_resolucion?: string | null
+          fecha_cierre?: string | null
+          resolucion?: string | null
+          evidencia_url?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "no_conformidades_pim_id_fkey"
+            columns: ["pim_id"]
+            isOneToOne: false
+            referencedRelation: "pims"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       pim_activity_log: {
         Row: {
           created_at: string | null
@@ -1023,6 +1091,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_profiles: {
+        Row: {
+          id: string
+          email: string
+          name: string
+          role: string
+          department: string
+          modules: string[]
+          avatar_url: string | null
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          email: string
+          name: string
+          role?: string
+          department?: string
+          modules?: string[]
+          avatar_url?: string | null
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          name?: string
+          role?: string
+          department?: string
+          modules?: string[]
+          avatar_url?: string | null
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       validacion_contrato_pim: {
         Row: {

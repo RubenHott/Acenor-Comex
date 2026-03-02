@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { DocumentType } from '@/lib/trackingChecklists';
 
 export interface PIMDocument {
   id: string;
@@ -16,15 +17,20 @@ export interface PIMDocument {
 }
 
 const DOCUMENT_TYPES = [
+  { value: 'contrato', label: 'Contrato' },
+  { value: 'cierre_compra', label: 'Cierre de Compra' },
+  { value: 'factura', label: 'Factura Comercial' },
   { value: 'bl', label: 'Bill of Lading (BL)' },
-  { value: 'certificado_calidad', label: 'Certificado de Calidad' },
+  { value: 'packing_list', label: 'Packing List' },
   { value: 'swift', label: 'SWIFT' },
   { value: 'comprobante_pago', label: 'Comprobante de Pago' },
-  { value: 'enmienda', label: 'Enmienda' },
-  { value: 'contrato', label: 'Contrato' },
-  { value: 'factura', label: 'Factura Comercial' },
-  { value: 'packing_list', label: 'Packing List' },
+  { value: 'certificado_calidad', label: 'Certificado de Calidad' },
   { value: 'certificado_origen', label: 'Certificado de Origen' },
+  { value: 'enmienda', label: 'Enmienda' },
+  { value: 'costeo', label: 'Costeo' },
+  { value: 'acta_recepcion', label: 'Acta de Recepción' },
+  { value: 'dus', label: 'DUS (Declaración Única de Salida)' },
+  { value: 'alzamiento', label: 'Alzamiento' },
   { value: 'otro', label: 'Otro' },
 ] as const;
 
@@ -123,6 +129,8 @@ export function useUploadDocument() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['pim-documents', vars.pimId] });
       queryClient.invalidateQueries({ queryKey: ['activity-log', vars.pimId] });
+      queryClient.invalidateQueries({ queryKey: ['stage-doc-status', vars.pimId] });
+      queryClient.invalidateQueries({ queryKey: ['can-advance', vars.pimId] });
     },
   });
 }
@@ -160,5 +168,42 @@ export function useDHLTracking() {
       if (error) throw error;
       return data;
     },
+  });
+}
+
+// Check required documents for a stage
+export interface StageDocumentStatus {
+  uploadedTypes: string[];
+  missingTypes: DocumentType[];
+  allUploaded: boolean;
+}
+
+export function useStageDocumentStatus(
+  pimId?: string,
+  requiredTypes?: DocumentType[]
+) {
+  return useQuery({
+    queryKey: ['stage-doc-status', pimId, requiredTypes],
+    queryFn: async (): Promise<StageDocumentStatus> => {
+      if (!requiredTypes || requiredTypes.length === 0) {
+        return { uploadedTypes: [], missingTypes: [], allUploaded: true };
+      }
+
+      const { data: docs } = await supabase
+        .from('pim_documentos')
+        .select('tipo')
+        .eq('pim_id', pimId!);
+
+      const uploadedTypes = [...new Set((docs || []).map((d) => d.tipo))];
+      const uploadedSet = new Set(uploadedTypes);
+      const missingTypes = requiredTypes.filter((t) => !uploadedSet.has(t));
+
+      return {
+        uploadedTypes,
+        missingTypes,
+        allUploaded: missingTypes.length === 0,
+      };
+    },
+    enabled: !!pimId && !!requiredTypes && requiredTypes.length > 0,
   });
 }
