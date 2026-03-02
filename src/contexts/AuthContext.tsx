@@ -69,7 +69,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function initSession() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Race against a timeout so the app never stays stuck on the spinner
+        const timeout = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 4000)
+        );
+        const { data: { session } } = await Promise.race([
+          supabase.auth.getSession(),
+          timeout,
+        ]);
         if (session?.user && mounted) {
           const profile = await fetchUserProfile(session.user.id);
           if (mounted) setUser(profile);
