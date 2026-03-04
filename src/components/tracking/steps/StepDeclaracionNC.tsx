@@ -4,9 +4,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { CheckCircle, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle, AlertTriangle, Pencil } from 'lucide-react';
 import { useCompleteStep, useSkipSteps, useStageSteps, useUpdateStepData, type StageStep } from '@/hooks/useStageSteps';
-import { useCreateNC, NC_TIPOS, NC_PRIORIDADES, useUsersByDepartment } from '@/hooks/useNoConformidades';
+import { useCreateNC, NC_TIPOS, NC_PRIORIDADES, useUsersByDepartment, useNCsByStage } from '@/hooks/useNoConformidades';
 import { toast } from 'sonner';
 import type { Department, UserRole } from '@/types/comex';
 
@@ -41,21 +43,50 @@ export function StepDeclaracionNC({ step, pimId, stageKey, pim, userId, userName
   const updateStepData = useUpdateStepData();
   const { data: allSteps } = useStageSteps(pimId, stageKey);
   const { data: deptUsers } = useUsersByDepartment(ncDepartamento || undefined);
+  const { data: ncs } = useNCsByStage(pimId, stageKey);
+
+  const canEdit = userRole === 'admin' || userRole === 'manager';
 
   if (step.status === 'completado') {
     const datos = step.datos as any;
+    const nc = datos?.nc_id ? ncs?.find((n: any) => n.id === datos.nc_id) : null;
+
     return (
-      <div className="flex items-center gap-2 text-sm">
-        {datos?.tiene_nc ? (
-          <>
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <span className="text-yellow-700">Declarada con no conformidad (NC: {datos?.nc_codigo || 'creada'})</span>
-          </>
-        ) : (
-          <>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <span className="text-green-700">Declarada sin no conformidad</span>
-          </>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            {datos?.tiene_nc ? (
+              <>
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <span className="text-yellow-700">Declarada con no conformidad (NC: {datos?.nc_codigo || 'creada'})</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-green-700">Declarada sin no conformidad</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Show NC details if there was a NC */}
+        {datos?.tiene_nc && nc && (
+          <Card className="bg-yellow-50/50 border-yellow-200">
+            <CardContent className="py-3 px-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">NC: {nc.codigo}</span>
+                  <Badge variant="outline" className="text-xs">{nc.estado}</Badge>
+                </div>
+                <p className="text-muted-foreground">{nc.descripcion}</p>
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span>Tipo: {nc.tipo}</span>
+                  <span>Prioridad: {nc.prioridad}</span>
+                  <span>Área: {nc.departamento_asignado}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     );

@@ -48,8 +48,8 @@ export const REVISION_CONTRATO_STEPS: StageStepDef[] = [
   {
     key: "contrato_firmado",
     order: 5,
-    name: "Contrato Firmado",
-    description: "Carga del contrato firmado",
+    name: "Contrato Firmado y Enviado a Proveedor",
+    description: "Carga del contrato firmado y enviado al proveedor",
     requiredDepartment: ["comex"],
     requiredDocuments: ["contrato_firmado"],
   },

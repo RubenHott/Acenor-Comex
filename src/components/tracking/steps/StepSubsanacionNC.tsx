@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, Upload, Clock, User } from 'lucide-react';
+import { CheckCircle, Upload, Clock, User, FileText, Calendar, Pencil } from 'lucide-react';
 import { useCompleteStep, useStageSteps, type StageStep } from '@/hooks/useStageSteps';
 import { useNCsByStage, useResolveNC } from '@/hooks/useNoConformidades';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,11 +26,14 @@ export function StepSubsanacionNC({ step, pimId, stageKey, pim, userId, userName
   const [resolucion, setResolucion] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const { data: ncs } = useNCsByStage(pimId, stageKey);
   const { data: allSteps } = useStageSteps(pimId, stageKey);
   const resolveNC = useResolveNC();
   const completeStep = useCompleteStep();
+
+  const canEdit = userRole === 'admin' || userRole === 'manager';
 
   // Get nc_id: try own datos first, then fall back to declaracion_nc step datos, then find first active NC
   const datos = step.datos as any;
@@ -43,11 +46,70 @@ export function StepSubsanacionNC({ step, pimId, stageKey, pim, userId, userName
     ? ncs?.find((n) => n.id === ncId)
     : ncs?.find((n) => ['abierta', 'en_revision'].includes(n.estado));
 
-  if (step.status === 'completado') {
+  if (step.status === 'completado' && !isEditing) {
     return (
-      <div className="flex items-center gap-2 text-sm text-green-700">
-        <CheckCircle className="h-4 w-4" />
-        <span>Subsanación enviada{nc?.resuelto_por ? ` por ${nc.resuelto_por}` : ''}</span>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle className="h-4 w-4" />
+            <span>Subsanación enviada{nc?.resuelto_por ? ` por ${nc.resuelto_por}` : ''}</span>
+          </div>
+          {canEdit && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-3 w-3 mr-1" />
+              Modificar
+            </Button>
+          )}
+        </div>
+
+        {/* Show NC + resolution details */}
+        {nc && (
+          <Card className="bg-green-50/50 border-green-200">
+            <CardContent className="py-3 px-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">NC: {nc.codigo}</span>
+                <Badge variant="outline" className="text-xs">{nc.estado}</Badge>
+              </div>
+              <div className="text-sm">
+                <span className="text-xs text-muted-foreground">Descripción original:</span>
+                <p className="text-muted-foreground">{nc.descripcion}</p>
+              </div>
+              {nc.resolucion && (
+                <div className="text-sm">
+                  <span className="text-xs text-muted-foreground">Corrección realizada:</span>
+                  <p className="text-green-700">{nc.resolucion}</p>
+                </div>
+              )}
+              {nc.evidencia_url && (
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                  <a
+                    href={nc.evidencia_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Ver archivo corregido
+                  </a>
+                </div>
+              )}
+              {nc.fecha_resolucion && (
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(nc.fecha_resolucion).toLocaleDateString('es-CL')}
+                  </span>
+                  {nc.resuelto_por && (
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      Resuelto por: {nc.resuelto_por}
+                    </span>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
@@ -123,7 +185,10 @@ export function StepSubsanacionNC({ step, pimId, stageKey, pim, userId, userName
               datos: { nc_id: nc.id, resolucion, evidencia_url: evidenciaUrl },
             },
             {
-              onSuccess: () => toast.success('Subsanación enviada. COMEX revisará la corrección.'),
+              onSuccess: () => {
+                toast.success('Subsanación enviada. COMEX revisará la corrección.');
+                setIsEditing(false);
+              },
               onError: (err) => toast.error(err.message),
             }
           );
@@ -135,6 +200,15 @@ export function StepSubsanacionNC({ step, pimId, stageKey, pim, userId, userName
 
   return (
     <div className="space-y-4">
+      {isEditing && (
+        <div className="flex items-center justify-between mb-2">
+          <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Modo edición (Admin)</Badge>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(false)}>
+            Cancelar
+          </Button>
+        </div>
+      )}
+
       {/* NC Summary */}
       <Card className="bg-yellow-50/50 border-yellow-200">
         <CardContent className="py-3 px-4">

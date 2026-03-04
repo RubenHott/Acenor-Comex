@@ -24,20 +24,68 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
   const advanceStage = useAdvanceStage();
   const stepDefs = getStageSteps(stageKey);
 
-  if (step.status === 'completado') {
-    return (
-      <div className="flex items-center gap-2 text-sm text-green-700">
-        <CheckCircle className="h-4 w-4" />
-        <span>Proceso 1 cerrado. Avanzado a etapa 2.</span>
-      </div>
-    );
-  }
-
   const isComex = userDepartment === 'comex' || userRole === 'admin' || userRole === 'manager';
 
   // Summary of previous steps
   const previousSteps = (allSteps || []).filter((s) => s.step_key !== 'cierre_proceso');
   const allPreviousComplete = previousSteps.every((s) => s.status === 'completado' || s.status === 'saltado');
+
+  // Always show the summary card (both for completed and active)
+  const summaryCard = (
+    <Card className="bg-gray-50/50">
+      <CardContent className="py-3 px-4">
+        <h5 className="text-sm font-semibold mb-3">Resumen del Proceso</h5>
+        <div className="space-y-2">
+          {previousSteps.map((s) => {
+            const def = stepDefs.find((d) => d.key === s.step_key);
+            return (
+              <div key={s.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  {s.status === 'completado' ? (
+                    <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                  ) : s.status === 'saltado' ? (
+                    <span className="h-3.5 w-3.5 text-gray-400">—</span>
+                  ) : (
+                    <AlertTriangle className="h-3.5 w-3.5 text-yellow-600" />
+                  )}
+                  <span className={s.status === 'saltado' ? 'text-muted-foreground line-through' : ''}>
+                    {def?.name || s.step_key}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {s.completado_en && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(s.completado_en).toLocaleDateString('es-CL')}
+                    </span>
+                  )}
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] ${
+                      s.status === 'completado' ? 'text-green-600' : s.status === 'saltado' ? 'text-gray-400' : 'text-yellow-600'
+                    }`}
+                  >
+                    {s.status === 'completado' ? 'Completado' : s.status === 'saltado' ? 'Saltado' : 'Pendiente'}
+                  </Badge>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  if (step.status === 'completado') {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-green-700">
+          <CheckCircle className="h-4 w-4" />
+          <span>Proceso 1 cerrado. Avanzado a etapa 2.</span>
+        </div>
+        {summaryCard}
+      </div>
+    );
+  }
 
   const handleClose = () => {
     advanceStage.mutate(
@@ -62,41 +110,7 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
 
   return (
     <div className="space-y-4">
-      {/* Summary card */}
-      <Card className="bg-gray-50/50">
-        <CardContent className="py-3 px-4">
-          <h5 className="text-sm font-semibold mb-3">Resumen del Proceso</h5>
-          <div className="space-y-2">
-            {previousSteps.map((s) => {
-              const def = stepDefs.find((d) => d.key === s.step_key);
-              return (
-                <div key={s.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    {s.status === 'completado' ? (
-                      <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                    ) : s.status === 'saltado' ? (
-                      <span className="h-3.5 w-3.5 text-gray-400">—</span>
-                    ) : (
-                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-600" />
-                    )}
-                    <span className={s.status === 'saltado' ? 'text-muted-foreground line-through' : ''}>
-                      {def?.name || s.step_key}
-                    </span>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] ${
-                      s.status === 'completado' ? 'text-green-600' : s.status === 'saltado' ? 'text-gray-400' : 'text-yellow-600'
-                    }`}
-                  >
-                    {s.status === 'completado' ? 'Completado' : s.status === 'saltado' ? 'Saltado' : 'Pendiente'}
-                  </Badge>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      {summaryCard}
 
       {isComex && allPreviousComplete && (
         <div className="flex justify-end">

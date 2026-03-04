@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, AlertTriangle, Building, Clock, Plus } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Building, Clock, Plus, Pencil } from 'lucide-react';
 import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
 import {
   useCuentasBancarias,
@@ -36,6 +36,7 @@ const MONEDAS = ['USD', 'EUR', 'CLP', 'CNY', 'GBP'];
 
 export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, userName, userRole }: Props) {
   const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [banco, setBanco] = useState('');
   const [numeroCuenta, setNumeroCuenta] = useState('');
   const [swiftCode, setSwiftCode] = useState('');
@@ -51,11 +52,50 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
   const validarCuenta = useValidarCuentaBancaria();
   const completeStep = useCompleteStep();
 
-  if (step.status === 'completado') {
+  const canEdit = userRole === 'admin' || userRole === 'manager';
+  const datos = step.datos as any;
+
+  if (step.status === 'completado' && !isEditing) {
+    // Find the selected account
+    const cuentaId = datos?.cuenta_id;
+    const cuentaSeleccionada = cuentas?.find((c) => c.id === cuentaId) || cuentaVigente;
+
     return (
-      <div className="flex items-center gap-2 text-sm text-green-700">
-        <CheckCircle className="h-4 w-4" />
-        <span>Cuenta bancaria validada y enviada a Gerencia para aprobación</span>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle className="h-4 w-4" />
+            <span>Cuenta bancaria validada y enviada a Gerencia para aprobación</span>
+          </div>
+          {canEdit && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-3 w-3 mr-1" />
+              Modificar
+            </Button>
+          )}
+        </div>
+
+        {cuentaSeleccionada && (
+          <Card className="bg-green-50/50 border-green-200">
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Building className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">Cuenta Seleccionada</span>
+              </div>
+              <div className="text-sm space-y-1">
+                <p><span className="text-muted-foreground">Banco:</span> {cuentaSeleccionada.banco}</p>
+                <p><span className="text-muted-foreground">Cuenta:</span> {cuentaSeleccionada.numero_cuenta}</p>
+                <p><span className="text-muted-foreground">Moneda:</span> {cuentaSeleccionada.moneda}</p>
+                {cuentaSeleccionada.swift_code && <p><span className="text-muted-foreground">SWIFT:</span> {cuentaSeleccionada.swift_code}</p>}
+                {cuentaSeleccionada.iban && <p><span className="text-muted-foreground">IBAN:</span> {cuentaSeleccionada.iban}</p>}
+                {cuentaSeleccionada.titular && <p><span className="text-muted-foreground">Titular:</span> {cuentaSeleccionada.titular}</p>}
+                <p className="text-xs text-muted-foreground">
+                  Validada: {cuentaSeleccionada.fecha_validacion ? new Date(cuentaSeleccionada.fecha_validacion).toLocaleDateString('es-CL') : 'N/A'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
@@ -99,7 +139,10 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
         datos: { cuenta_id: cuentaVigente.id, requiere_nueva_validacion: false },
       },
       {
-        onSuccess: () => toast.success('Cuenta bancaria seleccionada. Enviada a Gerencia para aprobación.'),
+        onSuccess: () => {
+          toast.success('Cuenta bancaria seleccionada. Enviada a Gerencia para aprobación.');
+          setIsEditing(false);
+        },
         onError: (err) => toast.error(err.message),
       }
     );
@@ -184,6 +227,7 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
                     onSuccess: () => {
                       toast.success('Cuenta creada y validada. Enviada a Gerencia para aprobación.');
                       setShowForm(false);
+                      setIsEditing(false);
                     },
                   }
                 );
@@ -198,6 +242,15 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
 
   return (
     <div className="space-y-4">
+      {isEditing && (
+        <div className="flex items-center justify-between mb-2">
+          <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Modo edición (Admin)</Badge>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(false)}>
+            Cancelar
+          </Button>
+        </div>
+      )}
+
       {/* Existing valid account */}
       {cuentaVigente && (
         <Card className="bg-green-50/50 border-green-200">

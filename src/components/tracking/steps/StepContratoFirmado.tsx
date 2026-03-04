@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, FileUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, FileUp, Pencil } from 'lucide-react';
 import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
 import { useStageDocumentStatus } from '@/hooks/usePIMDocuments';
 import { RequiredDocumentsPanel } from '../RequiredDocumentsPanel';
@@ -17,17 +19,37 @@ interface Props {
   userDepartment?: Department;
 }
 
-export function StepContratoFirmado({ step, pimId, stageKey, pim, userId, userName }: Props) {
+export function StepContratoFirmado({ step, pimId, stageKey, pim, userId, userName, userRole }: Props) {
+  const [isEditing, setIsEditing] = useState(false);
   const completeStep = useCompleteStep();
   const { data: docStatus } = useStageDocumentStatus(pimId, ['contrato_firmado']);
 
   const hasDoc = docStatus && docStatus.missingTypes.length === 0;
+  const canEdit = userRole === 'admin' || userRole === 'manager';
 
-  if (step.status === 'completado') {
+  if (step.status === 'completado' && !isEditing) {
     return (
-      <div className="flex items-center gap-2 text-sm text-green-700">
-        <CheckCircle className="h-4 w-4" />
-        <span>Contrato firmado cargado correctamente</span>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle className="h-4 w-4" />
+            <span>Contrato firmado y enviado a proveedor cargado correctamente</span>
+          </div>
+          {canEdit && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-3 w-3 mr-1" />
+              Modificar
+            </Button>
+          )}
+        </div>
+        <RequiredDocumentsPanel
+          pimId={pimId}
+          stageKey={stageKey}
+          stageName="Contrato Firmado y Enviado a Proveedor"
+          requiredDocTypes={['contrato_firmado']}
+          usuario={userName}
+          readOnly={true}
+        />
       </div>
     );
   }
@@ -39,12 +61,15 @@ export function StepContratoFirmado({ step, pimId, stageKey, pim, userId, userNa
         pimId,
         stageKey,
         stepKey: 'contrato_firmado',
-        stepName: 'Contrato Firmado',
+        stepName: 'Contrato Firmado y Enviado a Proveedor',
         userId,
         userName,
       },
       {
-        onSuccess: () => toast.success('Paso completado: Contrato firmado cargado'),
+        onSuccess: () => {
+          toast.success('Paso completado: Contrato firmado y enviado a proveedor');
+          setIsEditing(false);
+        },
         onError: (err) => toast.error(err.message),
       }
     );
@@ -52,16 +77,25 @@ export function StepContratoFirmado({ step, pimId, stageKey, pim, userId, userNa
 
   return (
     <div className="space-y-4">
+      {isEditing && (
+        <div className="flex items-center justify-between mb-2">
+          <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Modo edición (Admin)</Badge>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(false)}>
+            Cancelar
+          </Button>
+        </div>
+      )}
+
       <RequiredDocumentsPanel
         pimId={pimId}
         stageKey={stageKey}
-        stageName="Contrato Firmado"
+        stageName="Contrato Firmado y Enviado a Proveedor"
         requiredDocTypes={['contrato_firmado']}
         usuario={userName}
         readOnly={false}
       />
 
-      {hasDoc && (
+      {hasDoc && !step.completado_en && (
         <div className="flex justify-end">
           <Button
             size="sm"

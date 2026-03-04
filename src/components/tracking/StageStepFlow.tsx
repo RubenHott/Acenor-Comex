@@ -161,7 +161,6 @@ export function StageStepFlow({
               className={cn(
                 'transition-all',
                 isActive && 'ring-2 ring-blue-500/50 shadow-md',
-                step.status === 'completado' && 'opacity-80',
                 step.status === 'saltado' && 'opacity-60',
                 step.status === 'pendiente' && 'opacity-50',
               )}

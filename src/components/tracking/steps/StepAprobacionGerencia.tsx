@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, XCircle, Building, Clock } from 'lucide-react';
-import { useCompleteStep, useReactivateStep, type StageStep } from '@/hooks/useStageSteps';
+import { useCompleteStep, useReactivateStep, useStageSteps, type StageStep } from '@/hooks/useStageSteps';
 import { useCuentasBancarias, useApproveByGerencia, useRejectByGerencia } from '@/hooks/useCuentasBancarias';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -29,7 +29,15 @@ export function StepAprobacionGerencia({ step, pimId, stageKey, pim, userId, use
   const [showRejectForm, setShowRejectForm] = useState(false);
 
   const datos = step.datos as any;
-  const cuentaId = datos?.cuenta_id;
+  let cuentaId = datos?.cuenta_id;
+
+  // Fallback: try to get cuenta_id from validacion_cuenta_bancaria step
+  const { data: allSteps } = useStageSteps(pimId, stageKey);
+  if (!cuentaId && allSteps) {
+    const validacionStep = allSteps.find((s) => s.step_key === 'validacion_cuenta_bancaria');
+    cuentaId = (validacionStep?.datos as any)?.cuenta_id;
+  }
+
   const proveedorId = pim?.proveedor_id;
   const { data: cuentas } = useCuentasBancarias(proveedorId);
   const approveByGerencia = useApproveByGerencia();
@@ -40,10 +48,35 @@ export function StepAprobacionGerencia({ step, pimId, stageKey, pim, userId, use
   const cuenta = cuentas?.find((c) => c.id === cuentaId) || cuentas?.[0];
 
   if (step.status === 'completado') {
+    const resultado = datos?.resultado;
     return (
-      <div className="flex items-center gap-2 text-sm text-green-700">
-        <CheckCircle className="h-4 w-4" />
-        <span>Cuenta bancaria aprobada por Gerencia</span>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-green-700">
+          <CheckCircle className="h-4 w-4" />
+          <span>Cuenta bancaria aprobada por Gerencia</span>
+        </div>
+
+        {/* Show approved account details */}
+        {cuenta && (
+          <Card className="bg-green-50/50 border-green-200">
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Building className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">Cuenta Aprobada</span>
+                <Badge className="bg-green-100 text-green-800 text-xs ml-auto">Aprobada</Badge>
+              </div>
+              <div className="text-sm space-y-1">
+                <p><span className="text-muted-foreground">Banco:</span> {cuenta.banco}</p>
+                <p><span className="text-muted-foreground">Cuenta:</span> {cuenta.numero_cuenta}</p>
+                <p><span className="text-muted-foreground">Moneda:</span> {cuenta.moneda}</p>
+                {cuenta.swift_code && <p><span className="text-muted-foreground">SWIFT:</span> {cuenta.swift_code}</p>}
+                {cuenta.iban && <p><span className="text-muted-foreground">IBAN:</span> {cuenta.iban}</p>}
+                {cuenta.titular && <p><span className="text-muted-foreground">Titular:</span> {cuenta.titular}</p>}
+                <p><span className="text-muted-foreground">Proveedor:</span> {pim?.proveedor_nombre || 'N/A'}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }

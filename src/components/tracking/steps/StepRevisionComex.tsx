@@ -49,17 +49,68 @@ export function StepRevisionComex({ step, pimId, stageKey, pim, userId, userName
   if (step.status === 'completado') {
     const resultado = (step.datos as any)?.resultado;
     return (
-      <div className="flex items-center gap-2 text-sm">
-        {resultado === 'aceptada' ? (
-          <>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <span className="text-green-700">Subsanación aceptada por COMEX</span>
-          </>
-        ) : (
-          <>
-            <XCircle className="h-4 w-4 text-red-600" />
-            <span className="text-red-700">Subsanación rechazada — devuelta para corrección</span>
-          </>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm">
+          {resultado === 'aceptada' ? (
+            <>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="text-green-700">Subsanación aceptada por COMEX</span>
+            </>
+          ) : (
+            <>
+              <XCircle className="h-4 w-4 text-red-600" />
+              <span className="text-red-700">Subsanación rechazada — devuelta para corrección</span>
+            </>
+          )}
+        </div>
+
+        {/* Show NC details in completed state */}
+        {nc && (
+          <Card className="bg-blue-50/50 border-blue-200">
+            <CardContent className="py-3 px-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">NC: {nc.codigo}</span>
+                <Badge variant="outline" className="text-xs">{nc.estado}</Badge>
+              </div>
+              <div className="text-sm">
+                <span className="text-xs text-muted-foreground">Descripción original:</span>
+                <p className="text-muted-foreground">{nc.descripcion}</p>
+              </div>
+              {nc.resolucion && (
+                <div className="text-sm">
+                  <span className="text-xs text-muted-foreground">Corrección realizada:</span>
+                  <p className="text-green-700">{nc.resolucion}</p>
+                </div>
+              )}
+              {nc.evidencia_url && (
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                  <a
+                    href={nc.evidencia_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Ver archivo corregido
+                  </a>
+                </div>
+              )}
+              {nc.fecha_resolucion && (
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(nc.fecha_resolucion).toLocaleDateString('es-CL')}
+                  </span>
+                  {nc.resuelto_por && (
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      Resuelto por: {nc.resuelto_por}
+                    </span>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
     );
