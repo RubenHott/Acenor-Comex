@@ -355,7 +355,8 @@ export function useCanAdvanceStage(
         if (!steps || steps.length === 0) {
           blockers.push({ type: 'steps', message: 'Pasos no inicializados' });
         } else {
-          const pending = steps.filter((s) => s.status !== 'completado' && s.status !== 'saltado');
+          // Exclude cierre_proceso from validation — it completes as part of the advance itself
+          const pending = steps.filter((s) => s.step_key !== 'cierre_proceso' && s.status !== 'completado' && s.status !== 'saltado');
           if (pending.length > 0) {
             blockers.push({
               type: 'steps',
@@ -488,7 +489,8 @@ export function useAdvanceStage() {
         if (!steps || steps.length === 0) {
           blockers.push({ type: 'steps', message: 'Pasos no inicializados' });
         } else {
-          const pending = steps.filter((s) => s.status !== 'completado' && s.status !== 'saltado');
+          // Exclude cierre_proceso from validation — it completes as part of the advance itself
+          const pending = steps.filter((s) => s.step_key !== 'cierre_proceso' && s.status !== 'completado' && s.status !== 'saltado');
           if (pending.length > 0) {
             blockers.push({
               type: 'steps',
