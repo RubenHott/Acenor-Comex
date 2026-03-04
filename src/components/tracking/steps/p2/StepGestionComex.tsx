@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   CheckCircle, XCircle, Send, Clock, AlertTriangle,
-  RefreshCw, FileText, User, Calendar, Upload,
+  RefreshCw, FileText, User, Calendar, Upload, Pencil,
 } from 'lucide-react';
-import { useCompleteStep, useUpdateStepData, type StageStep } from '@/hooks/useStageSteps';
+import { useCompleteStep, useReactivateStep, useUpdateStepData, type StageStep } from '@/hooks/useStageSteps';
 import { useCreateNC, useResolveNC, useNCsByStage, NC_TIPOS, NC_PRIORIDADES, useUsersByDepartment } from '@/hooks/useNoConformidades';
 import { usePIMDocuments } from '@/hooks/usePIMDocuments';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,6 +56,7 @@ export function StepGestionComex({ step, pimId, stageKey, pim, userId, userName,
   const [uploading, setUploading] = useState(false);
 
   const completeStep = useCompleteStep();
+  const reactivateStep = useReactivateStep();
   const updateStepData = useUpdateStepData();
   const createNC = useCreateNC();
   const resolveNC = useResolveNC();
@@ -70,14 +71,48 @@ export function StepGestionComex({ step, pimId, stageKey, pim, userId, userName,
   const swiftDoc = documents?.find((d: any) => d.tipo === 'swift');
 
   const isComex = userDepartment === 'comex' || userRole === 'admin' || userRole === 'manager';
+  const canEdit = userRole === 'admin' || userRole === 'manager';
+
+  const handleRevertir = () => {
+    reactivateStep.mutate(
+      {
+        pimId,
+        stageKey,
+        stepKey: 'gestion_comex',
+        motivo: 'Revertido por admin',
+        userId,
+        userName,
+      },
+      {
+        onSuccess: () => {
+          toast.info('Paso reactivado. Puede elegir nuevamente la respuesta del proveedor.');
+        },
+        onError: (err) => toast.error(err.message),
+      }
+    );
+  };
 
   // Completed state
   if (step.status === 'completado') {
     return (
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm text-green-700">
-          <CheckCircle className="h-4 w-4" />
-          <span>Proveedor aceptó el Swift</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle className="h-4 w-4" />
+            <span>Proveedor aceptó el Swift</span>
+          </div>
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={handleRevertir}
+              disabled={reactivateStep.isPending}
+            >
+              <Pencil className="h-3 w-3 mr-1" />
+              {reactivateStep.isPending ? 'Revertiendo...' : 'Modificar'}
+            </Button>
+          )}
         </div>
 
         {iteraciones.length > 0 && (
