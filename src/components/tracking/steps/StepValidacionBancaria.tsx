@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { CheckCircle, Building, Plus, Pencil } from 'lucide-react';
 import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
 import {
@@ -73,25 +74,20 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
         </div>
 
         {cuentaSeleccionada && (
-          <Card className="bg-green-50/50 border-green-200">
-            <CardContent className="py-3 px-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Building className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-green-700">Cuenta Seleccionada</span>
-              </div>
-              <div className="text-sm space-y-1">
-                <p><span className="text-muted-foreground">Banco:</span> {cuentaSeleccionada.banco}</p>
-                <p><span className="text-muted-foreground">Cuenta:</span> {cuentaSeleccionada.numero_cuenta}</p>
-                <p><span className="text-muted-foreground">Moneda:</span> {cuentaSeleccionada.moneda}</p>
-                {cuentaSeleccionada.swift_code && <p><span className="text-muted-foreground">SWIFT:</span> {cuentaSeleccionada.swift_code}</p>}
-                {cuentaSeleccionada.iban && <p><span className="text-muted-foreground">IBAN:</span> {cuentaSeleccionada.iban}</p>}
-                {cuentaSeleccionada.titular && <p><span className="text-muted-foreground">Titular:</span> {cuentaSeleccionada.titular}</p>}
-                <p className="text-xs text-muted-foreground">
-                  Validada: {cuentaSeleccionada.fecha_validacion ? new Date(cuentaSeleccionada.fecha_validacion).toLocaleDateString('es-CL') : 'N/A'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-3 text-sm bg-green-50/50 border border-green-200 rounded-md py-2 px-3">
+            <Building className="h-4 w-4 text-green-600 flex-shrink-0" />
+            <span className="font-medium">{cuentaSeleccionada.banco}</span>
+            <span className="text-muted-foreground">|</span>
+            <span className="font-mono text-xs">{cuentaSeleccionada.numero_cuenta}</span>
+            <span className="text-muted-foreground">|</span>
+            <span>{cuentaSeleccionada.moneda}</span>
+            {cuentaSeleccionada.swift_code && (
+              <>
+                <span className="text-muted-foreground">|</span>
+                <span className="font-mono text-xs">SWIFT: {cuentaSeleccionada.swift_code}</span>
+              </>
+            )}
+          </div>
         )}
       </div>
     );
@@ -246,52 +242,67 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
         </div>
       )}
 
-      {/* All existing accounts */}
+      {/* All existing accounts — compact table */}
       {cuentas && cuentas.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Cuentas bancarias del proveedor:</p>
-          {cuentas.map((c) => (
-            <Card
-              key={c.id}
-              className={c.validada ? 'bg-green-50/50 border-green-200' : 'bg-muted/30 border-muted'}
-            >
-              <CardContent className="py-3 px-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Building className={`h-4 w-4 ${c.validada ? 'text-green-600' : 'text-muted-foreground'}`} />
-                    <span className={`text-sm font-medium ${c.validada ? 'text-green-700' : 'text-muted-foreground'}`}>
-                      {c.banco}
-                    </span>
-                  </div>
-                  {c.validada ? (
-                    <Badge className="bg-green-100 text-green-800 text-xs">Validada</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs text-muted-foreground">Sin validar</Badge>
-                  )}
-                </div>
-                <div className="text-sm space-y-1">
-                  <p><span className="text-muted-foreground">Cuenta:</span> {c.numero_cuenta}</p>
-                  <p><span className="text-muted-foreground">Moneda:</span> {c.moneda}</p>
-                  {c.swift_code && <p><span className="text-muted-foreground">SWIFT:</span> {c.swift_code}</p>}
-                  {c.iban && <p><span className="text-muted-foreground">IBAN:</span> {c.iban}</p>}
-                  {c.titular && <p><span className="text-muted-foreground">Titular:</span> {c.titular}</p>}
-                  {c.fecha_validacion && (
-                    <p className="text-xs text-muted-foreground">
-                      Validada: {new Date(c.fecha_validacion).toLocaleDateString('es-CL')}
-                    </p>
-                  )}
-                </div>
-                {c.validada && (
-                  <div className="flex justify-end mt-3">
-                    <Button size="sm" onClick={() => handleSelectCuenta(c)} disabled={completeStep.isPending}>
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Seleccionar esta cuenta
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">Seleccione una cuenta bancaria del proveedor:</p>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b">
+                  <th className="text-left py-2 px-3 font-medium text-xs text-muted-foreground">Banco</th>
+                  <th className="text-left py-2 px-3 font-medium text-xs text-muted-foreground">Cuenta</th>
+                  <th className="text-left py-2 px-3 font-medium text-xs text-muted-foreground hidden sm:table-cell">Moneda</th>
+                  <th className="text-left py-2 px-3 font-medium text-xs text-muted-foreground hidden md:table-cell">SWIFT</th>
+                  <th className="text-center py-2 px-3 font-medium text-xs text-muted-foreground">Estado</th>
+                  <th className="py-2 px-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {cuentas.map((c, idx) => (
+                  <tr
+                    key={c.id}
+                    className={cn(
+                      'border-b last:border-b-0 transition-colors',
+                      c.validada ? 'hover:bg-green-50/50' : 'opacity-60',
+                      idx % 2 === 0 ? 'bg-white' : 'bg-muted/20'
+                    )}
+                  >
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-1.5">
+                        <Building className={`h-3.5 w-3.5 flex-shrink-0 ${c.validada ? 'text-green-600' : 'text-muted-foreground'}`} />
+                        <span className="font-medium truncate max-w-[120px]">{c.banco}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 font-mono text-xs">{c.numero_cuenta}</td>
+                    <td className="py-2 px-3 hidden sm:table-cell">{c.moneda}</td>
+                    <td className="py-2 px-3 hidden md:table-cell font-mono text-xs">{c.swift_code || '—'}</td>
+                    <td className="py-2 px-3 text-center">
+                      {c.validada ? (
+                        <Badge className="bg-green-100 text-green-800 text-[10px] px-1.5 py-0">Validada</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">Sin validar</Badge>
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-right">
+                      {c.validada && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleSelectCuenta(c)}
+                          disabled={completeStep.isPending}
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Seleccionar
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
