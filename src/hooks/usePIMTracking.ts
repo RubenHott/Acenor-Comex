@@ -85,7 +85,7 @@ async function enforcePermission(
   throw new Error(`No tienes permiso para realizar esta acción (${action})`);
 }
 
-// --- Initialize Tracking (6 stages, filtered checklist by modalidad_pago) ---
+// --- Initialize Tracking ---
 
 export function useInitializeTracking() {
   const queryClient = useQueryClient();
@@ -102,7 +102,7 @@ export function useInitializeTracking() {
       userId?: string;
       userName?: string;
     }) => {
-      // Create all 6 stages with department assignment
+      // Create all stages with department assignment
       const now = new Date().toISOString();
       const stages = TRACKING_STAGES.map((s, idx) => ({
         id: generateId(),
@@ -146,7 +146,7 @@ export function useInitializeTracking() {
         id: generateId(),
         pim_id: pimId,
         tipo: 'status_change',
-        descripcion: 'Seguimiento inicializado con 6 etapas. Etapa "Revisión de Contrato" iniciada.',
+        descripcion: `Seguimiento inicializado con ${TRACKING_STAGES.length} etapas. Etapa "Revisión de Contrato" iniciada.`,
         usuario: userName || 'Sistema',
         usuario_id: userId || null,
       });

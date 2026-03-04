@@ -155,7 +155,7 @@ export const GESTION_PAGO_STEPS: StageStepDef[] = [
   },
 ];
 
-// --- Step definitions for Stage 3: Documentación e Internación ---
+// --- Step definitions for Stage 3: Seguimiento de Documentación e Internación ---
 
 export const DOCUMENTACION_INTERNACION_STEPS: StageStepDef[] = [
   {

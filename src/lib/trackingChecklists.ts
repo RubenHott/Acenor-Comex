@@ -89,7 +89,7 @@ export const TRACKING_STAGES: StageDef[] = [
   },
   {
     key: "documentacion_internacion",
-    name: "Documentación e Internación",
+    name: "Seguimiento de Documentación e Internación",
     icon: Ship,
     color: "#F59E0B",
     description: "Documentación digital/física, discrepancias, retiro banco, internación y pago",
