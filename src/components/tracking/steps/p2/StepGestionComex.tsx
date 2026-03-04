@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   CheckCircle, XCircle, Send, Clock, AlertTriangle,
-  RefreshCw, FileText, User, Calendar, Upload, Pencil,
+  RefreshCw, FileText, User, Calendar, Upload, Pencil, Download,
 } from 'lucide-react';
 import { useCompleteStep, useReactivateStep, useUpdateStepData, type StageStep } from '@/hooks/useStageSteps';
 import { useCreateNC, useResolveNC, useNCsByStage, NC_TIPOS, NC_PRIORIDADES, useUsersByDepartment } from '@/hooks/useNoConformidades';
@@ -68,6 +68,10 @@ export function StepGestionComex({ step, pimId, stageKey, pim, userId, userName,
   const estado: GestionEstado = datos?.estado || 'pendiente_envio';
   const iteraciones: Iteracion[] = datos?.iteraciones || [];
   const ncActiva = datos?.nc_activa_id ? ncs?.find((n) => n.id === datos.nc_activa_id) : null;
+  // Last resolved NC with evidence — for download link when re-sending
+  const lastResolvedNC = ncs
+    ?.filter((n: any) => ['resuelta', 'cerrada'].includes(n.estado) && n.evidencia_url)
+    .sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] || null;
   const swiftDoc = documents?.find((d: any) => d.tipo === 'swift');
 
   const isComex = userDepartment === 'comex' || userRole === 'admin' || userRole === 'manager';
@@ -595,8 +599,27 @@ export function StepGestionComex({ step, pimId, stageKey, pim, userId, userName,
 
           {/* Re-send button if NC resolved */}
           {(!ncActiva || ncActiva.estado === 'resuelta' || ncActiva.estado === 'cerrada') && isComex && (
-            <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-lg">
-              <p className="text-sm mb-3">La objeción ha sido resuelta. Puede re-enviar al proveedor.</p>
+            <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-lg space-y-3">
+              <p className="text-sm">La objeción ha sido resuelta. Puede re-enviar al proveedor.</p>
+
+              {/* Show corrected file from last resolved NC */}
+              {(lastResolvedNC?.evidencia_url || ncActiva?.evidencia_url) && (
+                <div className="flex items-center gap-2 p-2 bg-white border rounded-md">
+                  <Download className="h-4 w-4 text-blue-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">Archivo corregido ({lastResolvedNC?.codigo || ncActiva?.codigo})</p>
+                    <a
+                      href={lastResolvedNC?.evidencia_url || ncActiva?.evidencia_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:underline truncate block"
+                    >
+                      Descargar / Ver archivo
+                    </a>
+                  </div>
+                </div>
+              )}
+
               <Button
                 size="sm"
                 onClick={handleReenviar}
