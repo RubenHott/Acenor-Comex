@@ -85,7 +85,26 @@ export function StepGestionComex({ step, pimId, stageKey, pim, userId, userName,
       },
       {
         onSuccess: () => {
-          toast.info('Paso reactivado. Puede elegir nuevamente la respuesta del proveedor.');
+          // Also reset the internal state machine back to 'enviado_proveedor'
+          // so the accept/reject buttons appear again
+          updateStepData.mutate(
+            {
+              stepId: step.id,
+              pimId,
+              stageKey,
+              datos: {
+                ...datos,
+                estado: 'enviado_proveedor',
+                resultado: null,
+              },
+            },
+            {
+              onSuccess: () => {
+                toast.info('Paso reactivado. Puede elegir nuevamente la respuesta del proveedor.');
+              },
+              onError: (err) => toast.error(err.message),
+            }
+          );
         },
         onError: (err) => toast.error(err.message),
       }
