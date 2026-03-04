@@ -30,12 +30,9 @@ export interface CuentaBancaria {
   updated_at: string;
 }
 
-/** Check if a bank account validation is still valid (< 6 months old) */
+/** Check if a bank account is valid (validated and active) */
 export function isCuentaVigente(cuenta: CuentaBancaria): boolean {
-  if (!cuenta.validada || !cuenta.fecha_validacion) return false;
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  return new Date(cuenta.fecha_validacion) > sixMonthsAgo;
+  return cuenta.validada && cuenta.activa;
 }
 
 // --- Queries ---
@@ -224,7 +221,7 @@ export function useDeactivateCuentaBancaria() {
   });
 }
 
-/** Get an active, validated, and currently valid (< 6 months) bank account */
+/** Get the most recently validated active bank account */
 export function useCuentaBancariaVigente(proveedorId?: string) {
   return useQuery({
     queryKey: ['cuenta-bancaria-vigente', proveedorId],
@@ -235,12 +232,11 @@ export function useCuentaBancariaVigente(proveedorId?: string) {
         .eq('proveedor_id', proveedorId!)
         .eq('activa', true)
         .eq('validada', true)
-        .order('fecha_validacion', { ascending: false });
+        .order('fecha_validacion', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (error) throw error;
-
-      // Filter by 6-month validity
-      const cuentas = (data || []) as CuentaBancaria[];
-      return cuentas.find((c) => isCuentaVigente(c)) || null;
+      return data as CuentaBancaria | null;
     },
     enabled: !!proveedorId,
   });

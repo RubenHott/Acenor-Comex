@@ -13,6 +13,7 @@ export type DocumentType =
   | "contrato"
   | "cierre_compra"
   | "contrato_firmado"
+  | "borrador_lc"
   | "factura"
   | "bl"
   | "packing_list"
@@ -68,7 +69,7 @@ export const TRACKING_STAGES: StageDef[] = [
     departments: ["comex", "gerencia"],
     primaryDepartment: "comex",
     checklist: [],
-    requiredDocuments: ["contrato", "cierre_compra", "contrato_firmado"],
+    requiredDocuments: ["contrato", "cierre_compra", "contrato_firmado", "borrador_lc"],
     ncBlocks: true,
     slaDefaultDays: 5,
     useStepFlow: true,

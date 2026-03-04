@@ -5,14 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, AlertTriangle, Building, Clock, Plus, Pencil } from 'lucide-react';
+import { CheckCircle, Building, Plus, Pencil } from 'lucide-react';
 import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
 import {
   useCuentasBancarias,
-  useCuentaBancariaVigente,
   useCreateCuentaBancaria,
   useValidarCuentaBancaria,
-  isCuentaVigente,
   type CuentaBancaria,
 } from '@/hooks/useCuentasBancarias';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,7 +45,6 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
 
   const proveedorId = pim?.proveedor_id;
   const { data: cuentas } = useCuentasBancarias(proveedorId);
-  const { data: cuentaVigente } = useCuentaBancariaVigente(proveedorId);
   const createCuenta = useCreateCuentaBancaria();
   const validarCuenta = useValidarCuentaBancaria();
   const completeStep = useCompleteStep();
@@ -58,7 +55,7 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
   if (step.status === 'completado' && !isEditing) {
     // Find the selected account
     const cuentaId = datos?.cuenta_id;
-    const cuentaSeleccionada = cuentas?.find((c) => c.id === cuentaId) || cuentaVigente;
+    const cuentaSeleccionada = cuentas?.find((c) => c.id === cuentaId);
 
     return (
       <div className="space-y-3">
@@ -100,9 +97,7 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
     );
   }
 
-  const handleSelectVigente = async () => {
-    if (!cuentaVigente) return;
-
+  const handleSelectCuenta = async (cuenta: CuentaBancaria) => {
     // Notify Gerencia
     const { data: gerenciaUsers } = await supabase
       .from('user_profiles')
@@ -136,7 +131,7 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
         stepName: 'Validación de Cuenta Bancaria',
         userId,
         userName,
-        datos: { cuenta_id: cuentaVigente.id, requiere_nueva_validacion: false },
+        datos: { cuenta_id: cuenta.id, requiere_nueva_validacion: false },
       },
       {
         onSuccess: () => {
@@ -251,64 +246,57 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
         </div>
       )}
 
-      {/* Existing valid account */}
-      {cuentaVigente && (
-        <Card className="bg-green-50/50 border-green-200">
-          <CardContent className="py-3 px-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Building className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-green-700">Cuenta Vigente</span>
-              </div>
-              <Badge className="bg-green-100 text-green-800 text-xs">Vigente</Badge>
-            </div>
-            <div className="text-sm space-y-1">
-              <p><span className="text-muted-foreground">Banco:</span> {cuentaVigente.banco}</p>
-              <p><span className="text-muted-foreground">Cuenta:</span> {cuentaVigente.numero_cuenta}</p>
-              <p><span className="text-muted-foreground">Moneda:</span> {cuentaVigente.moneda}</p>
-              {cuentaVigente.swift_code && <p><span className="text-muted-foreground">SWIFT:</span> {cuentaVigente.swift_code}</p>}
-              <p className="text-xs text-muted-foreground">
-                Validada: {cuentaVigente.fecha_validacion ? new Date(cuentaVigente.fecha_validacion).toLocaleDateString('es-CL') : 'N/A'}
-              </p>
-            </div>
-            <div className="flex justify-end mt-3">
-              <Button size="sm" onClick={handleSelectVigente} disabled={completeStep.isPending}>
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Seleccionar y continuar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Expired accounts */}
-      {!cuentaVigente && cuentas && cuentas.length > 0 && (
-        <Card className="bg-yellow-50/50 border-yellow-200">
-          <CardContent className="py-3 px-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <span className="text-sm font-medium text-yellow-700">Validación vencida</span>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Las cuentas bancarias del proveedor tienen validación vencida (&gt; 6 meses).
-              Se requiere una nueva validación.
-            </p>
-            {cuentas.map((c) => (
-              <div key={c.id} className="text-sm py-1 border-b last:border-0">
-                <span>{c.banco} — {c.numero_cuenta} ({c.moneda})</span>
-                {c.fecha_validacion && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    Validada: {new Date(c.fecha_validacion).toLocaleDateString('es-CL')}
-                  </span>
+      {/* All existing accounts */}
+      {cuentas && cuentas.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">Cuentas bancarias del proveedor:</p>
+          {cuentas.map((c) => (
+            <Card
+              key={c.id}
+              className={c.validada ? 'bg-green-50/50 border-green-200' : 'bg-muted/30 border-muted'}
+            >
+              <CardContent className="py-3 px-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Building className={`h-4 w-4 ${c.validada ? 'text-green-600' : 'text-muted-foreground'}`} />
+                    <span className={`text-sm font-medium ${c.validada ? 'text-green-700' : 'text-muted-foreground'}`}>
+                      {c.banco}
+                    </span>
+                  </div>
+                  {c.validada ? (
+                    <Badge className="bg-green-100 text-green-800 text-xs">Validada</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs text-muted-foreground">Sin validar</Badge>
+                  )}
+                </div>
+                <div className="text-sm space-y-1">
+                  <p><span className="text-muted-foreground">Cuenta:</span> {c.numero_cuenta}</p>
+                  <p><span className="text-muted-foreground">Moneda:</span> {c.moneda}</p>
+                  {c.swift_code && <p><span className="text-muted-foreground">SWIFT:</span> {c.swift_code}</p>}
+                  {c.iban && <p><span className="text-muted-foreground">IBAN:</span> {c.iban}</p>}
+                  {c.titular && <p><span className="text-muted-foreground">Titular:</span> {c.titular}</p>}
+                  {c.fecha_validacion && (
+                    <p className="text-xs text-muted-foreground">
+                      Validada: {new Date(c.fecha_validacion).toLocaleDateString('es-CL')}
+                    </p>
+                  )}
+                </div>
+                {c.validada && (
+                  <div className="flex justify-end mt-3">
+                    <Button size="sm" onClick={() => handleSelectCuenta(c)} disabled={completeStep.isPending}>
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Seleccionar esta cuenta
+                    </Button>
+                  </div>
                 )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
-      {/* No accounts or need new one */}
-      {!cuentaVigente && !showForm && (
+      {/* Create new account button */}
+      {!showForm && (
         <Button
           size="sm"
           variant="outline"

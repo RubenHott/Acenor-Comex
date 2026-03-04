@@ -21,6 +21,7 @@ export interface PIMDocument {
 const DOCUMENT_TYPES = [
   { value: 'contrato', label: 'Contrato' },
   { value: 'cierre_compra', label: 'Cierre de Compra' },
+  { value: 'borrador_lc', label: 'Borrador Carta de Crédito' },
   { value: 'factura', label: 'Factura Comercial' },
   { value: 'bl', label: 'Bill of Lading (BL)' },
   { value: 'packing_list', label: 'Packing List' },

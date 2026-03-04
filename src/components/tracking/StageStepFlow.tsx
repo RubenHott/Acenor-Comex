@@ -5,13 +5,15 @@ import { cn } from '@/lib/utils';
 import { CheckCircle, Circle, Clock, SkipForward, Lock } from 'lucide-react';
 import { useStageSteps, useInitializeSteps, type StageStep } from '@/hooks/useStageSteps';
 import { getStageSteps, type StageStepDef } from '@/lib/stageStepDefinitions';
-import { StepDocumentosIniciales } from './steps/StepDocumentosIniciales';
+import { StepRecepcionContrato } from './steps/StepRecepcionContrato';
+import { StepRecepcionCierreCompra } from './steps/StepRecepcionCierreCompra';
 import { StepDeclaracionNC } from './steps/StepDeclaracionNC';
 import { StepSubsanacionNC } from './steps/StepSubsanacionNC';
 import { StepRevisionComex } from './steps/StepRevisionComex';
 import { StepContratoFirmado } from './steps/StepContratoFirmado';
 import { StepValidacionBancaria } from './steps/StepValidacionBancaria';
 import { StepAprobacionGerencia } from './steps/StepAprobacionGerencia';
+import { StepBorradorCartaCredito } from './steps/StepBorradorCartaCredito';
 import { StepCierreProceso } from './steps/StepCierreProceso';
 // Process 2: Gestión Financiera de Pago
 import { StepEncabezadoAntecedentes } from './steps/p2/StepEncabezadoAntecedentes';
@@ -125,8 +127,10 @@ export function StageStepFlow({
     }
 
     switch (step.step_key) {
-      case 'documentos_iniciales':
-        return <StepDocumentosIniciales step={step} {...stepProps} />;
+      case 'recepcion_contrato':
+        return <StepRecepcionContrato step={step} {...stepProps} />;
+      case 'recepcion_cierre_compra':
+        return <StepRecepcionCierreCompra step={step} {...stepProps} />;
       case 'declaracion_nc':
         return <StepDeclaracionNC step={step} {...stepProps} />;
       case 'subsanacion_nc':
@@ -139,6 +143,8 @@ export function StageStepFlow({
         return <StepValidacionBancaria step={step} {...stepProps} />;
       case 'aprobacion_gerencia':
         return <StepAprobacionGerencia step={step} {...stepProps} />;
+      case 'borrador_carta_credito':
+        return <StepBorradorCartaCredito step={step} {...stepProps} />;
       case 'cierre_proceso':
         return <StepCierreProceso step={step} {...stepProps} />;
       // Process 2: Gestión Financiera de Pago
