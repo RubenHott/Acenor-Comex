@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
-import { useCompleteStep, useSkipSteps, type StageStep } from '@/hooks/useStageSteps';
+import { useCompleteStep, useSkipSteps, useStageSteps, useUpdateStepData, type StageStep } from '@/hooks/useStageSteps';
 import { useCreateNC, NC_TIPOS, NC_PRIORIDADES, useUsersByDepartment } from '@/hooks/useNoConformidades';
 import { toast } from 'sonner';
 import type { Department, UserRole } from '@/types/comex';
@@ -38,6 +38,8 @@ export function StepDeclaracionNC({ step, pimId, stageKey, pim, userId, userName
   const completeStep = useCompleteStep();
   const skipSteps = useSkipSteps();
   const createNC = useCreateNC();
+  const updateStepData = useUpdateStepData();
+  const { data: allSteps } = useStageSteps(pimId, stageKey);
   const { data: deptUsers } = useUsersByDepartment(ncDepartamento || undefined);
 
   if (step.status === 'completado') {
@@ -110,6 +112,18 @@ export function StepDeclaracionNC({ step, pimId, stageKey, pim, userId, userName
       },
       {
         onSuccess: (nc) => {
+          // Propagate nc_id to steps 3 (subsanacion_nc) and 4 (revision_comex)
+          if (allSteps) {
+            const step3 = allSteps.find((s) => s.step_key === 'subsanacion_nc');
+            const step4 = allSteps.find((s) => s.step_key === 'revision_comex');
+            if (step3) {
+              updateStepData.mutate({ stepId: step3.id, pimId, stageKey, datos: { nc_id: nc.id, nc_codigo: nc.codigo } });
+            }
+            if (step4) {
+              updateStepData.mutate({ stepId: step4.id, pimId, stageKey, datos: { nc_id: nc.id, nc_codigo: nc.codigo } });
+            }
+          }
+
           completeStep.mutate(
             {
               stepId: step.id,

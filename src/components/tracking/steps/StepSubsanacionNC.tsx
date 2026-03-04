@@ -5,9 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Upload, Clock, User } from 'lucide-react';
-import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
+import { useCompleteStep, useStageSteps, type StageStep } from '@/hooks/useStageSteps';
 import { useNCsByStage, useResolveNC } from '@/hooks/useNoConformidades';
-import { useUploadDocument } from '@/hooks/usePIMDocuments';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Department, UserRole } from '@/types/comex';
@@ -29,12 +28,20 @@ export function StepSubsanacionNC({ step, pimId, stageKey, pim, userId, userName
   const [uploading, setUploading] = useState(false);
 
   const { data: ncs } = useNCsByStage(pimId, stageKey);
+  const { data: allSteps } = useStageSteps(pimId, stageKey);
   const resolveNC = useResolveNC();
   const completeStep = useCompleteStep();
 
+  // Get nc_id: try own datos first, then fall back to declaracion_nc step datos, then find first active NC
   const datos = step.datos as any;
-  const ncId = datos?.nc_id;
-  const nc = ncs?.find((n) => n.id === ncId);
+  let ncId = datos?.nc_id;
+  if (!ncId && allSteps) {
+    const declaracionStep = allSteps.find((s) => s.step_key === 'declaracion_nc');
+    ncId = (declaracionStep?.datos as any)?.nc_id;
+  }
+  const nc = ncId
+    ? ncs?.find((n) => n.id === ncId)
+    : ncs?.find((n) => ['abierta', 'en_revision'].includes(n.estado));
 
   if (step.status === 'completado') {
     return (

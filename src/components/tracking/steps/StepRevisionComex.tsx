@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, XCircle, FileText, User, Calendar } from 'lucide-react';
-import { useCompleteStep, useReactivateStep, type StageStep } from '@/hooks/useStageSteps';
+import { useCompleteStep, useReactivateStep, useStageSteps, type StageStep } from '@/hooks/useStageSteps';
 import { useNCsByStage, useUpdateNCStatus, useReopenNC } from '@/hooks/useNoConformidades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,14 +29,22 @@ export function StepRevisionComex({ step, pimId, stageKey, pim, userId, userName
   const [showRejectForm, setShowRejectForm] = useState(false);
 
   const { data: ncs } = useNCsByStage(pimId, stageKey);
+  const { data: allSteps } = useStageSteps(pimId, stageKey);
   const completeStep = useCompleteStep();
   const reactivateStep = useReactivateStep();
   const updateNCStatus = useUpdateNCStatus();
   const reopenNC = useReopenNC();
 
+  // Get nc_id: try own datos first, then fall back to declaracion_nc step datos, then find first active NC
   const datos = step.datos as any;
-  const ncId = datos?.nc_id;
-  const nc = ncs?.find((n) => n.id === ncId);
+  let ncId = datos?.nc_id;
+  if (!ncId && allSteps) {
+    const declaracionStep = allSteps.find((s) => s.step_key === 'declaracion_nc');
+    ncId = (declaracionStep?.datos as any)?.nc_id;
+  }
+  const nc = ncId
+    ? ncs?.find((n) => n.id === ncId)
+    : ncs?.find((n) => ['abierta', 'en_revision', 'resuelta'].includes(n.estado));
 
   if (step.status === 'completado') {
     const resultado = (step.datos as any)?.resultado;
