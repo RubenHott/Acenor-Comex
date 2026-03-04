@@ -37,9 +37,10 @@ interface Props {
   stageKey: string;
   stageName?: string;
   usuario: string;
+  readOnly?: boolean;
 }
 
-export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario }: Props) {
+export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario, readOnly }: Props) {
   const { data: documents = [], isLoading } = usePIMDocuments(pimId, stageKey);
   const uploadDoc = useUploadDocument();
   const deleteDoc = useDeleteDocument();
@@ -123,10 +124,12 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario }: Pro
           <FileText className="h-4 w-4" />
           Documentos — {stageName || stageKey}
         </CardTitle>
-        <Button size="sm" variant="outline" onClick={() => { resetForm(); setShowUpload(true); }}>
-          <Plus className="h-4 w-4 mr-1" />
-          Subir
-        </Button>
+        {!readOnly && (
+          <Button size="sm" variant="outline" onClick={() => { resetForm(); setShowUpload(true); }}>
+            <Plus className="h-4 w-4 mr-1" />
+            Subir
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -158,7 +161,7 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario }: Pro
                       )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {(latest.tipo === 'swift' || latest.tipo === 'enmienda') && (
+                      {!readOnly && (latest.tipo === 'swift' || latest.tipo === 'enmienda') && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -186,24 +189,26 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario }: Pro
                         </TooltipTrigger>
                         <TooltipContent>Descargar</TooltipContent>
                       </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-destructive"
-                            onClick={() =>
-                              deleteDoc.mutate(
-                                { docId: latest.id, pimId },
-                                { onSuccess: () => toast.success('Documento eliminado') }
-                              )
-                            }
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Eliminar</TooltipContent>
-                      </Tooltip>
+                      {!readOnly && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() =>
+                                deleteDoc.mutate(
+                                  { docId: latest.id, pimId },
+                                  { onSuccess: () => toast.success('Documento eliminado') }
+                                )
+                              }
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Eliminar</TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
 

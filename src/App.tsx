@@ -7,6 +7,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ComexLayout } from "@/components/layout/ComexLayout";
 import { WorkOrdersLayout } from "@/components/layout/WorkOrdersLayout";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import UsersPage from "./pages/UsersPage";
 import ModulesPage from "./pages/ModulesPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProductsPage from "./pages/ProductsPage";
@@ -35,6 +37,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/" element={<ModulesPage />} />
             
             {/* COMEX Module Routes */}
@@ -52,7 +55,7 @@ const App = () => (
               <Route path="contracts" element={<ComingSoonPage />} />
               <Route path="payments" element={<ComingSoonPage />} />
               <Route path="prices" element={<ComingSoonPage />} />
-              <Route path="users" element={<ComingSoonPage />} />
+              <Route path="users" element={<UsersPage />} />
               <Route path="notifications" element={<ComingSoonPage />} />
               <Route path="settings" element={<ComingSoonPage />} />
             </Route>

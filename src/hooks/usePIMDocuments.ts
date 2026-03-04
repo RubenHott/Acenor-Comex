@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { DocumentType } from '@/lib/trackingChecklists';
+import { canDo } from '@/lib/permissions';
+import type { UserRole } from '@/types/comex';
 
 export interface PIMDocument {
   id: string;
@@ -71,6 +73,7 @@ export function useUploadDocument() {
       usuario,
       versionGroup,
       version,
+      userRole,
     }: {
       pimId: string;
       file: File;
@@ -80,7 +83,12 @@ export function useUploadDocument() {
       usuario: string;
       versionGroup?: string;
       version?: number;
+      userRole?: UserRole;
     }) => {
+      if (userRole && !canDo(userRole, 'upload_document')) {
+        throw new Error('No tienes permiso para subir documentos');
+      }
+
       const ext = file.name.split('.').pop();
       const filePath = `${pimId}/${stageKey}/${generateId()}.${ext}`;
 
@@ -150,7 +158,11 @@ export function useDeleteDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ docId, pimId }: { docId: string; pimId: string }) => {
+    mutationFn: async ({ docId, pimId, userRole }: { docId: string; pimId: string; userRole?: UserRole }) => {
+      if (userRole && !canDo(userRole, 'delete_document')) {
+        throw new Error('No tienes permiso para eliminar documentos');
+      }
+
       const { error } = await supabase
         .from('pim_documentos')
         .delete()

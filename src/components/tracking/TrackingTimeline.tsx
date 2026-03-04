@@ -11,6 +11,11 @@ import {
   Eye,
   ShieldCheck,
   UserCheck,
+  ShieldAlert,
+  PlayCircle,
+  Ban,
+  Unlock,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStageByKey } from '@/lib/trackingChecklists';
@@ -31,6 +36,15 @@ const typeConfig: Record<string, { icon: typeof CheckCircle; color: string }> = 
   nc_resolved: { icon: ShieldCheck, color: 'text-green-600' },
   nc_closed: { icon: CheckCircle, color: 'text-gray-500' },
   nc_assigned: { icon: UserCheck, color: 'text-blue-600' },
+  permission_denied: { icon: ShieldAlert, color: 'text-red-600' },
+  stage_assigned: { icon: UserCheck, color: 'text-teal-600' },
+  subprocess_started: { icon: PlayCircle, color: 'text-blue-500' },
+  subprocess_completed: { icon: CheckCircle, color: 'text-green-600' },
+  subprocess_blocked: { icon: Ban, color: 'text-red-500' },
+  subprocess_unblocked: { icon: Unlock, color: 'text-green-500' },
+  subprocess_assigned: { icon: UserCheck, color: 'text-cyan-600' },
+  nc_iteration: { icon: MessageSquare, color: 'text-amber-500' },
+  email_sent: { icon: Mail, color: 'text-violet-500' },
 };
 
 export function TrackingTimeline({ logs }: Props) {

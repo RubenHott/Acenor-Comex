@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrackingStageBar } from '@/components/tracking/TrackingStageBar';
@@ -12,9 +13,14 @@ import { TrackingTimeline } from '@/components/tracking/TrackingTimeline';
 import { TrackingNoteDialog } from '@/components/tracking/TrackingNoteDialog';
 import { SplitPIMDialog } from '@/components/tracking/SplitPIMDialog';
 import { DocumentUploadPanel } from '@/components/tracking/DocumentUploadPanel';
+import { RequiredDocumentsPanel } from '@/components/tracking/RequiredDocumentsPanel';
 import { DHLTrackingPanel } from '@/components/tracking/DHLTrackingPanel';
 import { NonConformityPanel } from '@/components/tracking/NonConformityPanel';
 import { StageGateSummary } from '@/components/tracking/StageGateSummary';
+import { StageResponsableCard } from '@/components/tracking/StageResponsableCard';
+import { BankAccountPanel } from '@/components/tracking/BankAccountPanel';
+import { StageReadOnlyCard } from '@/components/tracking/StageReadOnlyCard';
+import { LCBankQuotesPanel } from '@/components/tracking/LCBankQuotesPanel';
 import {
   useTrackingStages,
   useChecklistItems,
@@ -25,6 +31,8 @@ import {
   useAddNote,
   useSplitPIM,
   useCanAdvanceStage,
+  useChildPIMs,
+  useParentPIM,
   type SplitItemConfig,
 } from '@/hooks/usePIMTracking';
 import { useStageDocumentStatus } from '@/hooks/usePIMDocuments';
@@ -42,9 +50,12 @@ import {
   CheckCircle,
   ArrowRight,
   Lock,
+  GitBranch,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { usePIMPermissions } from '@/hooks/usePermissions';
+import type { Department } from '@/types/comex';
 
 export default function PIMTrackingPage() {
   const { id } = useParams<{ id: string }>();
@@ -56,7 +67,6 @@ export default function PIMTrackingPage() {
   const [activeStageKey, setActiveStageKey] = useState('revision_contrato');
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
-
   const { data: stages, isLoading: loadingStages } = useTrackingStages(id);
   const { data: checklistItems } = useChecklistItems(id, activeStageKey);
   const { data: allChecklistItems } = useChecklistItems(id);
@@ -83,8 +93,30 @@ export default function PIMTrackingPage() {
   const { data: docStatus } = useStageDocumentStatus(id, requiredDocs);
   const { data: openNCCount = 0 } = useOpenNCCount(id, activeStageKey);
 
+  // Parent / child PIM navigation
+  const { data: childPIMs } = useChildPIMs(id);
+  const { data: parentPIM } = useParentPIM(pim?.pim_padre_id);
+
   const currentUser = user?.name || 'Usuario';
   const currentUserId = user?.id;
+  const currentUserRole = user?.role as import('@/types/comex').UserRole | undefined;
+  const perms = usePIMPermissions();
+
+  const userDepartment = user?.department as Department | undefined;
+  const isParticipant = useMemo(() => {
+    if (!activeStageDef || !userDepartment) return true;
+    if (['admin', 'manager', 'gerente'].includes(currentUserRole || '')) return true;
+    return activeStageDef.departments.includes(userDepartment);
+  }, [activeStageDef, userDepartment, currentUserRole]);
+
+  const itemDepartments = useMemo(() => {
+    const filtered = getFilteredChecklist(activeStageKey, modalidadPago);
+    const map = new Map<string, Department>();
+    for (const item of filtered) {
+      if (item.department) map.set(item.id, item.department);
+    }
+    return map;
+  }, [activeStageKey, modalidadPago]);
 
   // Fetch PIM data
   useEffect(() => {
@@ -143,6 +175,7 @@ export default function PIMTrackingPage() {
       usuarioId: currentUserId,
       texto: item.texto,
       stageKey: activeStageKey,
+      userRole: currentUserRole,
     });
   };
 
@@ -156,6 +189,7 @@ export default function PIMTrackingPage() {
         modalidadPago,
         usuario: currentUser,
         usuarioId: currentUserId,
+        userRole: currentUserRole,
       },
       {
         onSuccess: ({ nextStageKey }) => {
@@ -178,13 +212,14 @@ export default function PIMTrackingPage() {
       texto: text,
       usuario: currentUser,
       usuarioId: currentUserId,
+      userRole: currentUserRole,
     });
     toast.success('Nota agregada');
   };
 
   const handleSplit = (splitItems: SplitItemConfig[]) => {
     splitPIM.mutate(
-      { originalPimId: id!, splitItems, usuario: currentUser, usuarioId: currentUserId },
+      { originalPimId: id!, splitItems, usuario: currentUser, usuarioId: currentUserId, userRole: currentUserRole },
       {
         onSuccess: ({ newCode }) => {
           toast.success(`PIM dividido. Nuevo PIM: ${newCode}`);
@@ -249,29 +284,112 @@ export default function PIMTrackingPage() {
               />
             </div>
           </div>
+          {modalidadPago && (
+            <Badge
+              variant="outline"
+              className={cn(
+                'text-xs',
+                modalidadPago === 'carta_credito' && 'border-blue-300 bg-blue-50 text-blue-700',
+                modalidadPago === 'pago_contado' && 'border-green-300 bg-green-50 text-green-700',
+                modalidadPago === 'anticipo' && 'border-yellow-300 bg-yellow-50 text-yellow-700',
+              )}
+            >
+              {modalidadPago === 'carta_credito' ? 'Carta de Credito' : modalidadPago === 'pago_contado' ? 'Pago Contado' : modalidadPago === 'anticipo' ? 'Anticipo' : modalidadPago}
+            </Badge>
+          )}
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowNoteDialog(true)}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Nota
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowSplitDialog(true)}>
-              <Scissors className="h-4 w-4 mr-2" />
-              Dividir PIM
-            </Button>
+            {perms.canAddNote && (
+              <Button variant="outline" size="sm" onClick={() => setShowNoteDialog(true)}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Nota
+              </Button>
+            )}
+            {perms.canSplitPIM && (
+              <Button variant="outline" size="sm" onClick={() => setShowSplitDialog(true)}>
+                <Scissors className="h-4 w-4 mr-2" />
+                Dividir PIM
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Parent/Child navigation */}
+        {(parentPIM || (childPIMs && childPIMs.length > 0)) && (
+          <div className="flex items-center gap-3 flex-wrap text-sm p-3 bg-muted/50 rounded-lg border">
+            <GitBranch className="h-4 w-4 text-muted-foreground shrink-0" />
+            {parentPIM && (
+              <span>
+                PIM Padre:{' '}
+                <Link
+                  to={`/comex/pim/seguimiento/${parentPIM.id}`}
+                  className="text-primary font-medium hover:underline"
+                >
+                  {parentPIM.codigo}
+                </Link>
+              </span>
+            )}
+            {childPIMs && childPIMs.length > 0 && (
+              <span>
+                Sub-PIMs:{' '}
+                {childPIMs.map((child, idx) => (
+                  <span key={child.id}>
+                    {idx > 0 && ', '}
+                    <Link
+                      to={`/comex/pim/seguimiento/${child.id}`}
+                      className="text-primary font-medium hover:underline"
+                    >
+                      {child.codigo}
+                    </Link>
+                  </span>
+                ))}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Stage bar */}
         <TrackingStageBar
           stages={stages || []}
           activeStageKey={activeStageKey}
           onStageClick={setActiveStageKey}
+          userDepartment={userDepartment}
         />
 
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Checklist + docs + NC panel */}
           <div className="lg:col-span-3 space-y-6">
+            {!isParticipant ? (
+              <StageReadOnlyCard
+                stageDef={activeStageDef!}
+                stage={activeStage}
+                checklistItems={stageItems}
+                docsUploaded={docStatus ? requiredDocs.length - (docStatus.missingTypes?.length || 0) : 0}
+                docsRequired={requiredDocs.length}
+                openNCs={openNCCount}
+              />
+            ) : (
+            <>
+            {/* Bank Account Panel - show in revision_contrato stage */}
+            {activeStageKey === 'revision_contrato' && pim.proveedor_id && (
+              <BankAccountPanel
+                proveedorId={pim.proveedor_id}
+                proveedorNombre={pim.proveedor_nombre || 'Proveedor'}
+                canCreate={perms.canToggleChecklist}
+                canValidate={perms.canValidateBankAccount}
+                validadoPor={currentUser}
+                esNuevoProveedor={!!pim.es_nuevo_proveedor}
+              />
+            )}
+
+            {/* LC Bank Quotes - show in gestion_financiera when carta_credito */}
+            {activeStageKey === 'gestion_financiera' && modalidadPago === 'carta_credito' && (
+              <LCBankQuotesPanel
+                pimId={id!}
+                readOnly={!perms.canToggleChecklist}
+                userId={currentUserId}
+              />
+            )}
+
             {/* Gate Summary - only show for en_progreso stages */}
             {activeStage?.status === 'en_progreso' && (
               <StageGateSummary
@@ -299,7 +417,7 @@ export default function PIMTrackingPage() {
                   {activeStageDef?.name} — Checklist
                 </CardTitle>
                 <div className="flex gap-2">
-                  {activeStage?.status === 'en_progreso' && canAdvance && (
+                  {perms.canAdvanceStage && activeStage?.status === 'en_progreso' && canAdvance && (
                     <Button
                       size="sm"
                       onClick={handleAdvanceStage}
@@ -309,7 +427,7 @@ export default function PIMTrackingPage() {
                       {advanceStage.isPending ? 'Avanzando...' : 'Completar Etapa'}
                     </Button>
                   )}
-                  {activeStage?.status === 'en_progreso' && !canAdvance && stageCriticalPending === 0 && stageCompletedCount > 0 && (
+                  {perms.canAdvanceStage && activeStage?.status === 'en_progreso' && !canAdvance && stageCriticalPending === 0 && stageCompletedCount > 0 && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -326,7 +444,9 @@ export default function PIMTrackingPage() {
                 <TrackingChecklist
                   items={stageItems}
                   onToggle={handleToggle}
-                  disabled={activeStage?.status === 'completado'}
+                  disabled={activeStage?.status === 'completado' || !perms.canToggleChecklist}
+                  userDepartment={userDepartment}
+                  itemDepartments={itemDepartments}
                 />
                 {activeStage?.status === 'completado' && (
                   <div className="mt-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm flex items-center gap-2">
@@ -351,15 +471,18 @@ export default function PIMTrackingPage() {
                 stageName={activeStageDef?.name}
                 userId={currentUserId}
                 userName={currentUser}
+                readOnly={!perms.canCreateNC}
               />
             )}
 
-            {/* Documents panel */}
-            <DocumentUploadPanel
+            {/* Documents panel - structured by required docs */}
+            <RequiredDocumentsPanel
               pimId={id!}
               stageKey={activeStageKey}
               stageName={activeStageDef?.name}
+              requiredDocTypes={requiredDocs}
               usuario={currentUser}
+              readOnly={!perms.canUploadDocument}
             />
 
             {/* DHL Tracking */}
@@ -371,10 +494,23 @@ export default function PIMTrackingPage() {
                 lastCheckedAt={pim.dhl_last_checked_at}
               />
             )}
+            </>
+            )}
           </div>
 
-          {/* Timeline panel */}
-          <div className="lg:col-span-2">
+          {/* Right column: Responsable + Timeline */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Stage Responsable */}
+            <StageResponsableCard
+              pimId={id!}
+              activeStageKey={activeStageKey}
+              stages={stages || []}
+              canAssign={perms.canAssignStage}
+              usuario={currentUser}
+              usuarioId={currentUserId}
+              userRole={currentUserRole}
+            />
+
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Historial de Actividad</CardTitle>

@@ -58,6 +58,7 @@ import { cn } from '@/lib/utils';
 import type { PIM } from '@/hooks/usePIMs';
 import type { PIMStatus } from '@/types/comex';
 import { toast } from 'sonner';
+import { usePIMPermissions } from '@/hooks/usePermissions';
 
 export default function PIMsPage() {
   const navigate = useNavigate();
@@ -65,6 +66,7 @@ export default function PIMsPage() {
   const { data: allStagesMap } = useAllTrackingStages();
   const { data: suppliers } = useSuppliers();
   const deletePIMMutation = useDeletePIM();
+  const perms = usePIMPermissions();
   
   const [selectedPIM, setSelectedPIM] = useState<PIM | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -269,47 +271,51 @@ export default function PIMsPage() {
                     <p className="text-muted-foreground">{selectedPIM.descripcion}</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => navigate(`/comex/pim/seguimiento/${selectedPIM.id}`)}
                     >
                       <ClipboardList className="h-4 w-4 mr-1" />
                       Seguimiento
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/comex/pim/editar/${selectedPIM.id}`)}
-                    >
-                      <Pencil className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Eliminar
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar PIM?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminarán el PIM y todos sus items asociados.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeletePIM(selectedPIM.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
+                    {perms.canEditPIM && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/comex/pim/editar/${selectedPIM.id}`)}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                    )}
+                    {perms.canDeletePIM && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="h-4 w-4 mr-1" />
                             Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar PIM?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. Se eliminarán el PIM y todos sus items asociados.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeletePIM(selectedPIM.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">

@@ -10,7 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Scissors, Package, SplitSquareVertical } from 'lucide-react';
+import { Scissors, Package, SplitSquareVertical, Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePIMItems } from '@/hooks/usePIMItems';
 import type { SplitItemConfig } from '@/hooks/usePIMTracking';
 
@@ -150,6 +151,13 @@ export function SplitPIMDialog({ open, onOpenChange, pimId, pimCodigo, onSplit, 
             Selecciona los items a mover al nuevo PIM. Puedes mover items completos o dividir parcialmente la cantidad.
           </DialogDescription>
         </DialogHeader>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            El nuevo PIM heredará la etapa actual, todos los documentos y el progreso del checklist de las etapas completadas.
+          </AlertDescription>
+        </Alert>
 
         <div className="max-h-[400px] overflow-y-auto space-y-1">
           {(items || []).map((item) => {

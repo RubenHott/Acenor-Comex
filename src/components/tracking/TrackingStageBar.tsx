@@ -1,5 +1,6 @@
 import { TRACKING_STAGES } from '@/lib/trackingChecklists';
 import type { TrackingStage } from '@/hooks/usePIMTracking';
+import type { Department } from '@/types/comex';
 import { cn } from '@/lib/utils';
 import { Check, Clock, AlertTriangle, Lock } from 'lucide-react';
 
@@ -8,6 +9,7 @@ interface Props {
   activeStageKey: string;
   onStageClick: (key: string) => void;
   openNCsByStage?: Map<string, number>;
+  userDepartment?: Department;
 }
 
 const statusConfig: Record<string, { bg: string; border: string; icon: typeof Check }> = {
@@ -24,7 +26,7 @@ const deptLabels: Record<string, string> = {
   sistemas: 'Sistemas',
 };
 
-export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCsByStage }: Props) {
+export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCsByStage, userDepartment }: Props) {
   const stageMap = new Map(stages.map((s) => [s.stage_key, s]));
 
   return (
@@ -36,6 +38,7 @@ export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCs
         const Icon = def.icon;
         const isActive = activeStageKey === def.key;
         const openNCs = openNCsByStage?.get(def.key) || 0;
+        const isMyStage = !userDepartment || def.departments.includes(userDepartment);
 
         return (
           <div key={def.key} className="flex items-center flex-1 min-w-0">
@@ -45,7 +48,8 @@ export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCs
                 'flex flex-col items-center gap-1.5 p-2.5 rounded-lg transition-all flex-1 min-w-0',
                 isActive
                   ? 'bg-muted ring-2 ring-primary'
-                  : 'hover:bg-muted/50'
+                  : 'hover:bg-muted/50',
+                !isMyStage && !isActive && 'opacity-60'
               )}
             >
               <div className="relative">
@@ -86,6 +90,14 @@ export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCs
                 <span className="text-[9px] text-muted-foreground">
                   {def.departments.map((d) => deptLabels[d] || d).join(' + ')}
                 </span>
+                {!isMyStage && (
+                  <span className="text-[8px] text-muted-foreground/60 italic">Solo lectura</span>
+                )}
+                {stage?.responsable && (
+                  <span className="text-[9px] text-primary font-medium truncate max-w-[80px]" title={stage.responsable}>
+                    {stage.responsable}
+                  </span>
+                )}
               </div>
             </button>
             {idx < TRACKING_STAGES.length - 1 && (

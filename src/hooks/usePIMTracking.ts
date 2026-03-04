@@ -7,6 +7,8 @@ import {
   getRequiredDocuments,
   type DocumentType,
 } from '@/lib/trackingChecklists';
+import { canDo, type PIMAction } from '@/lib/permissions';
+import type { UserRole } from '@/types/comex';
 
 // --- Types ---
 
@@ -50,7 +52,7 @@ export interface ActivityLog {
 }
 
 export interface StageBlocker {
-  type: 'checklist' | 'document' | 'nc';
+  type: 'checklist' | 'document' | 'nc' | 'bank_account' | 'lc_bank';
   message: string;
 }
 
@@ -61,6 +63,26 @@ export interface CanAdvanceResult {
 
 function generateId() {
   return crypto.randomUUID();
+}
+
+/** Log a permission denial and throw */
+async function enforcePermission(
+  userRole: UserRole | undefined,
+  action: PIMAction,
+  ctx: { pimId: string; stageKey?: string; usuario: string; usuarioId?: string }
+) {
+  if (canDo(userRole, action)) return;
+  await supabase.from('pim_activity_log').insert({
+    id: generateId(),
+    pim_id: ctx.pimId,
+    stage_key: ctx.stageKey || null,
+    tipo: 'permission_denied',
+    descripcion: `Permiso denegado: ${action}`,
+    usuario: ctx.usuario,
+    usuario_id: ctx.usuarioId || null,
+    metadata: { action, role: userRole },
+  });
+  throw new Error(`No tienes permiso para realizar esta acción (${action})`);
 }
 
 // --- Initialize Tracking (6 stages, filtered checklist by modalidad_pago) ---
@@ -209,6 +231,7 @@ export function useToggleChecklistItem() {
       usuarioId,
       texto,
       stageKey,
+      userRole,
     }: {
       itemId: string;
       pimId: string;
@@ -217,7 +240,10 @@ export function useToggleChecklistItem() {
       usuarioId?: string;
       texto: string;
       stageKey: string;
+      userRole?: UserRole;
     }) => {
+      await enforcePermission(userRole, 'toggle_checklist', { pimId, stageKey, usuario, usuarioId });
+
       const { error } = await supabase
         .from('pim_checklist_items')
         .update({
@@ -366,6 +392,49 @@ export function useCanAdvanceStage(
         }
       }
 
+      // 4. Check bank account for revision_contrato (new supplier)
+      if (stageKey === 'revision_contrato') {
+        const { data: pimData } = await supabase
+          .from('pims')
+          .select('proveedor_id, es_nuevo_proveedor')
+          .eq('id', pimId!)
+          .single();
+
+        if (pimData?.es_nuevo_proveedor && pimData?.proveedor_id) {
+          const { data: cuentas } = await supabase
+            .from('cuentas_bancarias_proveedor')
+            .select('id')
+            .eq('proveedor_id', pimData.proveedor_id)
+            .eq('activa', true)
+            .eq('validada', true)
+            .limit(1);
+
+          if (!cuentas || cuentas.length === 0) {
+            blockers.push({
+              type: 'bank_account',
+              message: 'Cuenta bancaria del proveedor no verificada (nuevo proveedor)',
+            });
+          }
+        }
+      }
+
+      // 5. Check LC bank selection for gestion_financiera
+      if (stageKey === 'gestion_financiera' && modalidadPago === 'carta_credito') {
+        const { data: selected } = await supabase
+          .from('cotizaciones_lc')
+          .select('id')
+          .eq('pim_id', pimId!)
+          .eq('seleccionado', true)
+          .limit(1);
+
+        if (!selected || selected.length === 0) {
+          blockers.push({
+            type: 'lc_bank',
+            message: 'Debe seleccionar un banco ganador para la Carta de Credito',
+          });
+        }
+      }
+
       return {
         canAdvance: blockers.length === 0,
         blockers,
@@ -388,13 +457,17 @@ export function useAdvanceStage() {
       modalidadPago,
       usuario,
       usuarioId,
+      userRole,
     }: {
       pimId: string;
       currentStageKey: string;
       modalidadPago: string;
       usuario: string;
       usuarioId?: string;
+      userRole?: UserRole;
     }) => {
+      await enforcePermission(userRole, 'advance_stage', { pimId, stageKey: currentStageKey, usuario, usuarioId });
+
       const currentStageDef = getStageByKey(currentStageKey);
       if (!currentStageDef) throw new Error('Etapa no encontrada');
 
@@ -523,6 +596,38 @@ export function useAdvanceStage() {
         }
       }
 
+      // --- Create in-app notifications for next stage departments ---
+      if (nextStageKey) {
+        const nextDef = TRACKING_STAGES[currentIdx + 1];
+        const { data: pimData } = await supabase.from('pims').select('codigo').eq('id', pimId).single();
+        const pimCodigo = pimData?.codigo || pimId;
+
+        for (const dept of nextDef.departments) {
+          const { data: deptUsers } = await supabase
+            .from('user_profiles')
+            .select('id')
+            .eq('department', dept)
+            .eq('active', true);
+
+          if (deptUsers && deptUsers.length > 0) {
+            const notifNow = new Date().toISOString();
+            await supabase.from('notificaciones').insert(
+              deptUsers.map((u) => ({
+                id: generateId(),
+                destinatario_id: u.id,
+                pim_id: pimId,
+                tipo: 'stage_advance',
+                titulo: `Nueva etapa: ${nextDef.name} — ${pimCodigo}`,
+                mensaje: `La etapa "${currentStageDef.name}" fue completada. La etapa "${nextDef.name}" ha iniciado.`,
+                leido: false,
+                prioridad: 'alta',
+                fecha_creacion: notifNow,
+              }))
+            );
+          }
+        }
+      }
+
       return { completedStage: currentStageKey, nextStageKey };
     },
     onSuccess: (_, vars) => {
@@ -530,6 +635,7 @@ export function useAdvanceStage() {
       queryClient.invalidateQueries({ queryKey: ['tracking-stages', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['activity-log', vars.pimId] });
       queryClient.invalidateQueries({ queryKey: ['can-advance', vars.pimId] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
     },
   });
 }
@@ -624,13 +730,17 @@ export function useAddNote() {
       texto,
       usuario,
       usuarioId,
+      userRole,
     }: {
       pimId: string;
       stageKey?: string;
       texto: string;
       usuario: string;
       usuarioId?: string;
+      userRole?: UserRole;
     }) => {
+      await enforcePermission(userRole, 'add_note', { pimId, stageKey, usuario, usuarioId });
+
       await supabase.from('pim_activity_log').insert({
         id: generateId(),
         pim_id: pimId,
@@ -684,12 +794,16 @@ export function useSplitPIM() {
       splitItems,
       usuario,
       usuarioId,
+      userRole,
     }: {
       originalPimId: string;
       splitItems: SplitItemConfig[];
       usuario: string;
       usuarioId?: string;
+      userRole?: UserRole;
     }) => {
+      await enforcePermission(userRole, 'split_pim', { pimId: originalPimId, usuario, usuarioId });
+
       // 1. Get original PIM
       const { data: originalPim, error: pimErr } = await supabase
         .from('pims')
@@ -861,12 +975,107 @@ export function useSplitPIM() {
         .update({ total_usd: Math.max(0, remainingUsd), total_toneladas: Math.max(0, remainingTon) })
         .eq('id', originalPimId);
 
-      // 10. Log
+      // 10. Inherit tracking stages from parent
+      const { data: parentStages } = await supabase
+        .from('pim_tracking_stages')
+        .select('*')
+        .eq('pim_id', originalPimId)
+        .order('created_at', { ascending: true });
+
+      const now = new Date().toISOString();
+      if (parentStages && parentStages.length > 0) {
+        const childStages = parentStages.map((ps: any) => ({
+          id: generateId(),
+          pim_id: newPimId,
+          stage_key: ps.stage_key,
+          status: ps.status,
+          fecha_inicio: ps.status === 'en_progreso' ? now : ps.fecha_inicio,
+          fecha_fin: ps.fecha_fin,
+          fecha_limite: ps.fecha_limite,
+          departamento: ps.departamento,
+          responsable: ps.responsable,
+          responsable_id: ps.responsable_id,
+          assigned_to: ps.assigned_to,
+          notas: null,
+        }));
+
+        const { error: stagesErr } = await supabase
+          .from('pim_tracking_stages')
+          .insert(childStages);
+        if (stagesErr) console.warn('Error copying stages:', stagesErr);
+      }
+
+      // 11. Inherit checklist items
+      const { data: parentChecklist } = await supabase
+        .from('pim_checklist_items')
+        .select('*')
+        .eq('pim_id', originalPimId);
+
+      if (parentChecklist && parentChecklist.length > 0) {
+        // For completed stages, copy the completed state; for others, create fresh items
+        const completedStageKeys = new Set(
+          (parentStages || [])
+            .filter((s: any) => s.status === 'completado')
+            .map((s: any) => s.stage_key)
+        );
+
+        const childChecklist = parentChecklist.map((pc: any) => ({
+          id: generateId(),
+          pim_id: newPimId,
+          stage_key: pc.stage_key,
+          checklist_key: pc.checklist_key,
+          texto: pc.texto,
+          critico: pc.critico,
+          completado: completedStageKeys.has(pc.stage_key) ? pc.completado : false,
+          completado_por: completedStageKeys.has(pc.stage_key) ? pc.completado_por : null,
+          completado_en: completedStageKeys.has(pc.stage_key) ? pc.completado_en : null,
+        }));
+
+        const { error: checkErr } = await supabase
+          .from('pim_checklist_items')
+          .insert(childChecklist);
+        if (checkErr) console.warn('Error copying checklist:', checkErr);
+      }
+
+      // 12. Inherit documents (reference same URLs, not duplicate files)
+      const { data: parentDocs } = await supabase
+        .from('pim_documentos')
+        .select('*')
+        .eq('pim_id', originalPimId);
+
+      let inheritedDocsCount = 0;
+      if (parentDocs && parentDocs.length > 0) {
+        const childDocs = parentDocs.map((pd: any) => ({
+          id: generateId(),
+          pim_id: newPimId,
+          tipo: pd.tipo,
+          nombre: pd.nombre,
+          url: pd.url,
+          subido_por: 'Sistema (herencia)',
+          observaciones: `Heredado de PIM ${originalPim.codigo}`,
+          stage_key: pd.stage_key,
+          version: pd.version,
+          version_group: generateId(),
+        }));
+
+        const { error: docsErr } = await supabase
+          .from('pim_documentos')
+          .insert(childDocs);
+        if (docsErr) console.warn('Error copying documents:', docsErr);
+        inheritedDocsCount = childDocs.length;
+      }
+
+      // 13. Log
       const fullCount = fullItemIds.length;
       const partialCount = partialItems.length;
       const descParts: string[] = [];
       if (fullCount > 0) descParts.push(`${fullCount} items movidos completos`);
       if (partialCount > 0) descParts.push(`${partialCount} items divididos parcialmente`);
+
+      const inheritedStage = (parentStages || []).find((s: any) => s.status === 'en_progreso');
+      const inheritedStageName = inheritedStage
+        ? getStageByKey(inheritedStage.stage_key)?.name || inheritedStage.stage_key
+        : 'N/A';
 
       const logEntries = [
         {
@@ -887,10 +1096,15 @@ export function useSplitPIM() {
           id: generateId(),
           pim_id: newPimId,
           tipo: 'split',
-          descripcion: `PIM creado por división de ${originalPim.codigo}`,
+          descripcion: `PIM creado por división de ${originalPim.codigo}. Hereda etapa "${inheritedStageName}" y ${inheritedDocsCount} documento(s)`,
           usuario,
           usuario_id: usuarioId || null,
-          metadata: { original_pim_id: originalPimId, original_pim_code: originalPim.codigo },
+          metadata: {
+            original_pim_id: originalPimId,
+            original_pim_code: originalPim.codigo,
+            inherited_stage: inheritedStage?.stage_key,
+            inherited_docs_count: inheritedDocsCount,
+          },
         },
       ];
       await supabase.from('pim_activity_log').insert(logEntries);
@@ -902,6 +1116,102 @@ export function useSplitPIM() {
       queryClient.invalidateQueries({ queryKey: ['pim-items'] });
       queryClient.invalidateQueries({ queryKey: ['tracking-stages'] });
       queryClient.invalidateQueries({ queryKey: ['activity-log'] });
+      queryClient.invalidateQueries({ queryKey: ['pim-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['checklist-items'] });
+      queryClient.invalidateQueries({ queryKey: ['child-pims'] });
     },
+  });
+}
+
+// --- Assign Responsable to a Stage ---
+
+export function useAssignStageResponsable() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      stageId,
+      pimId,
+      stageKey,
+      assignedUserId,
+      assignedUserName,
+      usuario,
+      usuarioId,
+      userRole,
+    }: {
+      stageId: string;
+      pimId: string;
+      stageKey: string;
+      assignedUserId: string;
+      assignedUserName: string;
+      usuario: string;
+      usuarioId?: string;
+      userRole?: UserRole;
+    }) => {
+      await enforcePermission(userRole, 'assign_stage', { pimId, stageKey, usuario, usuarioId });
+
+      const { error } = await supabase
+        .from('pim_tracking_stages')
+        .update({
+          responsable_id: assignedUserId,
+          responsable: assignedUserName,
+          assigned_to: assignedUserId,
+        })
+        .eq('id', stageId);
+      if (error) throw error;
+
+      const stageDef = getStageByKey(stageKey);
+      await supabase.from('pim_activity_log').insert({
+        id: generateId(),
+        pim_id: pimId,
+        stage_key: stageKey,
+        tipo: 'stage_assigned',
+        descripcion: `${assignedUserName} asignado como responsable de "${stageDef?.name || stageKey}"`,
+        usuario,
+        usuario_id: usuarioId || null,
+        metadata: { assigned_user_id: assignedUserId, assigned_user_name: assignedUserName },
+      });
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['tracking-stages', vars.pimId] });
+      queryClient.invalidateQueries({ queryKey: ['tracking-stages', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-log', vars.pimId] });
+    },
+  });
+}
+
+// --- Fetch Child PIMs ---
+
+export function useChildPIMs(pimId?: string) {
+  return useQuery({
+    queryKey: ['child-pims', pimId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pims')
+        .select('id, codigo')
+        .eq('pim_padre_id', pimId!)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data as { id: string; codigo: string }[];
+    },
+    enabled: !!pimId,
+  });
+}
+
+// --- Fetch Parent PIM code ---
+
+export function useParentPIM(pimPadreId?: string | null) {
+  return useQuery({
+    queryKey: ['parent-pim', pimPadreId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pims')
+        .select('id, codigo')
+        .eq('id', pimPadreId!)
+        .single();
+      if (error) throw error;
+      return data as { id: string; codigo: string };
+    },
+    enabled: !!pimPadreId,
   });
 }
