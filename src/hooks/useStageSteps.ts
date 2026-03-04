@@ -211,7 +211,7 @@ export function useCompleteStep() {
   });
 }
 
-/** Skip conditional steps (e.g., steps 3 & 4 when no NC) */
+/** Skip conditional steps (e.g., steps 3 & 4 when no NC) and activate the next pending step */
 export function useSkipSteps() {
   const queryClient = useQueryClient();
 
@@ -258,6 +258,24 @@ export function useSkipSteps() {
           usuario_id: userId,
           metadata: { step_key: stepKey, motivo },
         });
+      }
+
+      // After skipping, activate the first remaining 'pendiente' step
+      const { data: allSteps } = await supabase
+        .from('pim_stage_steps')
+        .select('*')
+        .eq('pim_id', pimId)
+        .eq('stage_key', stageKey)
+        .order('step_order', { ascending: true });
+
+      if (allSteps) {
+        const nextPending = allSteps.find((s) => s.status === 'pendiente');
+        if (nextPending) {
+          await supabase
+            .from('pim_stage_steps')
+            .update({ status: 'en_progreso', updated_at: now })
+            .eq('id', nextPending.id);
+        }
       }
     },
     onSuccess: (_, vars) => {
