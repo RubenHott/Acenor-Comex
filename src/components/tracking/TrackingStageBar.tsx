@@ -1,6 +1,6 @@
 import { TRACKING_STAGES } from '@/lib/trackingChecklists';
 import type { TrackingStage } from '@/hooks/usePIMTracking';
-import type { Department } from '@/types/comex';
+import type { Department, UserRole } from '@/types/comex';
 import { cn } from '@/lib/utils';
 import { Check, Clock, AlertTriangle, Lock } from 'lucide-react';
 
@@ -10,6 +10,8 @@ interface Props {
   onStageClick: (key: string) => void;
   openNCsByStage?: Map<string, number>;
   userDepartment?: Department;
+  /** User role — admin/manager bypasses department restrictions */
+  userRole?: UserRole;
 }
 
 const statusConfig: Record<string, { bg: string; border: string; icon: typeof Check }> = {
@@ -26,8 +28,9 @@ const deptLabels: Record<string, string> = {
   sistemas: 'Sistemas',
 };
 
-export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCsByStage, userDepartment }: Props) {
+export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCsByStage, userDepartment, userRole }: Props) {
   const stageMap = new Map(stages.map((s) => [s.stage_key, s]));
+  const isFullAccess = userRole === 'admin' || userRole === 'manager';
 
   return (
     <div className="flex items-center justify-between gap-1 p-4 bg-card rounded-lg border overflow-x-auto">
@@ -38,7 +41,7 @@ export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCs
         const Icon = def.icon;
         const isActive = activeStageKey === def.key;
         const openNCs = openNCsByStage?.get(def.key) || 0;
-        const isMyStage = !userDepartment || def.departments.includes(userDepartment);
+        const isMyStage = isFullAccess || !userDepartment || def.departments.includes(userDepartment);
 
         return (
           <div key={def.key} className="flex items-center flex-1 min-w-0">

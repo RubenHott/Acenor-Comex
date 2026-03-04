@@ -3,7 +3,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, User, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import type { ChecklistItem } from '@/hooks/usePIMTracking';
-import type { Department } from '@/types/comex';
+import type { Department, UserRole } from '@/types/comex';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -14,6 +14,8 @@ interface Props {
   userDepartment?: Department;
   /** Map of checklist_key → department from ChecklistItemDef */
   itemDepartments?: Map<string, Department>;
+  /** User role — admin/manager bypasses department filtering and sees all items */
+  userRole?: UserRole;
 }
 
 const DEPT_LABELS: Record<string, string> = {
@@ -23,14 +25,17 @@ const DEPT_LABELS: Record<string, string> = {
   sistemas: 'Sistemas',
 };
 
-export function TrackingChecklist({ items, onToggle, disabled, userDepartment, itemDepartments }: Props) {
+export function TrackingChecklist({ items, onToggle, disabled, userDepartment, itemDepartments, userRole }: Props) {
   const [showOtherDepts, setShowOtherDepts] = useState(false);
 
-  // Split items by department if filtering is active
+  // Admin and manager see ALL items without department filtering
+  const isFullAccess = userRole === 'admin' || userRole === 'manager';
+
+  // Split items by department if filtering is active (skip for admin/manager)
   let myItems = items;
   let otherDeptGroups: Map<string, ChecklistItem[]> = new Map();
 
-  if (userDepartment && itemDepartments && itemDepartments.size > 0) {
+  if (!isFullAccess && userDepartment && itemDepartments && itemDepartments.size > 0) {
     myItems = items.filter((i) => {
       const dept = itemDepartments.get(i.checklist_key);
       return !dept || dept === userDepartment;

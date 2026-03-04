@@ -354,6 +354,7 @@ export default function PIMTrackingPage() {
           activeStageKey={activeStageKey}
           onStageClick={setActiveStageKey}
           userDepartment={userDepartment}
+          userRole={currentUserRole}
         />
 
         {/* Main content */}
@@ -448,6 +449,7 @@ export default function PIMTrackingPage() {
                   disabled={activeStage?.status === 'completado' || !perms.canToggleChecklist}
                   userDepartment={userDepartment}
                   itemDepartments={itemDepartments}
+                  userRole={currentUserRole}
                 />
                 {activeStage?.status === 'completado' && (
                   <div className="mt-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm flex items-center gap-2">
