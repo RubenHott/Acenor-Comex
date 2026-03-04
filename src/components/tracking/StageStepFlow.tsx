@@ -68,8 +68,10 @@ export function StageStepFlow({
     );
   }
 
-  const completedCount = steps.filter((s) => s.status === 'completado' || s.status === 'saltado').length;
-  const totalSteps = steps.length;
+  // Exclude cierre_proceso from progress count — it auto-completes when advancing
+  const trackableSteps = steps.filter((s) => s.step_key !== 'cierre_proceso');
+  const completedCount = trackableSteps.filter((s) => s.status === 'completado' || s.status === 'saltado').length;
+  const totalSteps = trackableSteps.length;
   const activeStep = steps.find((s) => s.status === 'en_progreso');
 
   const stepProps = {

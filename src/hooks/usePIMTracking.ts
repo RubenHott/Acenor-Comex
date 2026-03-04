@@ -568,6 +568,23 @@ export function useAdvanceStage() {
 
       // --- Gate passed: complete current stage and start next ---
 
+      // Auto-complete cierre_proceso step for step-flow stages
+      if (currentStageDef.useStepFlow) {
+        const now = new Date().toISOString();
+        await supabase
+          .from('pim_stage_steps')
+          .update({
+            status: 'completado',
+            completado_en: now,
+            completado_por: usuarioId || null,
+            completado_por_nombre: usuario,
+          })
+          .eq('pim_id', pimId)
+          .eq('stage_key', currentStageKey)
+          .eq('step_key', 'cierre_proceso')
+          .eq('status', 'en_progreso');
+      }
+
       // Get current stage row
       const { data: currentStageRow } = await supabase
         .from('pim_tracking_stages')
