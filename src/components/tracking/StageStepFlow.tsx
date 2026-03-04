@@ -13,6 +13,16 @@ import { StepContratoFirmado } from './steps/StepContratoFirmado';
 import { StepValidacionBancaria } from './steps/StepValidacionBancaria';
 import { StepAprobacionGerencia } from './steps/StepAprobacionGerencia';
 import { StepCierreProceso } from './steps/StepCierreProceso';
+// Process 2: Gestión Financiera de Pago
+import { StepEncabezadoAntecedentes } from './steps/p2/StepEncabezadoAntecedentes';
+import { StepRevisionFinanciera } from './steps/p2/StepRevisionFinanciera';
+import { StepDeclaracionNCFin } from './steps/p2/StepDeclaracionNCFin';
+import { StepSubsanacionNCFin } from './steps/p2/StepSubsanacionNCFin';
+import { StepRevisionFinanzas } from './steps/p2/StepRevisionFinanzas';
+import { StepRegistroBancoTasa } from './steps/p2/StepRegistroBancoTasa';
+import { StepSolicitudFirma } from './steps/p2/StepSolicitudFirma';
+import { StepRecepcionSwift } from './steps/p2/StepRecepcionSwift';
+import { StepGestionComex } from './steps/p2/StepGestionComex';
 import type { Department, UserRole } from '@/types/comex';
 
 interface StageStepFlowProps {
@@ -119,6 +129,25 @@ export function StageStepFlow({
         return <StepAprobacionGerencia step={step} {...stepProps} />;
       case 'cierre_proceso':
         return <StepCierreProceso step={step} {...stepProps} />;
+      // Process 2: Gestión Financiera de Pago
+      case 'encabezado_antecedentes':
+        return <StepEncabezadoAntecedentes step={step} {...stepProps} />;
+      case 'revision_financiera':
+        return <StepRevisionFinanciera step={step} {...stepProps} />;
+      case 'declaracion_nc_fin':
+        return <StepDeclaracionNCFin step={step} {...stepProps} />;
+      case 'subsanacion_nc_fin':
+        return <StepSubsanacionNCFin step={step} {...stepProps} />;
+      case 'revision_finanzas':
+        return <StepRevisionFinanzas step={step} {...stepProps} />;
+      case 'registro_banco_tasa':
+        return <StepRegistroBancoTasa step={step} {...stepProps} />;
+      case 'solicitud_firma':
+        return <StepSolicitudFirma step={step} {...stepProps} />;
+      case 'recepcion_swift':
+        return <StepRecepcionSwift step={step} {...stepProps} />;
+      case 'gestion_comex':
+        return <StepGestionComex step={step} {...stepProps} />;
       default:
         return <div className="text-sm text-muted-foreground">Paso no implementado</div>;
     }

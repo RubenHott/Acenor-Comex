@@ -5,6 +5,7 @@ import { CheckCircle, FileText, Shield, Building, AlertTriangle } from 'lucide-r
 import { useStageSteps, type StageStep } from '@/hooks/useStageSteps';
 import { useAdvanceStage } from '@/hooks/usePIMTracking';
 import { getStageSteps } from '@/lib/stageStepDefinitions';
+import { getStageByKey, TRACKING_STAGES } from '@/lib/trackingChecklists';
 import { toast } from 'sonner';
 import type { Department, UserRole } from '@/types/comex';
 
@@ -19,12 +20,30 @@ interface Props {
   userDepartment?: Department;
 }
 
+// Map stage keys to human-readable labels
+function getStageLabel(stageKey: string): { processNum: number; nextStageName: string } {
+  const stageIdx = TRACKING_STAGES.findIndex((s) => s.key === stageKey);
+  const nextStage = stageIdx >= 0 && stageIdx < TRACKING_STAGES.length - 1
+    ? TRACKING_STAGES[stageIdx + 1]
+    : null;
+  return {
+    processNum: stageIdx + 1,
+    nextStageName: nextStage?.name || 'siguiente etapa',
+  };
+}
+
 export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName, userRole, userDepartment }: Props) {
   const { data: allSteps } = useStageSteps(pimId, stageKey);
   const advanceStage = useAdvanceStage();
   const stepDefs = getStageSteps(stageKey);
+  const stageDef = getStageByKey(stageKey);
 
-  const isComex = userDepartment === 'comex' || userRole === 'admin' || userRole === 'manager';
+  const { processNum, nextStageName } = getStageLabel(stageKey);
+
+  // Dynamic permission based on stage's primary department
+  const primaryDept = stageDef?.primaryDepartment || 'comex';
+  const canClose = userDepartment === primaryDept || userRole === 'admin' || userRole === 'manager';
+  const deptLabel = primaryDept === 'comex' ? 'COMEX' : primaryDept === 'finanzas' ? 'Finanzas' : primaryDept;
 
   // Summary of previous steps
   const previousSteps = (allSteps || []).filter((s) => s.step_key !== 'cierre_proceso');
@@ -80,7 +99,7 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-green-700">
           <CheckCircle className="h-4 w-4" />
-          <span>Proceso 1 cerrado. Avanzado a etapa 2.</span>
+          <span>Proceso {processNum} cerrado. Avanzado a {nextStageName}.</span>
         </div>
         {summaryCard}
       </div>
@@ -99,7 +118,7 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
       },
       {
         onSuccess: () => {
-          toast.success('Proceso 1 cerrado. Avanzando a Firma de Contrato.');
+          toast.success(`Proceso ${processNum} cerrado. Avanzando a ${nextStageName}.`);
         },
         onError: (err) => {
           toast.error(err.message || 'No se pudo cerrar el proceso');
@@ -112,7 +131,7 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
     <div className="space-y-4">
       {summaryCard}
 
-      {isComex && allPreviousComplete && (
+      {canClose && allPreviousComplete && (
         <div className="flex justify-end">
           <Button
             onClick={handleClose}
@@ -120,7 +139,7 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
             className="bg-green-600 hover:bg-green-700"
           >
             <CheckCircle className="h-4 w-4 mr-2" />
-            {advanceStage.isPending ? 'Cerrando proceso...' : 'Cerrar Proceso y Avanzar a Etapa 2'}
+            {advanceStage.isPending ? 'Cerrando proceso...' : `Cerrar Proceso y Avanzar a ${nextStageName}`}
           </Button>
         </div>
       )}
@@ -131,9 +150,9 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
         </div>
       )}
 
-      {!isComex && allPreviousComplete && (
+      {!canClose && allPreviousComplete && (
         <div className="text-sm text-muted-foreground">
-          Solo COMEX puede cerrar este proceso.
+          Solo {deptLabel} puede cerrar este proceso.
         </div>
       )}
     </div>
