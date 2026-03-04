@@ -1,0 +1,324 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle, AlertTriangle, Building, Clock, Plus } from 'lucide-react';
+import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
+import {
+  useCuentasBancarias,
+  useCuentaBancariaVigente,
+  useCreateCuentaBancaria,
+  useValidarCuentaBancaria,
+  isCuentaVigente,
+  type CuentaBancaria,
+} from '@/hooks/useCuentasBancarias';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import type { Department, UserRole } from '@/types/comex';
+
+function generateId() { return crypto.randomUUID(); }
+
+interface Props {
+  step: StageStep;
+  pimId: string;
+  stageKey: string;
+  pim: any;
+  userId: string;
+  userName: string;
+  userRole?: UserRole;
+  userDepartment?: Department;
+}
+
+const MONEDAS = ['USD', 'EUR', 'CLP', 'CNY', 'GBP'];
+
+export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, userName, userRole }: Props) {
+  const [showForm, setShowForm] = useState(false);
+  const [banco, setBanco] = useState('');
+  const [numeroCuenta, setNumeroCuenta] = useState('');
+  const [swiftCode, setSwiftCode] = useState('');
+  const [iban, setIban] = useState('');
+  const [moneda, setMoneda] = useState('USD');
+  const [paisBanco, setPaisBanco] = useState('');
+  const [titular, setTitular] = useState('');
+
+  const proveedorId = pim?.proveedor_id;
+  const { data: cuentas } = useCuentasBancarias(proveedorId);
+  const { data: cuentaVigente } = useCuentaBancariaVigente(proveedorId);
+  const createCuenta = useCreateCuentaBancaria();
+  const validarCuenta = useValidarCuentaBancaria();
+  const completeStep = useCompleteStep();
+
+  if (step.status === 'completado') {
+    return (
+      <div className="flex items-center gap-2 text-sm text-green-700">
+        <CheckCircle className="h-4 w-4" />
+        <span>Cuenta bancaria validada y enviada a Gerencia para aprobación</span>
+      </div>
+    );
+  }
+
+  const handleSelectVigente = async () => {
+    if (!cuentaVigente) return;
+
+    // Notify Gerencia
+    const { data: gerenciaUsers } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('department', 'gerencia')
+      .eq('active', true);
+
+    if (gerenciaUsers && gerenciaUsers.length > 0) {
+      const now = new Date().toISOString();
+      await supabase.from('notificaciones').insert(
+        gerenciaUsers.map((u) => ({
+          id: generateId(),
+          destinatario_id: u.id,
+          pim_id: pimId,
+          tipo: 'sistema',
+          titulo: `Aprobación de cuenta bancaria — PIM ${pim?.codigo}`,
+          mensaje: `Se requiere aprobación de cuenta bancaria del proveedor ${pim?.proveedor_nombre || ''}`,
+          leido: false,
+          prioridad: 'alta',
+          fecha_creacion: now,
+        }))
+      );
+    }
+
+    completeStep.mutate(
+      {
+        stepId: step.id,
+        pimId,
+        stageKey,
+        stepKey: 'validacion_cuenta_bancaria',
+        stepName: 'Validación de Cuenta Bancaria',
+        userId,
+        userName,
+        datos: { cuenta_id: cuentaVigente.id, requiere_nueva_validacion: false },
+      },
+      {
+        onSuccess: () => toast.success('Cuenta bancaria seleccionada. Enviada a Gerencia para aprobación.'),
+        onError: (err) => toast.error(err.message),
+      }
+    );
+  };
+
+  const handleCreateAndValidate = () => {
+    if (!banco.trim() || !numeroCuenta.trim()) {
+      toast.error('Banco y número de cuenta son obligatorios');
+      return;
+    }
+
+    createCuenta.mutate(
+      {
+        proveedorId,
+        banco,
+        numeroCuenta,
+        swiftCode: swiftCode || undefined,
+        iban: iban || undefined,
+        moneda,
+        paisBanco: paisBanco || undefined,
+        titular: titular || undefined,
+      },
+      {
+        onSuccess: (newCuenta) => {
+          // Validate immediately by COMEX
+          validarCuenta.mutate(
+            {
+              cuentaId: newCuenta.id,
+              proveedorId,
+              validadaPor: userId,
+            },
+            {
+              onSuccess: async () => {
+                // Log
+                await supabase.from('pim_activity_log').insert({
+                  id: generateId(),
+                  pim_id: pimId,
+                  stage_key: stageKey,
+                  tipo: 'bank_validated',
+                  descripcion: `Cuenta bancaria creada y validada por COMEX (${banco})`,
+                  usuario: userName,
+                  usuario_id: userId,
+                  metadata: { cuenta_id: newCuenta.id, banco },
+                });
+
+                // Notify Gerencia
+                const { data: gerenciaUsers } = await supabase
+                  .from('user_profiles')
+                  .select('id')
+                  .eq('department', 'gerencia')
+                  .eq('active', true);
+
+                if (gerenciaUsers && gerenciaUsers.length > 0) {
+                  const now = new Date().toISOString();
+                  await supabase.from('notificaciones').insert(
+                    gerenciaUsers.map((u) => ({
+                      id: generateId(),
+                      destinatario_id: u.id,
+                      pim_id: pimId,
+                      tipo: 'sistema',
+                      titulo: `Aprobación de cuenta bancaria — PIM ${pim?.codigo}`,
+                      mensaje: `Nueva cuenta bancaria requiere aprobación de Gerencia`,
+                      leido: false,
+                      prioridad: 'alta',
+                      fecha_creacion: now,
+                    }))
+                  );
+                }
+
+                completeStep.mutate(
+                  {
+                    stepId: step.id,
+                    pimId,
+                    stageKey,
+                    stepKey: 'validacion_cuenta_bancaria',
+                    stepName: 'Validación de Cuenta Bancaria',
+                    userId,
+                    userName,
+                    datos: { cuenta_id: newCuenta.id, requiere_nueva_validacion: true },
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success('Cuenta creada y validada. Enviada a Gerencia para aprobación.');
+                      setShowForm(false);
+                    },
+                  }
+                );
+              },
+            }
+          );
+        },
+        onError: (err) => toast.error(err.message),
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Existing valid account */}
+      {cuentaVigente && (
+        <Card className="bg-green-50/50 border-green-200">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Building className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">Cuenta Vigente</span>
+              </div>
+              <Badge className="bg-green-100 text-green-800 text-xs">Vigente</Badge>
+            </div>
+            <div className="text-sm space-y-1">
+              <p><span className="text-muted-foreground">Banco:</span> {cuentaVigente.banco}</p>
+              <p><span className="text-muted-foreground">Cuenta:</span> {cuentaVigente.numero_cuenta}</p>
+              <p><span className="text-muted-foreground">Moneda:</span> {cuentaVigente.moneda}</p>
+              {cuentaVigente.swift_code && <p><span className="text-muted-foreground">SWIFT:</span> {cuentaVigente.swift_code}</p>}
+              <p className="text-xs text-muted-foreground">
+                Validada: {cuentaVigente.fecha_validacion ? new Date(cuentaVigente.fecha_validacion).toLocaleDateString('es-CL') : 'N/A'}
+              </p>
+            </div>
+            <div className="flex justify-end mt-3">
+              <Button size="sm" onClick={handleSelectVigente} disabled={completeStep.isPending}>
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Seleccionar y continuar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Expired accounts */}
+      {!cuentaVigente && cuentas && cuentas.length > 0 && (
+        <Card className="bg-yellow-50/50 border-yellow-200">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <span className="text-sm font-medium text-yellow-700">Validación vencida</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Las cuentas bancarias del proveedor tienen validación vencida (&gt; 6 meses).
+              Se requiere una nueva validación.
+            </p>
+            {cuentas.map((c) => (
+              <div key={c.id} className="text-sm py-1 border-b last:border-0">
+                <span>{c.banco} — {c.numero_cuenta} ({c.moneda})</span>
+                {c.fecha_validacion && (
+                  <span className="text-xs text-muted-foreground ml-2">
+                    Validada: {new Date(c.fecha_validacion).toLocaleDateString('es-CL')}
+                  </span>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No accounts or need new one */}
+      {!cuentaVigente && !showForm && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowForm(true)}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          {cuentas && cuentas.length > 0 ? 'Crear nueva cuenta bancaria' : 'Agregar cuenta bancaria'}
+        </Button>
+      )}
+
+      {/* New account form */}
+      {showForm && (
+        <div className="space-y-3 p-4 bg-blue-50/50 border border-blue-200 rounded-lg">
+          <h5 className="text-sm font-semibold">Nueva Cuenta Bancaria</h5>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Banco *</Label>
+              <Input className="mt-1" value={banco} onChange={(e) => setBanco(e.target.value)} placeholder="Nombre del banco" />
+            </div>
+            <div>
+              <Label className="text-xs">Número de cuenta *</Label>
+              <Input className="mt-1" value={numeroCuenta} onChange={(e) => setNumeroCuenta(e.target.value)} placeholder="Número de cuenta" />
+            </div>
+            <div>
+              <Label className="text-xs">SWIFT</Label>
+              <Input className="mt-1" value={swiftCode} onChange={(e) => setSwiftCode(e.target.value)} placeholder="Código SWIFT" />
+            </div>
+            <div>
+              <Label className="text-xs">IBAN</Label>
+              <Input className="mt-1" value={iban} onChange={(e) => setIban(e.target.value)} placeholder="IBAN" />
+            </div>
+            <div>
+              <Label className="text-xs">Moneda</Label>
+              <Select value={moneda} onValueChange={setMoneda}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONEDAS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">País del banco</Label>
+              <Input className="mt-1" value={paisBanco} onChange={(e) => setPaisBanco(e.target.value)} placeholder="País" />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="text-xs">Titular</Label>
+              <Input className="mt-1" value={titular} onChange={(e) => setTitular(e.target.value)} placeholder="Nombre del titular" />
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button
+              size="sm"
+              onClick={handleCreateAndValidate}
+              disabled={createCuenta.isPending || validarCuenta.isPending}
+            >
+              {createCuenta.isPending ? 'Creando...' : 'Crear y Validar'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

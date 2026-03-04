@@ -52,7 +52,7 @@ export interface ActivityLog {
 }
 
 export interface StageBlocker {
-  type: 'checklist' | 'document' | 'nc' | 'bank_account' | 'lc_bank';
+  type: 'checklist' | 'document' | 'nc' | 'bank_account' | 'lc_bank' | 'steps';
   message: string;
 }
 
@@ -118,24 +118,28 @@ export function useInitializeTracking() {
         .insert(stages);
       if (stageErr) throw stageErr;
 
-      // Create checklist items filtered by payment modality
-      const items = TRACKING_STAGES.flatMap((s) => {
-        const filtered = getFilteredChecklist(s.key, modalidadPago);
-        return filtered.map((c) => ({
-          id: generateId(),
-          pim_id: pimId,
-          stage_key: s.key,
-          checklist_key: c.id,
-          texto: c.text,
-          critico: c.critical,
-          completado: false,
-        }));
-      });
+      // Create checklist items filtered by payment modality (skip stages with step flow)
+      const items = TRACKING_STAGES
+        .filter((s) => !s.useStepFlow)
+        .flatMap((s) => {
+          const filtered = getFilteredChecklist(s.key, modalidadPago);
+          return filtered.map((c) => ({
+            id: generateId(),
+            pim_id: pimId,
+            stage_key: s.key,
+            checklist_key: c.id,
+            texto: c.text,
+            critico: c.critical,
+            completado: false,
+          }));
+        });
 
-      const { error: checkErr } = await supabase
-        .from('pim_checklist_items')
-        .insert(items);
-      if (checkErr) throw checkErr;
+      if (items.length > 0) {
+        const { error: checkErr } = await supabase
+          .from('pim_checklist_items')
+          .insert(items);
+        if (checkErr) throw checkErr;
+      }
 
       // Log initialization
       await supabase.from('pim_activity_log').insert({
@@ -340,6 +344,31 @@ export function useCanAdvanceStage(
       const stageDef = getStageByKey(stageKey!);
       if (!stageDef) return { canAdvance: false, blockers: [{ type: 'checklist', message: 'Etapa no encontrada' }] };
 
+      // --- STEP-FLOW STAGES (e.g., revision_contrato) ---
+      if (stageDef.useStepFlow) {
+        const { data: steps } = await supabase
+          .from('pim_stage_steps')
+          .select('step_key, status')
+          .eq('pim_id', pimId!)
+          .eq('stage_key', stageKey!);
+
+        if (!steps || steps.length === 0) {
+          blockers.push({ type: 'steps', message: 'Pasos no inicializados' });
+        } else {
+          const pending = steps.filter((s) => s.status !== 'completado' && s.status !== 'saltado');
+          if (pending.length > 0) {
+            blockers.push({
+              type: 'steps',
+              message: `${pending.length} paso(s) pendiente(s) de completar`,
+            });
+          }
+        }
+
+        return { canAdvance: blockers.length === 0, blockers };
+      }
+
+      // --- CHECKLIST-BASED STAGES (stages 2-6) ---
+
       // 1. Check critical checklist items
       const { data: checklistItems } = await supabase
         .from('pim_checklist_items')
@@ -392,33 +421,7 @@ export function useCanAdvanceStage(
         }
       }
 
-      // 4. Check bank account for revision_contrato (new supplier)
-      if (stageKey === 'revision_contrato') {
-        const { data: pimData } = await supabase
-          .from('pims')
-          .select('proveedor_id, es_nuevo_proveedor')
-          .eq('id', pimId!)
-          .single();
-
-        if (pimData?.es_nuevo_proveedor && pimData?.proveedor_id) {
-          const { data: cuentas } = await supabase
-            .from('cuentas_bancarias_proveedor')
-            .select('id')
-            .eq('proveedor_id', pimData.proveedor_id)
-            .eq('activa', true)
-            .eq('validada', true)
-            .limit(1);
-
-          if (!cuentas || cuentas.length === 0) {
-            blockers.push({
-              type: 'bank_account',
-              message: 'Cuenta bancaria del proveedor no verificada (nuevo proveedor)',
-            });
-          }
-        }
-      }
-
-      // 5. Check LC bank selection for gestion_financiera
+      // 4. Check LC bank selection for gestion_financiera
       if (stageKey === 'gestion_financiera' && modalidadPago === 'carta_credito') {
         const { data: selected } = await supabase
           .from('cotizaciones_lc')

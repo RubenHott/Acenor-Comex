@@ -21,6 +21,7 @@ import { StageResponsableCard } from '@/components/tracking/StageResponsableCard
 import { BankAccountPanel } from '@/components/tracking/BankAccountPanel';
 import { StageReadOnlyCard } from '@/components/tracking/StageReadOnlyCard';
 import { LCBankQuotesPanel } from '@/components/tracking/LCBankQuotesPanel';
+import { StageStepFlow } from '@/components/tracking/StageStepFlow';
 import {
   useTrackingStages,
   useChecklistItems,
@@ -367,20 +368,20 @@ export default function PIMTrackingPage() {
                 docsRequired={requiredDocs.length}
                 openNCs={openNCCount}
               />
-            ) : (
-            <>
-            {/* Bank Account Panel - show in revision_contrato stage */}
-            {activeStageKey === 'revision_contrato' && pim.proveedor_id && (
-              <BankAccountPanel
-                proveedorId={pim.proveedor_id}
-                proveedorNombre={pim.proveedor_nombre || 'Proveedor'}
-                canCreate={perms.canToggleChecklist}
-                canValidate={perms.canValidateBankAccount}
-                validadoPor={currentUser}
-                esNuevoProveedor={!!pim.es_nuevo_proveedor}
+            ) : activeStageDef?.useStepFlow ? (
+              /* ===== STEP-FLOW STAGES (e.g., revision_contrato) ===== */
+              <StageStepFlow
+                pimId={id!}
+                stageKey={activeStageKey}
+                pim={pim}
+                userId={currentUserId}
+                userName={currentUser}
+                userRole={currentUserRole}
+                userDepartment={userDepartment}
               />
-            )}
-
+            ) : (
+            /* ===== CHECKLIST-BASED STAGES (stages 2-6) ===== */
+            <>
             {/* LC Bank Quotes - show in gestion_financiera when carta_credito */}
             {activeStageKey === 'gestion_financiera' && modalidadPago === 'carta_credito' && (
               <LCBankQuotesPanel

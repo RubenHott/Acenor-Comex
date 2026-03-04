@@ -14,6 +14,7 @@ import type { Department } from "@/types/comex";
 export type DocumentType =
   | "contrato"
   | "cierre_compra"
+  | "contrato_firmado"
   | "factura"
   | "bl"
   | "packing_list"
@@ -53,6 +54,8 @@ export interface StageDef {
   requiredDocuments: DocumentType[];
   ncBlocks: boolean;
   slaDefaultDays: number;
+  /** If true, this stage uses a step-based flow instead of a checklist */
+  useStepFlow?: boolean;
 }
 
 // --- 6 Stages based on BPMN ---
@@ -64,23 +67,13 @@ export const TRACKING_STAGES: StageDef[] = [
     icon: FileSearch,
     color: "#6366F1",
     description: "Revision, comparacion y validacion del contrato vs cierre de compra",
-    departments: ["comex"],
+    departments: ["comex", "gerencia"],
     primaryDepartment: "comex",
-    checklist: [
-      { id: "rc1", text: "Contrato recibido del proveedor", critical: true, department: "comex" },
-      { id: "rc2", text: "Comparado contra Cierre de Compra", critical: true, department: "comex" },
-      { id: "rc3", text: "Nombre y datos del proveedor verificados", critical: true, department: "comex" },
-      { id: "rc4", text: "Tipo, calidad, cantidad y precio validados", critical: true, department: "comex" },
-      { id: "rc5", text: "Incoterms y puerto de embarque/destino confirmados", critical: true, department: "comex" },
-      { id: "rc6", text: "Condiciones de pago validadas", critical: true, department: "comex" },
-      { id: "rc7", text: "Fechas de embarque y tolerancias confirmadas", critical: true, department: "comex" },
-      { id: "rc8", text: "Requisitos documentales definidos", critical: false, department: "comex" },
-      { id: "rc9", text: "Clausulas legales y de garantia revisadas", critical: false, department: "comex" },
-      { id: "rc10", text: "Datos bancarios verificados (doble check si nuevo proveedor)", critical: true, department: "comex" },
-    ],
-    requiredDocuments: ["contrato", "cierre_compra"],
+    checklist: [],
+    requiredDocuments: ["contrato", "cierre_compra", "contrato_firmado"],
     ncBlocks: true,
     slaDefaultDays: 5,
+    useStepFlow: true,
   },
   {
     key: "firma_contrato",

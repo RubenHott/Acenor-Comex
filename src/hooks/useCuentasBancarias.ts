@@ -23,8 +23,19 @@ export interface CuentaBancaria {
   validada_por: string | null;
   fecha_validacion: string | null;
   activa: boolean;
+  aprobada_gerencia: boolean;
+  aprobada_gerencia_por: string | null;
+  fecha_aprobacion_gerencia: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Check if a bank account validation is still valid (< 6 months old) */
+export function isCuentaVigente(cuenta: CuentaBancaria): boolean {
+  if (!cuenta.validada || !cuenta.fecha_validacion) return false;
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  return new Date(cuenta.fecha_validacion) > sixMonthsAgo;
 }
 
 // --- Queries ---
@@ -209,6 +220,142 @@ export function useDeactivateCuentaBancaria() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['cuentas-bancarias', vars.proveedorId] });
       queryClient.invalidateQueries({ queryKey: ['cuenta-bancaria-activa', vars.proveedorId] });
+    },
+  });
+}
+
+/** Get an active, validated, and currently valid (< 6 months) bank account */
+export function useCuentaBancariaVigente(proveedorId?: string) {
+  return useQuery({
+    queryKey: ['cuenta-bancaria-vigente', proveedorId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cuentas_bancarias_proveedor')
+        .select('*')
+        .eq('proveedor_id', proveedorId!)
+        .eq('activa', true)
+        .eq('validada', true)
+        .order('fecha_validacion', { ascending: false });
+      if (error) throw error;
+
+      // Filter by 6-month validity
+      const cuentas = (data || []) as CuentaBancaria[];
+      return cuentas.find((c) => isCuentaVigente(c)) || null;
+    },
+    enabled: !!proveedorId,
+  });
+}
+
+/** Gerencia approves a bank account */
+export function useApproveByGerencia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      cuentaId,
+      proveedorId,
+      aprobadaPor,
+      pimId,
+      userName,
+    }: {
+      cuentaId: string;
+      proveedorId: string;
+      aprobadaPor: string;
+      pimId?: string;
+      userName?: string;
+    }) => {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from('cuentas_bancarias_proveedor')
+        .update({
+          aprobada_gerencia: true,
+          aprobada_gerencia_por: aprobadaPor,
+          fecha_aprobacion_gerencia: now,
+          updated_at: now,
+        })
+        .eq('id', cuentaId);
+      if (error) throw error;
+
+      // Log activity
+      if (pimId) {
+        await supabase.from('pim_activity_log').insert({
+          id: generateId(),
+          pim_id: pimId,
+          stage_key: 'revision_contrato',
+          tipo: 'bank_approved',
+          descripcion: `Cuenta bancaria aprobada por Gerencia`,
+          usuario: userName || 'Gerencia',
+          usuario_id: aprobadaPor,
+          metadata: { cuenta_id: cuentaId },
+        });
+      }
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['cuentas-bancarias', vars.proveedorId] });
+      queryClient.invalidateQueries({ queryKey: ['cuenta-bancaria-activa', vars.proveedorId] });
+      queryClient.invalidateQueries({ queryKey: ['cuenta-bancaria-vigente', vars.proveedorId] });
+      if (vars.pimId) {
+        queryClient.invalidateQueries({ queryKey: ['stage-steps', vars.pimId] });
+        queryClient.invalidateQueries({ queryKey: ['current-step', vars.pimId] });
+        queryClient.invalidateQueries({ queryKey: ['can-advance', vars.pimId] });
+        queryClient.invalidateQueries({ queryKey: ['activity-log', vars.pimId] });
+      }
+    },
+  });
+}
+
+/** Gerencia rejects a bank account */
+export function useRejectByGerencia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      cuentaId,
+      proveedorId,
+      rechazadaPor,
+      motivo,
+      pimId,
+      userName,
+    }: {
+      cuentaId: string;
+      proveedorId: string;
+      rechazadaPor: string;
+      motivo: string;
+      pimId?: string;
+      userName?: string;
+    }) => {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from('cuentas_bancarias_proveedor')
+        .update({
+          aprobada_gerencia: false,
+          updated_at: now,
+        })
+        .eq('id', cuentaId);
+      if (error) throw error;
+
+      if (pimId) {
+        await supabase.from('pim_activity_log').insert({
+          id: generateId(),
+          pim_id: pimId,
+          stage_key: 'revision_contrato',
+          tipo: 'bank_rejected',
+          descripcion: `Cuenta bancaria rechazada por Gerencia: ${motivo}`,
+          usuario: userName || 'Gerencia',
+          usuario_id: rechazadaPor,
+          metadata: { cuenta_id: cuentaId, motivo },
+        });
+      }
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['cuentas-bancarias', vars.proveedorId] });
+      queryClient.invalidateQueries({ queryKey: ['cuenta-bancaria-activa', vars.proveedorId] });
+      queryClient.invalidateQueries({ queryKey: ['cuenta-bancaria-vigente', vars.proveedorId] });
+      if (vars.pimId) {
+        queryClient.invalidateQueries({ queryKey: ['stage-steps', vars.pimId] });
+        queryClient.invalidateQueries({ queryKey: ['current-step', vars.pimId] });
+        queryClient.invalidateQueries({ queryKey: ['activity-log', vars.pimId] });
+      }
     },
   });
 }
