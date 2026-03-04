@@ -1,9 +1,7 @@
 import {
   FileSearch,
   PenTool,
-  CreditCard,
   Ship,
-  Truck,
   CheckCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -58,7 +56,7 @@ export interface StageDef {
   useStepFlow?: boolean;
 }
 
-// --- 6 Stages based on BPMN ---
+// --- 4 Stages based on BPMN ---
 
 export const TRACKING_STAGES: StageDef[] = [
   {
@@ -90,202 +88,18 @@ export const TRACKING_STAGES: StageDef[] = [
     useStepFlow: true,
   },
   {
-    key: "gestion_financiera",
-    name: "Gestion Financiera",
-    icon: CreditCard,
-    color: "#F59E0B",
-    description: "Pago, carta de credito o anticipo segun modalidad",
-    departments: ["finanzas", "gerencia"],
-    primaryDepartment: "finanzas",
-    checklist: [
-      // Common
-      { id: "gf1", text: "Modalidad de pago confirmada", critical: true, department: "finanzas" },
-
-      // Carta de Credito
-      {
-        id: "gf_lc1",
-        text: "Solicitud de L/C preparada (Excel con datos)",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      {
-        id: "gf_lc2",
-        text: "Documentacion enviada a Tesoreria",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      {
-        id: "gf_lc3",
-        text: "Cotizaciones bancarias recibidas",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      {
-        id: "gf_lc4",
-        text: "Cuadro comparativo elaborado y banco seleccionado",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      {
-        id: "gf_lc5",
-        text: "Documentos bancarios llenados",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      {
-        id: "gf_lc6",
-        text: "Firmas de Gerencia obtenidas en docs bancarios",
-        critical: true,
-        department: "gerencia",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      {
-        id: "gf_lc7",
-        text: "Banco valida L/C y genera SWIFT",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      {
-        id: "gf_lc8",
-        text: "SWIFT recibido por COMEX",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-
-      // Pago al Contado
-      {
-        id: "gf_pc1",
-        text: "Entrada PIM creada y montos revisados vs contrato",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["pago_contado"] },
-      },
-      {
-        id: "gf_pc2",
-        text: "Archivo TXT de pago generado",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["pago_contado"] },
-      },
-      {
-        id: "gf_pc3",
-        text: "TXT cargado en plataforma bancaria",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["pago_contado"] },
-      },
-      {
-        id: "gf_pc4",
-        text: "Detalle enviado a Gerencia para autorizacion",
-        critical: true,
-        department: "gerencia",
-        conditionalOn: { field: "modalidad_pago", values: ["pago_contado"] },
-      },
-      {
-        id: "gf_pc5",
-        text: "Pago autorizado y ejecutado",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["pago_contado"] },
-      },
-
-      // Anticipo + Saldo
-      {
-        id: "gf_ant1",
-        text: "Anticipo: monto calculado segun % contrato",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["anticipo"] },
-      },
-      {
-        id: "gf_ant2",
-        text: "Anticipo: pago ejecutado y SWIFT/comprobante recibido",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["anticipo"] },
-      },
-      {
-        id: "gf_ant3",
-        text: "Saldo: monto restante calculado",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["anticipo"] },
-      },
-      {
-        id: "gf_ant4",
-        text: "Saldo: pago ejecutado",
-        critical: true,
-        department: "finanzas",
-        conditionalOn: { field: "modalidad_pago", values: ["anticipo"] },
-      },
-
-      // Common final
-      { id: "gf_end", text: "Confirmacion de pago/SWIFT recibida por proveedor", critical: false, department: "finanzas" },
-    ],
-    requiredDocuments: ["swift"], // dynamically overridden for pago_contado
-    ncBlocks: true,
-    slaDefaultDays: 10,
-  },
-  {
-    key: "documentacion_embarque",
-    name: "Documentacion de Embarque",
+    key: "documentacion_internacion",
+    name: "Documentación e Internación",
     icon: Ship,
-    color: "#3B82F6",
-    description: "Recepcion, consolidacion y envio de documentos de embarque",
-    departments: ["comex"],
-    primaryDepartment: "comex",
-    checklist: [
-      { id: "de1", text: "Proveedor envio copia digital de docs de embarque", critical: true, department: "comex" },
-      { id: "de2", text: "Numero de tracking de courier recibido", critical: false, department: "comex" },
-      { id: "de3", text: "Documentacion consolidada vs contrato", critical: true, department: "comex" },
-      {
-        id: "de4",
-        text: "Set de documentos enviado al banco",
-        critical: true,
-        department: "comex",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      {
-        id: "de5",
-        text: "Banco revisa documentos sin observaciones",
-        critical: true,
-        department: "comex",
-        conditionalOn: { field: "modalidad_pago", values: ["carta_credito"] },
-      },
-      { id: "de6", text: "Sin discrepancias documentales (o enmienda gestionada)", critical: true, department: "comex" },
-    ],
-    requiredDocuments: ["factura", "bl", "packing_list"],
-    ncBlocks: true,
-    slaDefaultDays: 15,
-  },
-  {
-    key: "internacion_aduana",
-    name: "Internacion y Aduana",
-    icon: Truck,
-    color: "#EC4899",
-    description: "Retiro de documentos, pago de internacion, liberacion de carga",
+    color: "#F59E0B",
+    description: "Documentación digital/física, discrepancias, retiro banco, internación y pago",
     departments: ["comex", "finanzas"],
     primaryDepartment: "comex",
-    checklist: [
-      { id: "ia1", text: "Documentacion en banco nacional para retiro", critical: true, department: "comex" },
-      { id: "ia2", text: "Solicitud de retiro enviada a agente de aduanas", critical: true, department: "comex" },
-      { id: "ia3", text: "Solicitud de pago de internacion enviada a Finanzas", critical: true, department: "comex" },
-      { id: "ia4", text: "Pago de internacion realizado por Finanzas", critical: true, department: "finanzas" },
-      { id: "ia5", text: "Comprobante de pago enviado al agente de aduanas", critical: true, department: "comex" },
-      { id: "ia6", text: "Alzamiento validado y firmado", critical: false, department: "comex" },
-      { id: "ia7", text: "Documentos retirados del banco", critical: true, department: "finanzas" },
-      { id: "ia8", text: "Carga liberada y en transito a bodega", critical: true, department: "comex" },
-    ],
-    requiredDocuments: ["comprobante_pago", "dus"],
+    checklist: [],
+    requiredDocuments: ["factura", "bl", "packing_list", "comprobante_pago"],
     ncBlocks: true,
-    slaDefaultDays: 7,
+    slaDefaultDays: 20,
+    useStepFlow: true,
   },
   {
     key: "recepcion_costeo",
@@ -345,11 +159,6 @@ export function getRequiredDocuments(
 ): DocumentType[] {
   const stage = getStageByKey(stageKey);
   if (!stage) return [];
-  // Special case: gestion_financiera depends on payment modality
-  if (stageKey === "gestion_financiera") {
-    if (modalidadPago === "carta_credito") return ["swift"];
-    return ["comprobante_pago"];
-  }
   return stage.requiredDocuments;
 }
 

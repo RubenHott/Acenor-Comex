@@ -155,12 +155,104 @@ export const GESTION_PAGO_STEPS: StageStepDef[] = [
   },
 ];
 
+// --- Step definitions for Stage 3: Documentación e Internación ---
+
+export const DOCUMENTACION_INTERNACION_STEPS: StageStepDef[] = [
+  {
+    key: "recepcion_docs_digitales",
+    order: 1,
+    name: "Recepción de Documentación Digital",
+    description: "COMEX recibe y carga BL, factura comercial y packing list del proveedor",
+    requiredDepartment: ["comex"],
+    requiredDocuments: ["factura", "bl", "packing_list"],
+  },
+  {
+    key: "registro_dhl",
+    order: 2,
+    name: "Registro de Seguimiento DHL",
+    description: "COMEX ingresa el código de seguimiento DHL para documentos físicos",
+    requiredDepartment: ["comex"],
+  },
+  {
+    key: "seguimiento_docs_fisicos",
+    order: 3,
+    name: "Seguimiento de Recepción de Docs Físicos",
+    description: "Finanzas confirma la recepción de documentos físicos vía DHL o manual",
+    requiredDepartment: ["finanzas"],
+  },
+  {
+    key: "revision_documental",
+    order: 4,
+    name: "Revisión Documental",
+    description: "Revisión de documentos recibidos: conforme o levantar discrepancia",
+    requiredDepartment: ["comex", "finanzas"],
+  },
+  {
+    key: "declaracion_discrepancia",
+    order: 5,
+    name: "Declaración de Discrepancia",
+    description: "Creación de NC por discrepancia documental detectada",
+    isConditional: true,
+  },
+  {
+    key: "subsanacion_discrepancia",
+    order: 6,
+    name: "Subsanación de Discrepancia",
+    description: "Resolución de la discrepancia documental detectada",
+    isConditional: true,
+  },
+  {
+    key: "retiro_docs_banco",
+    order: 7,
+    name: "Retiro de Documentos desde Banco",
+    description: "Finanzas gestiona el retiro de documentos del banco y los envía a COMEX",
+    requiredDepartment: ["finanzas"],
+  },
+  {
+    key: "preparacion_set_documental",
+    order: 8,
+    name: "Preparación de Set Documental",
+    description: "COMEX prepara el set de documentos para el agente de aduanas",
+    requiredDepartment: ["comex"],
+  },
+  {
+    key: "solicitud_pago_internacion",
+    order: 9,
+    name: "Solicitud de Pago de Internación",
+    description: "COMEX carga documentos de internación y registra el monto a pagar",
+    requiredDepartment: ["comex"],
+  },
+  {
+    key: "gestion_pago_internacion",
+    order: 10,
+    name: "Gestión de Pago por Finanzas",
+    description: "Finanzas revisa, ejecuta pago y sube comprobante de pago",
+    requiredDepartment: ["finanzas"],
+    requiredDocuments: ["comprobante_pago"],
+  },
+  {
+    key: "confirmacion_comex",
+    order: 11,
+    name: "Confirmación Final por COMEX",
+    description: "COMEX confirma recepción de comprobante y envío al agente de aduanas",
+    requiredDepartment: ["comex"],
+  },
+  {
+    key: "cierre_proceso",
+    order: 12,
+    name: "Cierre del Proceso",
+    description: "COMEX cierra el proceso de documentación e internación",
+    requiredDepartment: ["comex"],
+  },
+];
+
 // --- Helpers ---
 
 /** Get step definitions for a stage key */
 export function getStageSteps(stageKey: string): StageStepDef[] {
   if (stageKey === "revision_contrato") return REVISION_CONTRATO_STEPS;
   if (stageKey === "gestion_pago") return GESTION_PAGO_STEPS;
+  if (stageKey === "documentacion_internacion") return DOCUMENTACION_INTERNACION_STEPS;
   return [];
 }
 

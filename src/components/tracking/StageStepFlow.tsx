@@ -23,6 +23,18 @@ import { StepRegistroBancoTasa } from './steps/p2/StepRegistroBancoTasa';
 import { StepSolicitudFirma } from './steps/p2/StepSolicitudFirma';
 import { StepRecepcionSwift } from './steps/p2/StepRecepcionSwift';
 import { StepGestionComex } from './steps/p2/StepGestionComex';
+// Process 3: Documentación e Internación
+import { StepRecepcionDocsDigitales } from './steps/p3/StepRecepcionDocsDigitales';
+import { StepRegistroDHL } from './steps/p3/StepRegistroDHL';
+import { StepSeguimientoDocsFisicos } from './steps/p3/StepSeguimientoDocsFisicos';
+import { StepRevisionDocumental } from './steps/p3/StepRevisionDocumental';
+import { StepDeclaracionDiscrepancia } from './steps/p3/StepDeclaracionDiscrepancia';
+import { StepSubsanacionDiscrepancia } from './steps/p3/StepSubsanacionDiscrepancia';
+import { StepRetiroDocsBanco } from './steps/p3/StepRetiroDocsBanco';
+import { StepPreparacionSetDocumental } from './steps/p3/StepPreparacionSetDocumental';
+import { StepSolicitudPagoInternacion } from './steps/p3/StepSolicitudPagoInternacion';
+import { StepGestionPagoInternacion } from './steps/p3/StepGestionPagoInternacion';
+import { StepConfirmacionComex } from './steps/p3/StepConfirmacionComex';
 import type { Department, UserRole } from '@/types/comex';
 
 interface StageStepFlowProps {
@@ -148,6 +160,29 @@ export function StageStepFlow({
         return <StepRecepcionSwift step={step} {...stepProps} />;
       case 'gestion_comex':
         return <StepGestionComex step={step} {...stepProps} />;
+      // Process 3: Documentación e Internación
+      case 'recepcion_docs_digitales':
+        return <StepRecepcionDocsDigitales step={step} {...stepProps} />;
+      case 'registro_dhl':
+        return <StepRegistroDHL step={step} {...stepProps} />;
+      case 'seguimiento_docs_fisicos':
+        return <StepSeguimientoDocsFisicos step={step} {...stepProps} />;
+      case 'revision_documental':
+        return <StepRevisionDocumental step={step} {...stepProps} />;
+      case 'declaracion_discrepancia':
+        return <StepDeclaracionDiscrepancia step={step} {...stepProps} />;
+      case 'subsanacion_discrepancia':
+        return <StepSubsanacionDiscrepancia step={step} {...stepProps} />;
+      case 'retiro_docs_banco':
+        return <StepRetiroDocsBanco step={step} {...stepProps} />;
+      case 'preparacion_set_documental':
+        return <StepPreparacionSetDocumental step={step} {...stepProps} />;
+      case 'solicitud_pago_internacion':
+        return <StepSolicitudPagoInternacion step={step} {...stepProps} />;
+      case 'gestion_pago_internacion':
+        return <StepGestionPagoInternacion step={step} {...stepProps} />;
+      case 'confirmacion_comex':
+        return <StepConfirmacionComex step={step} {...stepProps} />;
       default:
         return <div className="text-sm text-muted-foreground">Paso no implementado</div>;
     }

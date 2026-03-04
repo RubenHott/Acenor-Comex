@@ -422,23 +422,6 @@ export function useCanAdvanceStage(
         }
       }
 
-      // 4. Check LC bank selection for gestion_financiera
-      if (stageKey === 'gestion_financiera' && modalidadPago === 'carta_credito') {
-        const { data: selected } = await supabase
-          .from('cotizaciones_lc')
-          .select('id')
-          .eq('pim_id', pimId!)
-          .eq('seleccionado', true)
-          .limit(1);
-
-        if (!selected || selected.length === 0) {
-          blockers.push({
-            type: 'lc_bank',
-            message: 'Debe seleccionar un banco ganador para la Carta de Credito',
-          });
-        }
-      }
-
       return {
         canAdvance: blockers.length === 0,
         blockers,

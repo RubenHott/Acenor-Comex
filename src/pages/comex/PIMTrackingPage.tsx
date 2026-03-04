@@ -14,13 +14,13 @@ import { TrackingNoteDialog } from '@/components/tracking/TrackingNoteDialog';
 import { SplitPIMDialog } from '@/components/tracking/SplitPIMDialog';
 import { DocumentUploadPanel } from '@/components/tracking/DocumentUploadPanel';
 import { RequiredDocumentsPanel } from '@/components/tracking/RequiredDocumentsPanel';
-import { DHLTrackingPanel } from '@/components/tracking/DHLTrackingPanel';
+
 import { NonConformityPanel } from '@/components/tracking/NonConformityPanel';
 import { StageGateSummary } from '@/components/tracking/StageGateSummary';
 import { StageResponsableCard } from '@/components/tracking/StageResponsableCard';
-import { BankAccountPanel } from '@/components/tracking/BankAccountPanel';
+
 import { StageReadOnlyCard } from '@/components/tracking/StageReadOnlyCard';
-import { LCBankQuotesPanel } from '@/components/tracking/LCBankQuotesPanel';
+
 import { StageStepFlow } from '@/components/tracking/StageStepFlow';
 import {
   useTrackingStages,
@@ -383,15 +383,6 @@ export default function PIMTrackingPage() {
             ) : (
             /* ===== CHECKLIST-BASED STAGES (stages 2-6) ===== */
             <>
-            {/* LC Bank Quotes - show in gestion_financiera when carta_credito */}
-            {activeStageKey === 'gestion_financiera' && modalidadPago === 'carta_credito' && (
-              <LCBankQuotesPanel
-                pimId={id!}
-                readOnly={!perms.canToggleChecklist}
-                userId={currentUserId}
-              />
-            )}
-
             {/* Gate Summary - only show for en_progreso stages */}
             {activeStage?.status === 'en_progreso' && (
               <StageGateSummary
@@ -488,15 +479,6 @@ export default function PIMTrackingPage() {
               readOnly={!perms.canUploadDocument}
             />
 
-            {/* DHL Tracking */}
-            {(activeStageKey === 'documentacion_embarque' || activeStageKey === 'internacion_aduana') && (
-              <DHLTrackingPanel
-                pimId={id!}
-                currentTrackingCode={pim.dhl_tracking_code}
-                lastStatus={pim.dhl_last_status}
-                lastCheckedAt={pim.dhl_last_checked_at}
-              />
-            )}
             </>
             )}
           </div>
