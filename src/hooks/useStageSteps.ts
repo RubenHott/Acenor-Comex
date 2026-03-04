@@ -268,7 +268,7 @@ export function useSkipSteps() {
   });
 }
 
-/** Reactivate a step (e.g., when COMEX rejects subsanación) */
+/** Reactivate a step (e.g., when COMEX rejects subsanación or admin reverts) */
 export function useReactivateStep() {
   const queryClient = useQueryClient();
 
@@ -304,7 +304,8 @@ export function useReactivateStep() {
         .eq('stage_key', stageKey)
         .eq('step_key', stepKey);
 
-      // Set any steps after it that are en_progreso back to pendiente
+      // Reset ALL later steps (en_progreso or completado) back to pendiente
+      // This includes cierre_proceso which may have been auto-completed
       const { data: allSteps } = await supabase
         .from('pim_stage_steps')
         .select('*')
@@ -316,13 +317,67 @@ export function useReactivateStep() {
         const targetStep = allSteps.find((s) => s.step_key === stepKey);
         if (targetStep) {
           const laterSteps = allSteps.filter(
-            (s) => s.step_order > targetStep.step_order && s.status === 'en_progreso'
+            (s) => s.step_order > targetStep.step_order && (s.status === 'en_progreso' || s.status === 'completado')
           );
           for (const s of laterSteps) {
             await supabase
               .from('pim_stage_steps')
-              .update({ status: 'pendiente', updated_at: now })
+              .update({
+                status: 'pendiente',
+                completado_por: null,
+                completado_por_nombre: null,
+                completado_en: null,
+                datos: {},
+                updated_at: now,
+              })
               .eq('id', s.id);
+          }
+        }
+      }
+
+      // If the stage was already completed, revert it to en_progreso
+      const { data: stageData } = await supabase
+        .from('pim_tracking_stages')
+        .select('status')
+        .eq('pim_id', pimId)
+        .eq('stage_key', stageKey)
+        .single();
+
+      if (stageData?.status === 'completado') {
+        await supabase
+          .from('pim_tracking_stages')
+          .update({ status: 'en_progreso', fecha_fin: null, updated_at: now })
+          .eq('pim_id', pimId)
+          .eq('stage_key', stageKey);
+
+        // Also revert the next stage if it was started as a result of the advance
+        // Find stages that started after this one was completed
+        const { data: allStages } = await supabase
+          .from('pim_tracking_stages')
+          .select('*')
+          .eq('pim_id', pimId)
+          .order('created_at', { ascending: true });
+
+        if (allStages) {
+          // Find stages that are en_progreso and have no completed steps (just initialized)
+          for (const stage of allStages) {
+            if (stage.stage_key !== stageKey && stage.status === 'en_progreso') {
+              const { count } = await supabase
+                .from('pim_stage_steps')
+                .select('id', { count: 'exact', head: true })
+                .eq('pim_id', pimId)
+                .eq('stage_key', stage.stage_key)
+                .eq('status', 'completado');
+
+              // Only revert stages with no completed steps (freshly started)
+              if (!count || count === 0) {
+                await supabase
+                  .from('pim_tracking_stages')
+                  .update({ status: 'pendiente', fecha_inicio: null, updated_at: now })
+                  .eq('pim_id', pimId)
+                  .eq('stage_key', stage.stage_key);
+              }
+            }
           }
         }
       }
@@ -343,6 +398,8 @@ export function useReactivateStep() {
       queryClient.invalidateQueries({ queryKey: ['current-step', vars.pimId, vars.stageKey] });
       queryClient.invalidateQueries({ queryKey: ['activity-log', vars.pimId] });
       queryClient.invalidateQueries({ queryKey: ['can-advance', vars.pimId] });
+      queryClient.invalidateQueries({ queryKey: ['pim-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['tracking-stages'] });
     },
   });
 }
