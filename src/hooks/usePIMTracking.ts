@@ -477,62 +477,91 @@ export function useAdvanceStage() {
       // Validate gate
       const blockers: StageBlocker[] = [];
 
-      // 1. Critical checklist
-      const { data: checklistItems } = await supabase
-        .from('pim_checklist_items')
-        .select('critico, completado')
-        .eq('pim_id', pimId)
-        .eq('stage_key', currentStageKey);
-
-      const pendingCritical = (checklistItems || []).filter(
-        (i) => i.critico && !i.completado
-      );
-      if (pendingCritical.length > 0) {
-        blockers.push({
-          type: 'checklist',
-          message: `${pendingCritical.length} item(s) crítico(s) pendiente(s)`,
-        });
-      }
-
-      // 2. Required documents
-      const requiredDocs = getRequiredDocuments(currentStageKey, modalidadPago);
-      if (requiredDocs.length > 0) {
-        const { data: uploadedDocs } = await supabase
-          .from('pim_documentos')
-          .select('tipo')
-          .eq('pim_id', pimId);
-
-        const uploadedTypes = new Set((uploadedDocs || []).map((d) => d.tipo));
-        const missingDocs = requiredDocs.filter((t) => !uploadedTypes.has(t));
-        if (missingDocs.length > 0) {
-          blockers.push({
-            type: 'document',
-            message: `Documento(s) faltante(s): ${missingDocs.join(', ')}`,
-          });
-        }
-      }
-
-      // 3. Open NCs
-      if (currentStageDef.ncBlocks) {
-        const { count } = await supabase
-          .from('no_conformidades')
-          .select('id', { count: 'exact', head: true })
+      // --- STEP-FLOW STAGES (e.g., revision_contrato) ---
+      if (currentStageDef.useStepFlow) {
+        const { data: steps } = await supabase
+          .from('pim_stage_steps')
+          .select('step_key, status')
           .eq('pim_id', pimId)
-          .eq('stage_key', currentStageKey)
-          .in('estado', ['abierta', 'en_revision']);
+          .eq('stage_key', currentStageKey);
 
-        if (count && count > 0) {
+        if (!steps || steps.length === 0) {
+          blockers.push({ type: 'steps', message: 'Pasos no inicializados' });
+        } else {
+          const pending = steps.filter((s) => s.status !== 'completado' && s.status !== 'saltado');
+          if (pending.length > 0) {
+            blockers.push({
+              type: 'steps',
+              message: `${pending.length} paso(s) pendiente(s) de completar`,
+            });
+          }
+        }
+
+        if (blockers.length > 0) {
+          throw new Error(
+            'No se puede avanzar: ' + blockers.map((b) => b.message).join('; ')
+          );
+        }
+      } else {
+        // --- CHECKLIST-BASED STAGES (stages 2-6) ---
+
+        // 1. Critical checklist
+        const { data: checklistItems } = await supabase
+          .from('pim_checklist_items')
+          .select('critico, completado')
+          .eq('pim_id', pimId)
+          .eq('stage_key', currentStageKey);
+
+        const pendingCritical = (checklistItems || []).filter(
+          (i) => i.critico && !i.completado
+        );
+        if (pendingCritical.length > 0) {
           blockers.push({
-            type: 'nc',
-            message: `${count} no conformidad(es) abierta(s)`,
+            type: 'checklist',
+            message: `${pendingCritical.length} item(s) crítico(s) pendiente(s)`,
           });
         }
-      }
 
-      if (blockers.length > 0) {
-        throw new Error(
-          'No se puede avanzar: ' + blockers.map((b) => b.message).join('; ')
-        );
+        // 2. Required documents
+        const requiredDocs = getRequiredDocuments(currentStageKey, modalidadPago);
+        if (requiredDocs.length > 0) {
+          const { data: uploadedDocs } = await supabase
+            .from('pim_documentos')
+            .select('tipo')
+            .eq('pim_id', pimId);
+
+          const uploadedTypes = new Set((uploadedDocs || []).map((d) => d.tipo));
+          const missingDocs = requiredDocs.filter((t) => !uploadedTypes.has(t));
+          if (missingDocs.length > 0) {
+            blockers.push({
+              type: 'document',
+              message: `Documento(s) faltante(s): ${missingDocs.join(', ')}`,
+            });
+          }
+        }
+
+        // 3. Open NCs
+        if (currentStageDef.ncBlocks) {
+          const { count } = await supabase
+            .from('no_conformidades')
+            .select('id', { count: 'exact', head: true })
+            .eq('pim_id', pimId)
+            .eq('stage_key', currentStageKey)
+            .in('estado', ['abierta', 'en_revision']);
+
+          if (count && count > 0) {
+            blockers.push({
+              type: 'nc',
+              message: `${count} no conformidad(es) abierta(s)`,
+            });
+          }
+        }
+
+        if (blockers.length > 0) {
+          throw new Error(
+            'No se puede avanzar: ' + blockers.map((b) => b.message).join('; ')
+          );
+        }
       }
 
       // --- Gate passed: complete current stage and start next ---
