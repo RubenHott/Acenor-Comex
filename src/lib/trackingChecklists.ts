@@ -107,19 +107,14 @@ export const TRACKING_STAGES: StageDef[] = [
     name: "Recepcion y Costeo",
     icon: CheckCircle,
     color: "#10B981",
-    description: "Recepcion en bodega, costeo, validacion y cierre",
-    departments: ["comex", "finanzas", "gerencia"],
+    description: "Citación de carga, costeo, validación financiera, recepción en sistema",
+    departments: ["comex", "finanzas"],
     primaryDepartment: "comex",
-    checklist: [
-      { id: "rx1", text: "Mercancia recibida en bodega", critical: true, department: "comex" },
-      { id: "rx2", text: "Costeo de productos realizado", critical: true, department: "finanzas" },
-      { id: "rx3", text: "Cantidades y valores validados contra documentos", critical: true, department: "finanzas" },
-      { id: "rx4", text: "Costeo aprobado por Gerencia/Finanzas", critical: true, department: "gerencia" },
-      { id: "rx5", text: "Recepcion ingresada al sistema (ERP)", critical: true, department: "comex" },
-    ],
+    checklist: [],
     requiredDocuments: ["costeo", "acta_recepcion"],
     ncBlocks: true,
     slaDefaultDays: 5,
+    useStepFlow: true,
   },
 ];
 

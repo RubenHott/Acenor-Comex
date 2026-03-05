@@ -262,6 +262,72 @@ export const DOCUMENTACION_INTERNACION_STEPS: StageStepDef[] = [
   },
 ];
 
+// --- Step definitions for Stage 4: Recepción y Costeo ---
+
+export const RECEPCION_COSTEO_STEPS: StageStepDef[] = [
+  {
+    key: "citacion_carga",
+    order: 1,
+    name: "Citación de Carga",
+    description: "COMEX registra la citación de carga recibida del transportista",
+    requiredDepartment: ["comex"],
+  },
+  {
+    key: "costeo_productos",
+    order: 2,
+    name: "Costeo de Productos",
+    description: "COMEX realiza y sube el costeo de productos",
+    requiredDepartment: ["comex"],
+    requiredDocuments: ["costeo"],
+  },
+  {
+    key: "validacion_costeo",
+    order: 3,
+    name: "Validación de Costeo",
+    description: "Finanzas revisa y valida el costeo: conforme o con observaciones",
+    requiredDepartment: ["finanzas"],
+  },
+  {
+    key: "declaracion_nc_costeo",
+    order: 4,
+    name: "Declaración de NC Costeo",
+    description: "Finanzas declara la no conformidad detectada en el costeo",
+    requiredDepartment: ["finanzas"],
+    isConditional: true,
+  },
+  {
+    key: "subsanacion_nc_costeo",
+    order: 5,
+    name: "Subsanación de NC Costeo",
+    description: "COMEX corrige las observaciones del costeo",
+    requiredDepartment: ["comex"],
+    isConditional: true,
+  },
+  {
+    key: "revision_finanzas_costeo",
+    order: 6,
+    name: "Revisión Finanzas (Costeo)",
+    description: "Finanzas revisa la subsanación y acepta o rechaza",
+    requiredDepartment: ["finanzas"],
+    isConditional: true,
+  },
+  {
+    key: "recepcion_sistema",
+    order: 7,
+    name: "Recepción en Sistema",
+    description: "COMEX realiza la recepción de productos en sistema y sube acta",
+    requiredDepartment: ["comex"],
+    requiredDocuments: ["acta_recepcion"],
+  },
+  {
+    key: "cierre_proceso",
+    order: 8,
+    name: "Cierre del Proceso",
+    description: "COMEX cierra el proceso de recepción y costeo",
+    requiredDepartment: ["comex"],
+  },
+];
+
 // --- Helpers ---
 
 /** Get step definitions for a stage key */
@@ -269,6 +335,7 @@ export function getStageSteps(stageKey: string): StageStepDef[] {
   if (stageKey === "revision_contrato") return REVISION_CONTRATO_STEPS;
   if (stageKey === "gestion_pago") return GESTION_PAGO_STEPS;
   if (stageKey === "documentacion_internacion") return DOCUMENTACION_INTERNACION_STEPS;
+  if (stageKey === "recepcion_costeo") return RECEPCION_COSTEO_STEPS;
   return [];
 }
 

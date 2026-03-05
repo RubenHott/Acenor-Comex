@@ -37,6 +37,14 @@ import { StepPreparacionSetDocumental } from './steps/p3/StepPreparacionSetDocum
 import { StepSolicitudPagoInternacion } from './steps/p3/StepSolicitudPagoInternacion';
 import { StepGestionPagoInternacion } from './steps/p3/StepGestionPagoInternacion';
 import { StepConfirmacionComex } from './steps/p3/StepConfirmacionComex';
+// Process 4: Recepción y Costeo
+import { StepCitacionCarga } from './steps/p4/StepCitacionCarga';
+import { StepCosteoProductos } from './steps/p4/StepCosteoProductos';
+import { StepValidacionCosteo } from './steps/p4/StepValidacionCosteo';
+import { StepDeclaracionNCCosteo } from './steps/p4/StepDeclaracionNCCosteo';
+import { StepSubsanacionNCCosteo } from './steps/p4/StepSubsanacionNCCosteo';
+import { StepRevisionFinanzasCosteo } from './steps/p4/StepRevisionFinanzasCosteo';
+import { StepRecepcionSistema } from './steps/p4/StepRecepcionSistema';
 import type { Department, UserRole } from '@/types/comex';
 
 interface StageStepFlowProps {
@@ -189,6 +197,21 @@ export function StageStepFlow({
         return <StepGestionPagoInternacion step={step} {...stepProps} />;
       case 'confirmacion_comex':
         return <StepConfirmacionComex step={step} {...stepProps} />;
+      // Process 4: Recepción y Costeo
+      case 'citacion_carga':
+        return <StepCitacionCarga step={step} {...stepProps} />;
+      case 'costeo_productos':
+        return <StepCosteoProductos step={step} {...stepProps} />;
+      case 'validacion_costeo':
+        return <StepValidacionCosteo step={step} {...stepProps} />;
+      case 'declaracion_nc_costeo':
+        return <StepDeclaracionNCCosteo step={step} {...stepProps} />;
+      case 'subsanacion_nc_costeo':
+        return <StepSubsanacionNCCosteo step={step} {...stepProps} />;
+      case 'revision_finanzas_costeo':
+        return <StepRevisionFinanzasCosteo step={step} {...stepProps} />;
+      case 'recepcion_sistema':
+        return <StepRecepcionSistema step={step} {...stepProps} />;
       default:
         return <div className="text-sm text-muted-foreground">Paso no implementado</div>;
     }
