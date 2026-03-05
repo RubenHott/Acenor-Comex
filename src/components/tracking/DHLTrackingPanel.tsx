@@ -63,9 +63,10 @@ export function DHLTrackingPanel({
         <div className="flex gap-2">
           <Input
             value={trackingCode}
-            onChange={(e) => setTrackingCode(e.target.value)}
+            onChange={(e) => !currentTrackingCode && setTrackingCode(e.target.value)}
+            readOnly={!!currentTrackingCode}
             placeholder="Código DHL (ej: 1234567890)"
-            className="flex-1"
+            className={`flex-1 ${currentTrackingCode ? 'bg-muted font-mono font-medium' : ''}`}
           />
           <Button
             size="sm"
