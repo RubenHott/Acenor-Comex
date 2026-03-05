@@ -43,16 +43,25 @@ export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCs
         const openNCs = openNCsByStage?.get(def.key) || 0;
         const isMyStage = isFullAccess || !userDepartment || def.departments.includes(userDepartment);
 
+        // A stage is locked if it's pendiente and the previous stage is NOT completado
+        const prevStageKey = idx > 0 ? TRACKING_STAGES[idx - 1].key : null;
+        const prevStage = prevStageKey ? stageMap.get(prevStageKey) : null;
+        const isLocked = status === 'pendiente' && idx > 0 && prevStage?.status !== 'completado';
+
         return (
           <div key={def.key} className="flex items-center flex-1 min-w-0">
             <button
-              onClick={() => onStageClick(def.key)}
+              onClick={() => !isLocked && onStageClick(def.key)}
+              disabled={isLocked}
+              title={isLocked ? 'Debe completar el proceso anterior para acceder' : def.name}
               className={cn(
                 'flex flex-col items-center gap-1.5 p-2.5 rounded-lg transition-all flex-1 min-w-0',
                 isActive
                   ? 'bg-muted ring-2 ring-primary'
-                  : 'hover:bg-muted/50',
-                !isMyStage && !isActive && 'opacity-60'
+                  : isLocked
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-muted/50',
+                !isMyStage && !isActive && !isLocked && 'opacity-60'
               )}
             >
               <div className="relative">

@@ -352,7 +352,19 @@ export default function PIMTrackingPage() {
         <TrackingStageBar
           stages={stages || []}
           activeStageKey={activeStageKey}
-          onStageClick={setActiveStageKey}
+          onStageClick={(key) => {
+            const stageIdx = TRACKING_STAGES.findIndex((s) => s.key === key);
+            const clickedStage = stages?.find((s) => s.stage_key === key);
+            if (clickedStage?.status === 'pendiente' && stageIdx > 0) {
+              const prevKey = TRACKING_STAGES[stageIdx - 1].key;
+              const prevStage = stages?.find((s) => s.stage_key === prevKey);
+              if (prevStage?.status !== 'completado') {
+                toast.error('Debe completar el proceso anterior para acceder a esta etapa');
+                return;
+              }
+            }
+            setActiveStageKey(key);
+          }}
           userDepartment={userDepartment}
           userRole={currentUserRole}
         />
