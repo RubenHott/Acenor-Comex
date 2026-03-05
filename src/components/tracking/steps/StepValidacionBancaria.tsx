@@ -74,19 +74,24 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
         </div>
 
         {cuentaSeleccionada && (
-          <div className="flex items-center gap-3 text-sm bg-green-50/50 border border-green-200 rounded-md py-2 px-3">
-            <Building className="h-4 w-4 text-green-600 flex-shrink-0" />
-            <span className="font-medium">{cuentaSeleccionada.banco}</span>
-            <span className="text-muted-foreground">|</span>
-            <span className="font-mono text-xs">{cuentaSeleccionada.numero_cuenta}</span>
-            <span className="text-muted-foreground">|</span>
-            <span>{cuentaSeleccionada.moneda}</span>
-            {cuentaSeleccionada.swift_code && (
-              <>
-                <span className="text-muted-foreground">|</span>
-                <span className="font-mono text-xs">SWIFT: {cuentaSeleccionada.swift_code}</span>
-              </>
+          <div className="bg-green-50/50 border border-green-200 rounded-md py-2 px-3 space-y-1">
+            {pim?.proveedor_nombre && (
+              <p className="text-xs text-muted-foreground">Proveedor: <span className="font-medium text-foreground">{pim.proveedor_nombre}</span></p>
             )}
+            <div className="flex items-center gap-3 text-sm">
+              <Building className="h-4 w-4 text-green-600 flex-shrink-0" />
+              <span className="font-medium">{cuentaSeleccionada.banco}</span>
+              <span className="text-muted-foreground">|</span>
+              <span className="font-mono text-xs">{cuentaSeleccionada.numero_cuenta}</span>
+              <span className="text-muted-foreground">|</span>
+              <span>{cuentaSeleccionada.moneda}</span>
+              {cuentaSeleccionada.swift_code && (
+                <>
+                  <span className="text-muted-foreground">|</span>
+                  <span className="font-mono text-xs">SWIFT: {cuentaSeleccionada.swift_code}</span>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -245,7 +250,9 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
       {/* All existing accounts — compact table */}
       {cuentas && cuentas.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">Seleccione una cuenta bancaria del proveedor:</p>
+          <p className="text-sm text-muted-foreground">
+            Cuentas bancarias de <span className="font-medium text-foreground">{pim?.proveedor_nombre || 'proveedor'}</span>:
+          </p>
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
