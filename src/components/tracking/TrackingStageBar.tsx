@@ -2,7 +2,7 @@ import { TRACKING_STAGES } from '@/lib/trackingChecklists';
 import type { TrackingStage } from '@/hooks/usePIMTracking';
 import type { Department, UserRole } from '@/types/comex';
 import { cn } from '@/lib/utils';
-import { Check, Clock, AlertTriangle, Lock } from 'lucide-react';
+import { Check, Clock, AlertTriangle, Lock, Trophy } from 'lucide-react';
 
 interface Props {
   stages: TrackingStage[];
@@ -12,6 +12,12 @@ interface Props {
   userDepartment?: Department;
   /** User role — admin/manager bypasses department restrictions */
   userRole?: UserRole;
+  /** Whether all stages are complete */
+  allStagesComplete?: boolean;
+  /** Whether summary view is active */
+  showSummary?: boolean;
+  /** Callback to show summary */
+  onShowSummary?: () => void;
 }
 
 const statusConfig: Record<string, { bg: string; border: string; icon: typeof Check }> = {
@@ -28,7 +34,7 @@ const deptLabels: Record<string, string> = {
   sistemas: 'Sistemas',
 };
 
-export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCsByStage, userDepartment, userRole }: Props) {
+export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCsByStage, userDepartment, userRole, allStagesComplete, showSummary, onShowSummary }: Props) {
   const stageMap = new Map(stages.map((s) => [s.stage_key, s]));
   const isFullAccess = userRole === 'admin' || userRole === 'manager';
 
@@ -123,6 +129,32 @@ export function TrackingStageBar({ stages, activeStageKey, onStageClick, openNCs
           </div>
         );
       })}
+
+      {/* Resumen tab — only when all stages complete */}
+      {allStagesComplete && onShowSummary && (
+        <>
+          <div className="h-0.5 w-3 flex-shrink-0 bg-green-500" />
+          <button
+            onClick={onShowSummary}
+            className={cn(
+              'flex flex-col items-center gap-1.5 p-2.5 rounded-lg transition-all min-w-[90px]',
+              showSummary
+                ? 'bg-muted ring-2 ring-green-500'
+                : 'hover:bg-muted/50'
+            )}
+          >
+            <div className="w-9 h-9 rounded-full bg-green-600 flex items-center justify-center text-white">
+              <Trophy className="h-4 w-4" />
+            </div>
+            <span className="text-[11px] font-medium text-center leading-tight">
+              Resumen
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
+              completo
+            </span>
+          </button>
+        </>
+      )}
     </div>
   );
 }

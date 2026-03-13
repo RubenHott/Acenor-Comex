@@ -36,6 +36,7 @@ import {
   useUploadDocument,
   useDeleteDocument,
   DOCUMENT_TYPES,
+  UPLOAD_ACCEPT,
   type PIMDocument,
 } from '@/hooks/usePIMDocuments';
 import type { DocumentType } from '@/lib/trackingChecklists';
@@ -48,6 +49,7 @@ interface Props {
   requiredDocTypes: DocumentType[];
   usuario: string;
   readOnly?: boolean;
+  pimCodigo?: string;
 }
 
 const DOC_LABELS: Record<string, string> = Object.fromEntries(
@@ -61,6 +63,7 @@ export function RequiredDocumentsPanel({
   requiredDocTypes,
   usuario,
   readOnly,
+  pimCodigo,
 }: Props) {
   const { data: documents = [], isLoading } = usePIMDocuments(pimId, stageKey);
   const uploadDoc = useUploadDocument();
@@ -118,6 +121,7 @@ export function RequiredDocumentsPanel({
         usuario,
         versionGroup,
         version: versionNumber,
+        pimCodigo,
       });
       toast.success('Documento subido');
       resetForm();
@@ -379,6 +383,7 @@ export function RequiredDocumentsPanel({
               <Input
                 ref={fileRef}
                 type="file"
+                accept={UPLOAD_ACCEPT}
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               />
             </div>

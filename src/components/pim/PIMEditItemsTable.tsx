@@ -61,7 +61,8 @@ interface PIMEditItemsTableProps {
 }
 
 function toDisplayUnit(rawUnit: string, rawQty: number): { unit: string; qty: number } {
-  if (rawUnit.toUpperCase() === 'KG') return { unit: 'TON', qty: rawQty / 1000 };
+  if (rawUnit.toUpperCase() === 'KG') return { unit: 't', qty: rawQty / 1000 };
+  if (rawUnit.toUpperCase() === 'TON') return { unit: 't', qty: rawQty };
   return { unit: rawUnit, qty: rawQty };
 }
 

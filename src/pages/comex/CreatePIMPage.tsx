@@ -59,6 +59,7 @@ export default function CreatePIMPage() {
     fabricasOrigen: '',
     molinoId: '',
     notasPago: '',
+    puertosDestino: [],
   });
 
   // Get cuadro info
@@ -314,7 +315,7 @@ export default function CreatePIMPage() {
                               {cuadro?.nombre}
                             </p>
                             <p className="text-sm text-primary font-medium mt-1">
-                              {req.kilos_disponibles.toLocaleString()} kg disponibles
+                              {(req.kilos_disponibles / 1000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} t disponibles
                             </p>
                           </div>
                         </label>

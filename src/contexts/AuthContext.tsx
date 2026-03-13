@@ -14,8 +14,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SUPABASE_URL = 'https://ykzeuukqhliuslycjcxc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlremV1dWtxaGxpdXNseWNqY3hjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NDk4MTAsImV4cCI6MjA4NDQyNTgxMH0.SbBmdah7I86XBtelWgIUJLE30GsEcsTJzA9S3iJPe_c';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 // Map roles to default module access
 function getModulesForRole(role: UserRole, modules?: string[]): string[] {

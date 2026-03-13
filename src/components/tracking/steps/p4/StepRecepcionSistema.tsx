@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, FileUp, Pencil, Package } from 'lucide-react';
+import { CheckCircle, Pencil, Package } from 'lucide-react';
 import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
-import { useStageDocumentStatus } from '@/hooks/usePIMDocuments';
 import { RequiredDocumentsPanel } from '../../RequiredDocumentsPanel';
 import { toast } from 'sonner';
 import type { Department, UserRole } from '@/types/comex';
@@ -22,9 +21,7 @@ interface Props {
 export function StepRecepcionSistema({ step, pimId, stageKey, pim, userId, userName, userRole, userDepartment }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const completeStep = useCompleteStep();
-  const { data: docStatus } = useStageDocumentStatus(pimId, ['acta_recepcion']);
 
-  const hasDoc = docStatus && docStatus.missingTypes.length === 0;
   const isComex = userDepartment === 'comex' || userRole === 'admin' || userRole === 'manager';
   const canEdit = userRole === 'admin' || userRole === 'manager';
 
@@ -49,6 +46,7 @@ export function StepRecepcionSistema({ step, pimId, stageKey, pim, userId, userN
           stageName="Recepción en Sistema"
           requiredDocTypes={['acta_recepcion']}
           usuario={userName}
+          pimCodigo={pim.codigo}
           readOnly={true}
         />
       </div>
@@ -68,54 +66,50 @@ export function StepRecepcionSistema({ step, pimId, stageKey, pim, userId, userN
 
       {isComex ? (
         <>
+          <p className="text-sm text-muted-foreground">
+            Confirme la recepción de productos en sistema. Opcionalmente puede adjuntar el acta de recepción.
+          </p>
+
           <RequiredDocumentsPanel
             pimId={pimId}
             stageKey={stageKey}
             stageName="Recepción en Sistema"
             requiredDocTypes={['acta_recepcion']}
             usuario={userName}
+            pimCodigo={pim.codigo}
             readOnly={false}
           />
 
-          {hasDoc && !step.completado_en && (
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={() => {
-                  completeStep.mutate(
-                    {
-                      stepId: step.id,
-                      pimId,
-                      stageKey,
-                      stepKey: 'recepcion_sistema',
-                      stepName: 'Recepción en Sistema',
-                      userId,
-                      userName,
-                      datos: { recepcion_confirmada: true, fecha_recepcion: new Date().toISOString() },
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                completeStep.mutate(
+                  {
+                    stepId: step.id,
+                    pimId,
+                    stageKey,
+                    stepKey: 'recepcion_sistema',
+                    stepName: 'Recepción en Sistema',
+                    userId,
+                    userName,
+                    datos: { recepcion_confirmada: true, fecha_recepcion: new Date().toISOString() },
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success('Recepción en sistema confirmada.');
+                      setIsEditing(false);
                     },
-                    {
-                      onSuccess: () => {
-                        toast.success('Recepción en sistema confirmada.');
-                        setIsEditing(false);
-                      },
-                      onError: (err) => toast.error(err.message),
-                    }
-                  );
-                }}
-                disabled={completeStep.isPending}
-              >
-                <Package className="h-4 w-4 mr-1" />
-                {completeStep.isPending ? 'Confirmando...' : 'Confirmar Recepción en Sistema'}
-              </Button>
-            </div>
-          )}
-
-          {!hasDoc && (
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <FileUp className="h-3.5 w-3.5" />
-              Suba el acta de recepción para continuar
-            </div>
-          )}
+                    onError: (err) => toast.error(err.message),
+                  }
+                );
+              }}
+              disabled={completeStep.isPending}
+            >
+              <Package className="h-4 w-4 mr-1" />
+              {completeStep.isPending ? 'Confirmando...' : 'Confirmar Recepción en Sistema'}
+            </Button>
+          </div>
         </>
       ) : (
         <div className="text-sm text-muted-foreground">

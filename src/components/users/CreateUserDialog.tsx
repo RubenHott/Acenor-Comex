@@ -23,6 +23,7 @@ import { Plus, Loader2 } from 'lucide-react';
 import { useCreateUser } from '@/hooks/useUserProfiles';
 import { ROLES, DEPARTMENTS, MODULES } from '@/lib/userConstants';
 import { toast } from '@/components/ui/use-toast';
+import { validatePassword, PASSWORD_HINT } from '@/lib/passwordValidation';
 
 export function CreateUserDialog() {
   const [open, setOpen] = useState(false);
@@ -55,8 +56,9 @@ export function CreateUserDialog() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast({ title: 'Contraseña muy corta', description: 'Debe tener al menos 6 caracteres', variant: 'destructive' });
+    const pwError = validatePassword(formData.password);
+    if (pwError) {
+      toast({ title: 'Contraseña inválida', description: pwError, variant: 'destructive' });
       return;
     }
 
@@ -141,7 +143,7 @@ export function CreateUserDialog() {
                 <Input
                   id="cu-password"
                   type="password"
-                  placeholder="Min. 6 caracteres"
+                  placeholder={PASSWORD_HINT}
                   value={formData.password}
                   onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
                 />

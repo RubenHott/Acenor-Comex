@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -17,12 +18,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, X, Plus, Anchor, Check } from 'lucide-react';
 import { useActiveMolinos } from '@/hooks/useMolinos';
+import { usePuertos, useCreatePuerto, type Puerto } from '@/hooks/usePuertos';
 import { AddFabricaMolinoDialog } from './AddFabricaMolinoDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export interface ContractConditionsData {
   condicionPrecio: string;
@@ -32,6 +35,7 @@ export interface ContractConditionsData {
   fabricasOrigen: string;
   molinoId: string;
   notasPago: string;
+  puertosDestino: string[];
 }
 
 interface PIMContractConditionsProps {
@@ -74,10 +78,15 @@ export function PIMContractConditions({
   onMolinoCreated,
 }: PIMContractConditionsProps) {
   const { data: molinos } = useActiveMolinos();
+  const { data: puertos } = usePuertos();
+  const createPuerto = useCreatePuerto();
   const [showCustomPrecio, setShowCustomPrecio] = useState(false);
   const [customPrecio, setCustomPrecio] = useState('');
   const [showCustomOrigen, setShowCustomOrigen] = useState(false);
   const [customOrigen, setCustomOrigen] = useState('');
+  const [showAddPuerto, setShowAddPuerto] = useState(false);
+  const [newPuertoNombre, setNewPuertoNombre] = useState('');
+  const [puertosOpen, setPuertosOpen] = useState(false);
 
   const handleChange = <K extends keyof ContractConditionsData>(
     field: K,
@@ -115,6 +124,31 @@ export function PIMContractConditions({
       handleChange('origen', customOrigen.trim());
       setShowCustomOrigen(false);
       setCustomOrigen('');
+    }
+  };
+
+  const togglePuerto = (puertoId: string) => {
+    const current = data.puertosDestino || [];
+    const next = current.includes(puertoId)
+      ? current.filter((id) => id !== puertoId)
+      : [...current, puertoId];
+    onChange({ ...data, puertosDestino: next });
+  };
+
+  const removePuerto = (puertoId: string) => {
+    onChange({ ...data, puertosDestino: (data.puertosDestino || []).filter((id) => id !== puertoId) });
+  };
+
+  const handleAddPuerto = async () => {
+    if (!newPuertoNombre.trim()) return;
+    try {
+      const created = await createPuerto.mutateAsync({ nombre: newPuertoNombre.trim() });
+      onChange({ ...data, puertosDestino: [...(data.puertosDestino || []), created.id] });
+      setNewPuertoNombre('');
+      setShowAddPuerto(false);
+      toast.success(`Puerto "${created.nombre}" creado`);
+    } catch {
+      toast.error('Error al crear el puerto');
     }
   };
 
@@ -334,6 +368,105 @@ export function PIMContractConditions({
         </div>
         <p className="text-xs text-muted-foreground">
           Seleccione la fábrica o molino autorizado para este PIM
+        </p>
+      </div>
+
+      {/* Puertos de Destino */}
+      <div className="space-y-2">
+        <Label>Puertos de Destino</Label>
+        {/* Selected ports badges */}
+        {(data.puertosDestino || []).length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-1">
+            {(data.puertosDestino || []).map((pid) => {
+              const p = puertos?.find((x) => x.id === pid);
+              return (
+                <Badge key={pid} variant="secondary" className="flex items-center gap-1 pr-1">
+                  <Anchor className="h-3 w-3" />
+                  {p?.nombre || pid}
+                  <button
+                    type="button"
+                    onClick={() => removePuerto(pid)}
+                    className="ml-0.5 rounded-full hover:bg-muted p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Dropdown */}
+        <Popover open={puertosOpen} onOpenChange={setPuertosOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-full justify-start text-left font-normal">
+              <Anchor className="h-4 w-4 mr-2 text-muted-foreground" />
+              {(data.puertosDestino || []).length > 0
+                ? `${(data.puertosDestino || []).length} puerto${(data.puertosDestino || []).length !== 1 ? 's' : ''} seleccionado${(data.puertosDestino || []).length !== 1 ? 's' : ''}`
+                : 'Seleccionar puertos...'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-2" align="start">
+            <div className="max-h-[200px] overflow-y-auto space-y-0.5">
+              {(puertos || []).map((p) => {
+                const isChecked = (data.puertosDestino || []).includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => togglePuerto(p.id)}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors text-left',
+                      isChecked && 'bg-primary/10'
+                    )}
+                  >
+                    <div className={cn(
+                      'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                      isChecked ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                    )}>
+                      {isChecked && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                    <span>{p.nombre}</span>
+                    {p.codigo && <span className="text-xs text-muted-foreground ml-auto">{p.codigo}</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            <Separator className="my-2" />
+
+            {showAddPuerto ? (
+              <div className="flex gap-1.5">
+                <Input
+                  placeholder="Nombre del puerto"
+                  value={newPuertoNombre}
+                  onChange={(e) => setNewPuertoNombre(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddPuerto()}
+                  autoFocus
+                  className="h-8 text-sm"
+                />
+                <Button size="sm" className="h-8" onClick={handleAddPuerto} disabled={!newPuertoNombre.trim() || createPuerto.isPending}>
+                  OK
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => { setShowAddPuerto(false); setNewPuertoNombre(''); }}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-xs"
+                onClick={() => setShowAddPuerto(true)}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Agregar nuevo puerto
+              </Button>
+            )}
+          </PopoverContent>
+        </Popover>
+        <p className="text-xs text-muted-foreground">
+          Seleccione uno o mas puertos de destino en Chile
         </p>
       </div>
 

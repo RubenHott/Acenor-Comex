@@ -23,9 +23,9 @@ function formatQty(cantidad: number, unidad: string) {
   if (isUnitBased(unidad)) {
     return `${cantidad.toLocaleString('es-CL')} ${unidad.toUpperCase()}`;
   }
-  // Weight: show in TON
+  // Weight: show in t (toneladas)
   const ton = cantidad / 1000;
-  return `${ton.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} TON`;
+  return `${ton.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} t`;
 }
 
 function formatUSD(v: number) {
@@ -41,7 +41,7 @@ function formatPricePerUnit(totalUsd: number, cantidad: number, unidad: string) 
   const ton = cantidad / 1000;
   if (ton === 0) return '-';
   const perTon = totalUsd / ton;
-  return `${formatUSD(perTon)}/TON`;
+  return `${formatUSD(perTon)}/t`;
 }
 
 interface PIMDetailItemsProps {
@@ -90,7 +90,7 @@ export function PIMDetailItems({ pimId }: PIMDetailItemsProps) {
         </Badge>
         {totalTon > 0 && (
           <Badge variant="secondary" className="text-sm px-3 py-1">
-            {totalTon.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} TON
+            {totalTon.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} t
           </Badge>
         )}
         {totalUnits > 0 && (

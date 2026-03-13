@@ -72,9 +72,9 @@ function toDisplayUnit(
     return { displayUnit: rawUnit, displayQty: rawQty };
   }
   if (upperUnit === 'KG') {
-    return { displayUnit: 'TON', displayQty: rawQty / 1000 };
+    return { displayUnit: 't', displayQty: rawQty / 1000 };
   }
-  return { displayUnit: 'TON', displayQty: rawQty };
+  return { displayUnit: 't', displayQty: rawQty };
 }
 
 /** Convert display quantity back to storage quantity (KG for weight cuadros stored in KG). */
@@ -306,13 +306,13 @@ export function PIMItemSelector({
                     <TableHead>Código</TableHead>
                     <TableHead>Descripción</TableHead>
                     <TableHead className="text-right">
-                      Disponible ({porUnidad ? 'UND' : 'TON'})
+                      Disponible ({porUnidad ? 'UND' : 't'})
                     </TableHead>
                     <TableHead className="text-right">
-                      A Consumir ({porUnidad ? 'UND' : 'TON'})
+                      A Consumir ({porUnidad ? 'UND' : 't'})
                     </TableHead>
                     <TableHead className="text-right">
-                      Precio / {porUnidad ? 'UND' : 'TON'}
+                      Precio / {porUnidad ? 'UND' : 't'}
                     </TableHead>
                     <TableHead className="text-right">Total USD</TableHead>
                     <TableHead>Fábrica/Molino</TableHead>

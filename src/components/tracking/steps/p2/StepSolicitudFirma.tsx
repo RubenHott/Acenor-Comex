@@ -51,6 +51,7 @@ export function StepSolicitudFirma({ step, pimId, stageKey, pim, userId, userNam
           stageName="Solicitud de Firma"
           requiredDocTypes={[...REQUIRED_DOCS]}
           usuario={userName}
+          pimCodigo={pim.codigo}
           readOnly={true}
         />
       </div>
@@ -99,6 +100,7 @@ export function StepSolicitudFirma({ step, pimId, stageKey, pim, userId, userNam
         stageName="Solicitud de Firma"
         requiredDocTypes={[...REQUIRED_DOCS]}
         usuario={userName}
+        pimCodigo={pim.codigo}
         readOnly={false}
       />
 

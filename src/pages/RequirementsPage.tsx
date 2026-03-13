@@ -423,7 +423,7 @@ export default function RequirementsPage() {
                               variant="outline"
                               className={isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'border-blue-500 text-blue-700' : 'border-amber-500 text-amber-700'}
                             >
-                              {isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'UN' : 'TON'}
+                              {isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'UN' : 't'}
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">

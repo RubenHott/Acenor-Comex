@@ -229,7 +229,7 @@ export function StepSubsanacionNCCosteo({ step, pimId, stageKey, pim, userId, us
           <h5 className="text-sm font-semibold text-blue-800">Subsanar No Conformidad</h5>
 
           <div>
-            <Label className="text-xs">Archivo corregido</Label>
+            <Label className="text-xs">Archivo corregido (opcional)</Label>
             <div className="mt-1">
               <input
                 type="file"

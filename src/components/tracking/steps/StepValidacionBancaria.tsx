@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { CheckCircle, Building, Plus, Pencil } from 'lucide-react';
-import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
+import { useCompleteStep, useSkipSteps, type StageStep } from '@/hooks/useStageSteps';
 import {
   useCuentasBancarias,
   useCreateCuentaBancaria,
@@ -49,6 +49,7 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
   const createCuenta = useCreateCuentaBancaria();
   const validarCuenta = useValidarCuentaBancaria();
   const completeStep = useCompleteStep();
+  const skipSteps = useSkipSteps();
 
   const canEdit = userRole === 'admin' || userRole === 'manager';
   const datos = step.datos as any;
@@ -63,7 +64,11 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-green-700">
             <CheckCircle className="h-4 w-4" />
-            <span>Cuenta bancaria validada y enviada a Gerencia para aprobación</span>
+            <span>
+              {datos?.requiere_nueva_validacion
+                ? 'Cuenta bancaria validada y enviada a Gerencia para aprobación'
+                : 'Cuenta bancaria existente seleccionada (sin aprobación de Gerencia)'}
+            </span>
           </div>
           {canEdit && (
             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(true)}>
@@ -99,30 +104,7 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
   }
 
   const handleSelectCuenta = async (cuenta: CuentaBancaria) => {
-    // Notify Gerencia
-    const { data: gerenciaUsers } = await supabase
-      .from('user_profiles')
-      .select('id')
-      .eq('department', 'gerencia')
-      .eq('active', true);
-
-    if (gerenciaUsers && gerenciaUsers.length > 0) {
-      const now = new Date().toISOString();
-      await supabase.from('notificaciones').insert(
-        gerenciaUsers.map((u) => ({
-          id: generateId(),
-          destinatario_id: u.id,
-          pim_id: pimId,
-          tipo: 'sistema',
-          titulo: `Aprobación de cuenta bancaria — PIM ${pim?.codigo}`,
-          mensaje: `Se requiere aprobación de cuenta bancaria del proveedor ${pim?.proveedor_nombre || ''}`,
-          leido: false,
-          prioridad: 'alta',
-          fecha_creacion: now,
-        }))
-      );
-    }
-
+    // Existing validated account — no Gerencia approval needed
     completeStep.mutate(
       {
         stepId: step.id,
@@ -136,8 +118,24 @@ export function StepValidacionBancaria({ step, pimId, stageKey, pim, userId, use
       },
       {
         onSuccess: () => {
-          toast.success('Cuenta bancaria seleccionada. Enviada a Gerencia para aprobación.');
-          setIsEditing(false);
+          // Auto-skip aprobacion_gerencia since account is already validated
+          skipSteps.mutate(
+            {
+              pimId,
+              stageKey,
+              stepKeys: ['aprobacion_gerencia'],
+              motivo: 'Cuenta bancaria ya existente y validada — no requiere aprobación de Gerencia',
+              userId,
+              userName,
+            },
+            {
+              onSuccess: () => {
+                toast.success('Cuenta bancaria existente seleccionada. Aprobación de Gerencia no requerida.');
+                setIsEditing(false);
+              },
+              onError: (err) => toast.error(err.message),
+            }
+          );
         },
         onError: (err) => toast.error(err.message),
       }

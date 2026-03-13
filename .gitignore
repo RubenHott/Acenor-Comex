@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Claude Code internals
+.claude/
+
+# Large reference files
+*.xlsx
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, FileUp, Pencil } from 'lucide-react';
+import { CheckCircle, Pencil } from 'lucide-react';
 import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
-import { useStageDocumentStatus } from '@/hooks/usePIMDocuments';
 import { RequiredDocumentsPanel } from '../../RequiredDocumentsPanel';
 import { toast } from 'sonner';
 import type { Department, UserRole } from '@/types/comex';
@@ -22,9 +21,7 @@ interface Props {
 export function StepCosteoProductos({ step, pimId, stageKey, pim, userId, userName, userRole }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const completeStep = useCompleteStep();
-  const { data: docStatus } = useStageDocumentStatus(pimId, ['costeo']);
 
-  const hasDoc = docStatus && docStatus.missingTypes.length === 0;
   const canEdit = userRole === 'admin' || userRole === 'manager';
 
   if (step.status === 'completado' && !isEditing) {
@@ -33,7 +30,7 @@ export function StepCosteoProductos({ step, pimId, stageKey, pim, userId, userNa
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-green-700">
             <CheckCircle className="h-4 w-4" />
-            <span>Costeo de productos cargado correctamente</span>
+            <span>Costeo de productos enviado a validación</span>
           </div>
           {canEdit && (
             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(true)}>
@@ -48,6 +45,7 @@ export function StepCosteoProductos({ step, pimId, stageKey, pim, userId, userNa
           stageName="Costeo de Productos"
           requiredDocTypes={['costeo']}
           usuario={userName}
+          pimCodigo={pim.codigo}
           readOnly={true}
         />
       </div>
@@ -67,7 +65,7 @@ export function StepCosteoProductos({ step, pimId, stageKey, pim, userId, userNa
       },
       {
         onSuccess: () => {
-          toast.success('Costeo cargado. Se solicita validación a Finanzas.');
+          toast.success('Costeo enviado. Se solicita validación a Finanzas.');
           setIsEditing(false);
         },
         onError: (err) => toast.error(err.message),
@@ -86,30 +84,26 @@ export function StepCosteoProductos({ step, pimId, stageKey, pim, userId, userNa
         </div>
       )}
 
+      <p className="text-sm text-muted-foreground">
+        El costeo se realiza en sistema. Opcionalmente puede adjuntar un documento de respaldo.
+      </p>
+
       <RequiredDocumentsPanel
         pimId={pimId}
         stageKey={stageKey}
         stageName="Costeo de Productos"
         requiredDocTypes={['costeo']}
         usuario={userName}
+        pimCodigo={pim.codigo}
         readOnly={false}
       />
 
-      {hasDoc && !step.completado_en && (
-        <div className="flex justify-end">
-          <Button size="sm" onClick={handleComplete} disabled={completeStep.isPending}>
-            <CheckCircle className="h-4 w-4 mr-1" />
-            {completeStep.isPending ? 'Completando...' : 'Enviar a Validación de Finanzas'}
-          </Button>
-        </div>
-      )}
-
-      {!hasDoc && (
-        <div className="text-xs text-muted-foreground flex items-center gap-1">
-          <FileUp className="h-3.5 w-3.5" />
-          Suba el documento de costeo para continuar
-        </div>
-      )}
+      <div className="flex justify-end">
+        <Button size="sm" onClick={handleComplete} disabled={completeStep.isPending}>
+          <CheckCircle className="h-4 w-4 mr-1" />
+          {completeStep.isPending ? 'Completando...' : 'Enviar a Validación de Finanzas'}
+        </Button>
+      </div>
     </div>
   );
 }

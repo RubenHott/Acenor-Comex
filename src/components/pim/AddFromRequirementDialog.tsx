@@ -117,7 +117,7 @@ export function AddFromRequirementDialog({
   };
 
   const formatQty = (qty: number, unit: string) => {
-    if (unit === 'KG') return `${(qty / 1000).toLocaleString('es-PE', { minimumFractionDigits: 2 })} TON`;
+    if (unit === 'KG') return `${(qty / 1000).toLocaleString('es-PE', { minimumFractionDigits: 2 })} t`;
     return `${qty.toLocaleString('es-PE', { minimumFractionDigits: 2 })} ${unit}`;
   };
 

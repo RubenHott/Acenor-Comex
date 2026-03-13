@@ -54,6 +54,7 @@ export function StepRecepcionSwift({ step, pimId, stageKey, pim, userId, userNam
           stageName="Recepción de Swift"
           requiredDocTypes={[...REQUIRED_DOCS]}
           usuario={userName}
+          pimCodigo={pim.codigo}
           readOnly={true}
         />
       </div>
@@ -130,6 +131,7 @@ export function StepRecepcionSwift({ step, pimId, stageKey, pim, userId, userNam
         stageName="Recepción de Swift"
         requiredDocTypes={[...REQUIRED_DOCS]}
         usuario={userName}
+        pimCodigo={pim.codigo}
         readOnly={false}
       />
 

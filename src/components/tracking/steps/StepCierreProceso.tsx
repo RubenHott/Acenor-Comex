@@ -21,14 +21,16 @@ interface Props {
 }
 
 // Map stage keys to human-readable labels
-function getStageLabel(stageKey: string): { processNum: number; nextStageName: string } {
+function getStageLabel(stageKey: string): { processNum: number; nextStageName: string; isLastStage: boolean } {
   const stageIdx = TRACKING_STAGES.findIndex((s) => s.key === stageKey);
-  const nextStage = stageIdx >= 0 && stageIdx < TRACKING_STAGES.length - 1
+  const isLastStage = stageIdx >= TRACKING_STAGES.length - 1;
+  const nextStage = stageIdx >= 0 && !isLastStage
     ? TRACKING_STAGES[stageIdx + 1]
     : null;
   return {
     processNum: stageIdx + 1,
     nextStageName: nextStage?.name || 'siguiente etapa',
+    isLastStage,
   };
 }
 
@@ -38,7 +40,7 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
   const stepDefs = getStageSteps(stageKey);
   const stageDef = getStageByKey(stageKey);
 
-  const { processNum, nextStageName } = getStageLabel(stageKey);
+  const { processNum, nextStageName, isLastStage } = getStageLabel(stageKey);
 
   // Dynamic permission based on stage's primary department
   const primaryDept = stageDef?.primaryDepartment || 'comex';
@@ -99,7 +101,11 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-green-700">
           <CheckCircle className="h-4 w-4" />
-          <span>Proceso {processNum} cerrado. Avanzado a {nextStageName}.</span>
+          <span>
+            {isLastStage
+              ? `Proceso ${processNum} cerrado. PIM finalizado.`
+              : `Proceso ${processNum} cerrado. Avanzado a ${nextStageName}.`}
+          </span>
         </div>
         {summaryCard}
       </div>
@@ -118,7 +124,11 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
       },
       {
         onSuccess: () => {
-          toast.success(`Proceso ${processNum} cerrado. Avanzando a ${nextStageName}.`);
+          toast.success(
+            isLastStage
+              ? `Proceso ${processNum} cerrado. PIM finalizado.`
+              : `Proceso ${processNum} cerrado. Avanzando a ${nextStageName}.`
+          );
         },
         onError: (err) => {
           toast.error(err.message || 'No se pudo cerrar el proceso');
@@ -139,7 +149,11 @@ export function StepCierreProceso({ step, pimId, stageKey, pim, userId, userName
             className="bg-green-600 hover:bg-green-700"
           >
             <CheckCircle className="h-4 w-4 mr-2" />
-            {advanceStage.isPending ? 'Cerrando proceso...' : `Cerrar Proceso y Avanzar a ${nextStageName}`}
+            {advanceStage.isPending
+              ? 'Cerrando proceso...'
+              : isLastStage
+                ? 'Cerrar Proceso y Finalizar PIM'
+                : `Cerrar Proceso y Avanzar a ${nextStageName}`}
           </Button>
         </div>
       )}

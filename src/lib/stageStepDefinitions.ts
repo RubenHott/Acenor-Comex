@@ -10,26 +10,28 @@ export interface StageStepDef {
   requiredDepartment?: Department[];
   requiredDocuments?: string[];
   isConditional?: boolean;
+  /** Si se define, el paso solo aplica a estas modalidades de pago */
+  applicablePaymentModes?: string[];
 }
 
 // --- Step definitions for Stage 1: Revisión de Contrato ---
 
 export const REVISION_CONTRATO_STEPS: StageStepDef[] = [
   {
-    key: "recepcion_contrato",
-    order: 1,
-    name: "Recepción de Contrato",
-    description: "Carga del contrato revisado por COMEX",
-    requiredDepartment: ["comex"],
-    requiredDocuments: ["contrato"],
-  },
-  {
     key: "recepcion_cierre_compra",
-    order: 2,
+    order: 1,
     name: "Recepción de Cierre de Compra",
     description: "Carga del cierre de compra revisado por COMEX",
     requiredDepartment: ["comex"],
     requiredDocuments: ["cierre_compra"],
+  },
+  {
+    key: "recepcion_contrato",
+    order: 2,
+    name: "Recepción de Contrato",
+    description: "Carga del contrato revisado por COMEX",
+    requiredDepartment: ["comex"],
+    requiredDocuments: ["contrato"],
   },
   {
     key: "declaracion_nc",
@@ -82,6 +84,7 @@ export const REVISION_CONTRATO_STEPS: StageStepDef[] = [
     description: "Carga del borrador de carta de crédito por COMEX",
     requiredDepartment: ["comex"],
     requiredDocuments: ["borrador_lc"],
+    applicablePaymentModes: ["carta_credito", "mixto"],
   },
   {
     key: "cierre_proceso",
@@ -138,6 +141,7 @@ export const GESTION_PAGO_STEPS: StageStepDef[] = [
     name: "Registro Banco y Tasa",
     description: "Registro del banco seleccionado y la tasa de cambio acordada",
     requiredDepartment: ["finanzas"],
+    applicablePaymentModes: ["carta_credito", "mixto"],
   },
   {
     key: "solicitud_firma",
@@ -223,6 +227,7 @@ export const DOCUMENTACION_INTERNACION_STEPS: StageStepDef[] = [
     name: "Retiro de Documentos desde Banco",
     description: "Finanzas gestiona el retiro de documentos del banco y los envía a COMEX",
     requiredDepartment: ["finanzas"],
+    applicablePaymentModes: ["carta_credito", "mixto"],
   },
   {
     key: "preparacion_set_documental",
@@ -276,9 +281,8 @@ export const RECEPCION_COSTEO_STEPS: StageStepDef[] = [
     key: "costeo_productos",
     order: 2,
     name: "Costeo de Productos",
-    description: "COMEX realiza y sube el costeo de productos",
+    description: "COMEX realiza el costeo de productos en sistema",
     requiredDepartment: ["comex"],
-    requiredDocuments: ["costeo"],
   },
   {
     key: "validacion_costeo",
@@ -315,9 +319,8 @@ export const RECEPCION_COSTEO_STEPS: StageStepDef[] = [
     key: "recepcion_sistema",
     order: 7,
     name: "Recepción en Sistema",
-    description: "COMEX realiza la recepción de productos en sistema y sube acta",
+    description: "COMEX realiza la recepción de productos en sistema",
     requiredDepartment: ["comex"],
-    requiredDocuments: ["acta_recepcion"],
   },
   {
     key: "cierre_proceso",
@@ -348,4 +351,22 @@ export function getStepDef(stageKey: string, stepKey: string): StageStepDef | un
 export function isStepConditional(stageKey: string, stepKey: string): boolean {
   const step = getStepDef(stageKey, stepKey);
   return step?.isConditional ?? false;
+}
+
+/** Return step keys that should be skipped based on payment modality */
+export function getStepsToSkipByPaymentMode(stageKey: string, modalidadPago: string): string[] {
+  return getStageSteps(stageKey)
+    .filter((s) => s.applicablePaymentModes && !s.applicablePaymentModes.includes(modalidadPago))
+    .map((s) => s.key);
+}
+
+const PAYMENT_MODE_LABELS: Record<string, string> = {
+  carta_credito: "Carta de Crédito",
+  pago_contado: "Pago al Contado",
+  anticipo: "Anticipo",
+  mixto: "Mixto",
+};
+
+export function getPaymentModeLabel(mode: string): string {
+  return PAYMENT_MODE_LABELS[mode] || mode;
 }

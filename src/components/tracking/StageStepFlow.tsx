@@ -86,7 +86,7 @@ export function StageStepFlow({
   // Auto-initialize steps if none exist
   useEffect(() => {
     if (steps && steps.length === 0 && !initSteps.isPending) {
-      initSteps.mutate({ pimId, stageKey, userId, userName });
+      initSteps.mutate({ pimId, stageKey, userId, userName, modalidadPago: pim?.modalidad_pago || '' });
     }
   }, [steps, pimId, stageKey]);
 

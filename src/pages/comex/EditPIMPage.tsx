@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { usePIM, useUpdatePIM } from '@/hooks/usePIMs';
 import { usePIMItems } from '@/hooks/usePIMItems';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { usePIMPuertos, useSavePIMPuertos } from '@/hooks/usePuertos';
 import { PIMForm, type PIMFormData } from '@/components/pim/PIMForm';
 import { PIMContractConditions, type ContractConditionsData } from '@/components/pim/PIMContractConditions';
 import { PIMEditItemsTable, type EditableItem } from '@/components/pim/PIMEditItemsTable';
@@ -27,6 +28,8 @@ export default function EditPIMPage() {
   const { data: pim, isLoading: isLoadingPIM } = usePIM(id);
   const { data: pimItems, isLoading: isLoadingItems } = usePIMItems(id);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useSuppliers();
+  const { data: pimPuertos } = usePIMPuertos(id);
+  const savePIMPuertos = useSavePIMPuertos();
   const updatePIM = useUpdatePIM();
 
   const [formData, setFormData] = useState<PIMFormData>({
@@ -45,6 +48,7 @@ export default function EditPIMPage() {
     fabricasOrigen: '',
     molinoId: '',
     notasPago: '',
+    puertosDestino: [],
   });
 
   const [editedItems, setEditedItems] = useState<EditableItem[]>([]);
@@ -79,6 +83,7 @@ export default function EditPIMPage() {
         fabricasOrigen: pim.fabricas_origen ?? '',
         molinoId: pim.molino_id ?? '',
         notasPago: pim.notas_pago ?? '',
+        puertosDestino: pimPuertos?.map((p) => p.id) ?? [],
       });
 
       setInitialized(true);
@@ -172,6 +177,12 @@ export default function EditPIMPage() {
           total_toneladas: totalToneladas,
           total_usd: totalUsd,
         },
+      });
+
+      // Save puertos
+      await savePIMPuertos.mutateAsync({
+        pimId: id,
+        puertoIds: contractConditions.puertosDestino || [],
       });
 
       // 1. Delete removed items

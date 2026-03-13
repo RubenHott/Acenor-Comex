@@ -63,8 +63,8 @@ function toDisplayExtra(cuadro: string | null, rawUnit: string, rawQty: number) 
   const porUnidad = isCuadroPorUnidad(cuadro ?? '');
   const upperUnit = rawUnit.toUpperCase();
   if (porUnidad) return { displayUnit: rawUnit, displayQty: rawQty };
-  if (upperUnit === 'KG') return { displayUnit: 'TON', displayQty: rawQty / 1000 };
-  if (upperUnit === 'TON') return { displayUnit: 'TON', displayQty: rawQty };
+  if (upperUnit === 'KG') return { displayUnit: 't', displayQty: rawQty / 1000 };
+  if (upperUnit === 'TON') return { displayUnit: 't', displayQty: rawQty };
   // Default weight
   return { displayUnit: rawUnit, displayQty: rawQty };
 }

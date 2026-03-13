@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Factory, Loader2, Lock, Mail, User } from 'lucide-react';
+import { validatePassword, PASSWORD_HINT } from '@/lib/passwordValidation';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -38,8 +39,9 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+    const pwError = validatePassword(password);
+    if (pwError) {
+      setError(pwError);
       return;
     }
 
@@ -171,7 +173,7 @@ export default function RegisterPage() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Min. 6 caracteres"
+                  placeholder={PASSWORD_HINT}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-9 h-10"

@@ -29,6 +29,7 @@ import {
   useUploadDocument,
   useDeleteDocument,
   DOCUMENT_TYPES,
+  UPLOAD_ACCEPT,
   type PIMDocument,
 } from '@/hooks/usePIMDocuments';
 
@@ -38,9 +39,10 @@ interface Props {
   stageName?: string;
   usuario: string;
   readOnly?: boolean;
+  pimCodigo?: string;
 }
 
-export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario, readOnly }: Props) {
+export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario, readOnly, pimCodigo }: Props) {
   const { data: documents = [], isLoading } = usePIMDocuments(pimId, stageKey);
   const uploadDoc = useUploadDocument();
   const deleteDoc = useDeleteDocument();
@@ -78,6 +80,7 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario, readO
         usuario,
         versionGroup,
         version: versionNumber,
+        pimCodigo,
       });
       toast.success('Documento subido');
       resetForm();
@@ -281,6 +284,7 @@ export function DocumentUploadPanel({ pimId, stageKey, stageName, usuario, readO
               <Input
                 ref={fileRef}
                 type="file"
+                accept={UPLOAD_ACCEPT}
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               />
             </div>

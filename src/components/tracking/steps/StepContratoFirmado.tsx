@@ -1,114 +1,55 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle, FileUp, Pencil } from 'lucide-react';
-import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
-import { useStageDocumentStatus } from '@/hooks/usePIMDocuments';
+import { FileUp } from 'lucide-react';
+import { useStepBase, type StepBaseProps } from '@/hooks/useStepBase';
 import { RequiredDocumentsPanel } from '../RequiredDocumentsPanel';
-import { toast } from 'sonner';
-import type { Department, UserRole } from '@/types/comex';
 
-interface Props {
-  step: StageStep;
-  pimId: string;
-  stageKey: string;
-  pim: any;
-  userId: string;
-  userName: string;
-  userRole?: UserRole;
-  userDepartment?: Department;
-}
+const REQUIRED_DOCS = ['contrato_firmado'] as const;
 
-export function StepContratoFirmado({ step, pimId, stageKey, pim, userId, userName, userRole }: Props) {
-  const [isEditing, setIsEditing] = useState(false);
-  const completeStep = useCompleteStep();
-  const { data: docStatus } = useStageDocumentStatus(pimId, ['contrato_firmado']);
+export function StepContratoFirmado(props: StepBaseProps) {
+  const { step, pimId, stageKey, pim, userName } = props;
+  const {
+    showCompletedView,
+    allDocsUploaded,
+    CompletedHeader,
+    EditModeBanner,
+    CompleteButton,
+  } = useStepBase(props, {
+    stepKey: 'contrato_firmado',
+    stepName: 'Contrato Firmado y Enviado a Proveedor',
+    successMessage: 'Paso completado: Contrato firmado y enviado a proveedor',
+    requiredDocTypes: [...REQUIRED_DOCS],
+  });
 
-  const hasDoc = docStatus && docStatus.missingTypes.length === 0;
-  const canEdit = userRole === 'admin' || userRole === 'manager';
-
-  if (step.status === 'completado' && !isEditing) {
+  if (showCompletedView) {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-green-700">
-            <CheckCircle className="h-4 w-4" />
-            <span>Contrato firmado y enviado a proveedor cargado correctamente</span>
-          </div>
-          {canEdit && (
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(true)}>
-              <Pencil className="h-3 w-3 mr-1" />
-              Modificar
-            </Button>
-          )}
-        </div>
+        <CompletedHeader>Contrato firmado y enviado a proveedor cargado correctamente</CompletedHeader>
         <RequiredDocumentsPanel
           pimId={pimId}
           stageKey={stageKey}
           stageName="Contrato Firmado y Enviado a Proveedor"
-          requiredDocTypes={['contrato_firmado']}
+          requiredDocTypes={[...REQUIRED_DOCS]}
           usuario={userName}
+          pimCodigo={pim.codigo}
           readOnly={true}
         />
       </div>
     );
   }
 
-  const handleComplete = () => {
-    completeStep.mutate(
-      {
-        stepId: step.id,
-        pimId,
-        stageKey,
-        stepKey: 'contrato_firmado',
-        stepName: 'Contrato Firmado y Enviado a Proveedor',
-        userId,
-        userName,
-      },
-      {
-        onSuccess: () => {
-          toast.success('Paso completado: Contrato firmado y enviado a proveedor');
-          setIsEditing(false);
-        },
-        onError: (err) => toast.error(err.message),
-      }
-    );
-  };
-
   return (
     <div className="space-y-4">
-      {isEditing && (
-        <div className="flex items-center justify-between mb-2">
-          <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Modo edición (Admin)</Badge>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsEditing(false)}>
-            Cancelar
-          </Button>
-        </div>
-      )}
-
+      <EditModeBanner />
       <RequiredDocumentsPanel
         pimId={pimId}
         stageKey={stageKey}
         stageName="Contrato Firmado y Enviado a Proveedor"
-        requiredDocTypes={['contrato_firmado']}
+        requiredDocTypes={[...REQUIRED_DOCS]}
         usuario={userName}
+        pimCodigo={pim.codigo}
         readOnly={false}
       />
-
-      {hasDoc && !step.completado_en && (
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={handleComplete}
-            disabled={completeStep.isPending}
-          >
-            <CheckCircle className="h-4 w-4 mr-1" />
-            {completeStep.isPending ? 'Completando...' : 'Continuar al siguiente paso'}
-          </Button>
-        </div>
-      )}
-
-      {!hasDoc && (
+      {allDocsUploaded && !step.completado_en && <CompleteButton />}
+      {!allDocsUploaded && (
         <div className="text-xs text-muted-foreground flex items-center gap-1">
           <FileUp className="h-3.5 w-3.5" />
           Suba el contrato firmado para continuar

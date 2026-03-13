@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard,
   Package,
   Ship,
   Users,
@@ -18,6 +17,7 @@ import {
   LogOut,
   ArrowLeft,
   Database,
+  GitBranch,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -35,9 +35,9 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { label: 'Dashboard', href: '/comex/dashboard', icon: LayoutDashboard },
-  { label: 'Requerimientos', href: '/comex/requirements', icon: ClipboardList, badge: 2 },
   { label: 'PIMs', href: '/comex/pims', icon: Ship },
+  { label: 'Requerimientos', href: '/comex/requirements', icon: ClipboardList, badge: 2 },
+  { label: 'Procesos', href: '/comex/procesos', icon: GitBranch },
   { label: 'Contratos', href: '/comex/contracts', icon: FileCheck },
   { label: 'Pagos', href: '/comex/payments', icon: CreditCard },
 ];

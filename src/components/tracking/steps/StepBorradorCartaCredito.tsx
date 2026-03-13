@@ -48,6 +48,7 @@ export function StepBorradorCartaCredito({ step, pimId, stageKey, pim, userId, u
           stageName="Borrador Carta de Crédito"
           requiredDocTypes={['borrador_lc']}
           usuario={userName}
+          pimCodigo={pim.codigo}
           readOnly={true}
         />
       </div>
@@ -92,6 +93,7 @@ export function StepBorradorCartaCredito({ step, pimId, stageKey, pim, userId, u
         stageName="Borrador Carta de Crédito"
         requiredDocTypes={['borrador_lc']}
         usuario={userName}
+        pimCodigo={pim.codigo}
         readOnly={false}
       />
 

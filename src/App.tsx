@@ -10,7 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UsersPage from "./pages/UsersPage";
 import ModulesPage from "./pages/ModulesPage";
-import DashboardPage from "./pages/DashboardPage";
+
 import ProductsPage from "./pages/ProductsPage";
 import RequirementsPage from "./pages/RequirementsPage";
 import PIMsPage from "./pages/PIMsPage";
@@ -25,8 +25,18 @@ import CreateWorkOrderPage from "./pages/workOrders/CreateWorkOrderPage";
 import CreatePIMPage from "./pages/comex/CreatePIMPage";
 import EditPIMPage from "./pages/comex/EditPIMPage";
 import PIMTrackingPage from "./pages/comex/PIMTrackingPage";
+import ProcessDiagramsPage from "./pages/ProcessDiagramsPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,      // 30s — avoid re-fetching data that was just loaded
+      gcTime: 5 * 60_000,     // 5 min — keep unused cache entries before garbage collection
+      retry: 1,               // 1 retry on failure (Supabase errors are usually persistent)
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -42,14 +52,15 @@ const App = () => (
             
             {/* COMEX Module Routes */}
             <Route path="/comex" element={<ComexLayout />}>
-              <Route index element={<Navigate to="/comex/dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
+              <Route index element={<Navigate to="/comex/pims" replace />} />
+
               <Route path="requirements" element={<RequirementsPage />} />
               <Route path="pims" element={<PIMsPage />} />
               <Route path="pim/crear" element={<CreatePIMPage />} />
               <Route path="pim/editar/:id" element={<EditPIMPage />} />
               <Route path="pim/seguimiento/:id" element={<PIMTrackingPage />} />
               <Route path="products" element={<ProductsPage />} />
+              <Route path="procesos" element={<ProcessDiagramsPage />} />
               <Route path="suppliers" element={<SuppliersPage />} />
               <Route path="maestros" element={<MaestrosPage />} />
               <Route path="contracts" element={<ComingSoonPage />} />

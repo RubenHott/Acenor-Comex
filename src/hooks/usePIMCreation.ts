@@ -178,16 +178,35 @@ export function useCreatePIMWithItems() {
           updatesByReq[item.requerimientoId].push(item);
         });
 
-        for (const [reqId, reqItems] of Object.entries(updatesByReq)) {
-          // Update each item
-          for (const item of reqItems) {
-            const { data: reqItem, error: fetchErr } = await supabase
-              .from('requerimiento_items')
-              .select('kilos_consumidos, kilos_disponibles')
-              .eq('id', item.itemId)
-              .single();
+        // Batch-fetch all requerimiento_items in one query
+        const allItemIds = items.map((item) => item.itemId);
+        const { data: allReqItems, error: batchFetchErr } = await supabase
+          .from('requerimiento_items')
+          .select('id, kilos_consumidos, kilos_disponibles')
+          .in('id', allItemIds);
+        if (batchFetchErr) throw batchFetchErr;
 
-            if (fetchErr) throw fetchErr;
+        const reqItemMap = new Map(
+          (allReqItems || []).map((r) => [r.id, r])
+        );
+
+        // Batch-fetch all requerimientos_mensuales in one query
+        const reqIds = Object.keys(updatesByReq);
+        const { data: allReqs, error: reqBatchErr } = await supabase
+          .from('requerimientos_mensuales')
+          .select('id, kilos_consumidos, kilos_disponibles')
+          .in('id', reqIds);
+        if (reqBatchErr) throw reqBatchErr;
+
+        const reqMap = new Map(
+          (allReqs || []).map((r) => [r.id, r])
+        );
+
+        for (const [reqId, reqItems] of Object.entries(updatesByReq)) {
+          // Update each item (different values per row, cannot batch updates)
+          for (const item of reqItems) {
+            const reqItem = reqItemMap.get(item.itemId);
+            if (!reqItem) throw new Error(`Requerimiento item ${item.itemId} not found`);
 
             const newConsumidos = (reqItem.kilos_consumidos ?? 0) + item.cantidadAConsumir;
             const newDisponibles = (reqItem.kilos_disponibles ?? 0) - item.cantidadAConsumir;
@@ -204,13 +223,8 @@ export function useCreatePIMWithItems() {
           }
 
           // 5. Update requerimientos_mensuales totals
-          const { data: req, error: reqFetchErr } = await supabase
-            .from('requerimientos_mensuales')
-            .select('kilos_consumidos, kilos_disponibles')
-            .eq('id', reqId)
-            .single();
-
-          if (reqFetchErr) throw reqFetchErr;
+          const req = reqMap.get(reqId);
+          if (!req) throw new Error(`Requerimiento mensual ${reqId} not found`);
 
           const totalKilosConsumidosEnPIM = reqItems.reduce(
             (sum, item) => sum + item.cantidadAConsumir,
@@ -259,12 +273,61 @@ export function useCreatePIMWithItems() {
         if (extraItemsError) throw extraItemsError;
       }
 
+      // 7. Save snapshot at creation time
+      const snapshotItems = [
+        ...items.map((item) => ({
+          codigo_producto: item.codigoProducto,
+          descripcion: item.descripcion,
+          unidad: item.unidad,
+          cantidad: item.cantidadAConsumir,
+          precio_unitario_usd: item.precioUnitarioUsd ?? 0,
+          total_usd: item.totalUsd,
+          toneladas: item.unidad.toUpperCase() === 'TON' ? item.cantidadAConsumir : item.unidad.toUpperCase() === 'KG' ? item.cantidadAConsumir / 1000 : 0,
+          molino_id: item.molinoId ?? molinoId,
+        })),
+        ...extraItems.map((item) => ({
+          codigo_producto: item.codigoProducto,
+          descripcion: item.descripcion,
+          unidad: item.unidad,
+          cantidad: item.cantidad,
+          precio_unitario_usd: item.precioUnitarioUsd,
+          total_usd: item.totalUsd,
+          toneladas: item.unidad.toUpperCase() === 'TON' ? item.cantidad : item.unidad.toUpperCase() === 'KG' ? item.cantidad / 1000 : 0,
+          molino_id: item.molinoId ?? molinoId,
+        })),
+      ];
+
+      await supabase.from('pim_snapshots').insert({
+        pim_id: pimId,
+        tipo: 'creacion',
+        datos: {
+          pim: {
+            codigo,
+            descripcion: descripcionFinal,
+            proveedor_nombre: supplier?.nombre ?? null,
+            modalidad_pago: formData.modalidadPago,
+            total_usd: totalUsd,
+            total_toneladas: totalToneladas,
+            condicion_precio: contractConditions?.condicionPrecio || null,
+            origen: contractConditions?.origen || null,
+          },
+          items: snapshotItems,
+        },
+      });
+
+      // 8. Save puertos de destino
+      const puertosDestino = contractConditions?.puertosDestino || [];
+      if (puertosDestino.length > 0) {
+        const puertoRows = puertosDestino.map((pid) => ({ pim_id: pimId, puerto_id: pid }));
+        const { error: puertosError } = await supabase.from('pim_puertos').insert(puertoRows);
+        if (puertosError) throw puertosError;
+      }
+
       return { id: pimId, codigo };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pims'] });
       queryClient.invalidateQueries({ queryKey: ['requerimientos'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 }

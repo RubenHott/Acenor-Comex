@@ -2,7 +2,7 @@
  * Parsea archivos CSV o Excel (.xlsx, .xls) y devuelve un array de objetos
  * con claves según la primera fila (headers).
  */
-import * as XLSX from 'xlsx';
+import readXlsxFile from 'read-excel-file/browser';
 
 export type ParsedRow = Record<string, string | number | null>;
 
@@ -42,25 +42,20 @@ export async function parseFile(file: File): Promise<ParsedRow[]> {
     return parseCsvText(text);
   }
   if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array' });
-    const firstSheet = wb.SheetNames[0];
-    if (!firstSheet) return [];
-    const sheet = wb.Sheets[firstSheet];
-    const data = XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      raw: false,
-      defval: null,
-    }) as unknown as (string | number | null)[][];
+    const data = await readXlsxFile(file);
     if (data.length < 2) return [];
-    const headers = (data[0] as (string | number)[]).map((h) => String(h ?? '').trim());
+    const headers = data[0].map((h) => String(h ?? '').trim());
     const rows: ParsedRow[] = [];
     for (let i = 1; i < data.length; i++) {
-      const values = data[i] as (string | number | null)[];
+      const values = data[i];
       const row: ParsedRow = {};
       headers.forEach((h, j) => {
         const v = values[j];
-        row[h] = v === undefined || v === '' ? null : typeof v === 'number' ? v : String(v).trim() || null;
+        row[h] = v === undefined || v === null
+          ? null
+          : typeof v === 'number'
+          ? v
+          : String(v).trim() || null;
       });
       rows.push(row);
     }

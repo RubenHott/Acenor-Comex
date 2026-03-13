@@ -22,6 +22,7 @@ import { StageResponsableCard } from '@/components/tracking/StageResponsableCard
 import { StageReadOnlyCard } from '@/components/tracking/StageReadOnlyCard';
 
 import { StageStepFlow } from '@/components/tracking/StageStepFlow';
+import { PIMCompletedSummary } from '@/components/tracking/PIMCompletedSummary';
 import {
   useTrackingStages,
   useChecklistItems,
@@ -68,6 +69,7 @@ export default function PIMTrackingPage() {
   const [activeStageKey, setActiveStageKey] = useState('revision_contrato');
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const { data: stages, isLoading: loadingStages } = useTrackingStages(id);
   const { data: checklistItems } = useChecklistItems(id, activeStageKey);
   const { data: allChecklistItems } = useChecklistItems(id);
@@ -146,12 +148,19 @@ export default function PIMTrackingPage() {
     }
   }, [stages, id, pim]);
 
-  // Set active stage to first en_progreso when stages load
+  // Check if all stages are complete
+  const allStagesComplete = stages && stages.length === TRACKING_STAGES.length &&
+    stages.every((s) => s.status === 'completado');
+
+  // Set active stage to first en_progreso when stages load, or show summary if all complete
   useEffect(() => {
     if (stages && stages.length > 0) {
       const enProgreso = stages.find((s) => s.status === 'en_progreso');
       if (enProgreso) {
         setActiveStageKey(enProgreso.stage_key);
+        setShowSummary(false);
+      } else if (stages.every((s) => s.status === 'completado') && stages.length === TRACKING_STAGES.length) {
+        setShowSummary(true);
       }
     }
   }, [stages]);
@@ -364,15 +373,25 @@ export default function PIMTrackingPage() {
               }
             }
             setActiveStageKey(key);
+            setShowSummary(false);
           }}
           userDepartment={userDepartment}
           userRole={currentUserRole}
+          allStagesComplete={!!allStagesComplete}
+          showSummary={showSummary}
+          onShowSummary={() => setShowSummary(true)}
         />
 
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-3 space-y-6">
-            {!isParticipant ? (
+            {showSummary && allStagesComplete ? (
+              <PIMCompletedSummary
+                pimId={id!}
+                pim={pim}
+                stages={stages!}
+              />
+            ) : !isParticipant ? (
               <StageReadOnlyCard
                 stageDef={activeStageDef!}
                 stage={activeStage}
@@ -489,6 +508,7 @@ export default function PIMTrackingPage() {
               requiredDocTypes={requiredDocs}
               usuario={currentUser}
               readOnly={!perms.canUploadDocument}
+              pimCodigo={pim.codigo}
             />
 
             </>

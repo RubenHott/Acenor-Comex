@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { CheckCircle, FileText, Pencil, Clock, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useCompleteStep, useStageSteps, type StageStep } from '@/hooks/useStageSteps';
@@ -27,6 +29,7 @@ const REQUIRED_DOCS = ['comprobante_pago'] as const;
 
 export function StepGestionPagoInternacion({ step, pimId, stageKey, pim, userId, userName, userRole, userDepartment }: Props) {
   const [isEditing, setIsEditing] = useState(false);
+  const [derechosUsd, setDerechosUsd] = useState('');
 
   const completeStep = useCompleteStep();
   const { data: steps } = useStageSteps(pimId, stageKey);
@@ -56,9 +59,14 @@ export function StepGestionPagoInternacion({ step, pimId, stageKey, pim, userId,
             </Button>
           )}
         </div>
-        {datos?.fecha_pago && (
-          <div className="text-xs text-muted-foreground">
-            Fecha de pago: {new Date(datos.fecha_pago).toLocaleDateString('es-CL')}
+        {(datos?.fecha_pago || datos?.derechos_usd) && (
+          <div className="text-xs text-muted-foreground space-y-0.5">
+            {datos.fecha_pago && (
+              <div>Fecha de pago: {new Date(datos.fecha_pago).toLocaleDateString('es-CL')}</div>
+            )}
+            {datos.derechos_usd != null && (
+              <div>Derechos aduaneros: <strong>${Number(datos.derechos_usd).toLocaleString('en-US')} USD</strong></div>
+            )}
           </div>
         )}
         <RequiredDocumentsPanel
@@ -67,6 +75,7 @@ export function StepGestionPagoInternacion({ step, pimId, stageKey, pim, userId,
           stageName="Gestión Pago Internación"
           requiredDocTypes={[...REQUIRED_DOCS]}
           usuario={userName}
+          pimCodigo={pim.codigo}
           readOnly={true}
         />
       </div>
@@ -114,6 +123,7 @@ export function StepGestionPagoInternacion({ step, pimId, stageKey, pim, userId,
         datos: {
           pago_realizado: true,
           fecha_pago: new Date().toISOString(),
+          derechos_usd: derechosUsd ? parseFloat(derechosUsd) : null,
         },
       },
       {
@@ -159,12 +169,27 @@ export function StepGestionPagoInternacion({ step, pimId, stageKey, pim, userId,
             Realice el pago de internación y suba el comprobante de pago.
           </p>
 
+          {/* Derechos aduaneros input */}
+          <div className="space-y-1">
+            <Label className="text-xs">Derechos aduaneros (USD)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={derechosUsd}
+              onChange={(e) => setDerechosUsd(e.target.value)}
+              placeholder="Monto en USD"
+              className="h-8 text-xs max-w-[200px]"
+            />
+          </div>
+
           <RequiredDocumentsPanel
             pimId={pimId}
             stageKey={stageKey}
             stageName="Gestión Pago Internación"
             requiredDocTypes={[...REQUIRED_DOCS]}
             usuario={userName}
+            pimCodigo={pim.codigo}
             readOnly={false}
           />
 

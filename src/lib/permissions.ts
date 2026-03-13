@@ -28,6 +28,7 @@ const JEFE_ACTIONS: PIMAction[] = [
   'return_stage',
   'split_pim',
   'edit_pim',
+  'delete_pim',
   'create_nc',
   'resolve_nc',
   'assign_stage',
@@ -45,12 +46,9 @@ const ANALISTA_ACTIONS: PIMAction[] = [
   'send_email',
 ];
 
-const ALL_ACTIONS: PIMAction[] = [...JEFE_ACTIONS, 'delete_pim'];
+const ALL_ACTIONS: PIMAction[] = [...JEFE_ACTIONS];
 
-const GERENTE_ACTIONS: PIMAction[] = [
-  ...JEFE_ACTIONS,
-  'delete_pim',
-];
+const GERENTE_ACTIONS: PIMAction[] = [...JEFE_ACTIONS];
 
 const ROLE_PERMISSIONS: Record<UserRole, PIMAction[]> = {
   admin: ALL_ACTIONS,

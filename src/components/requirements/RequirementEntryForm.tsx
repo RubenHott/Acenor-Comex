@@ -371,15 +371,15 @@ export function RequirementEntryForm({
               <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{totalUn.toLocaleString('es-PE')} UN</p>
             </div>
             <div className="order-3">
-              <p className="text-sm text-muted-foreground">Total TON (referencia)</p>
-              <p className="text-lg font-semibold text-muted-foreground">{totalTon.toLocaleString('es-PE')} TON</p>
+              <p className="text-sm text-muted-foreground">Total t (referencia)</p>
+              <p className="text-lg font-semibold text-muted-foreground">{totalTon.toLocaleString('es-PE')} t</p>
             </div>
           </>
         ) : (
           <>
             <div className="order-1">
               <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Total TONELADAS</p>
-              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{totalTon.toLocaleString('es-PE')} TON</p>
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{totalTon.toLocaleString('es-PE')} t</p>
             </div>
             <div className="order-3">
               <p className="text-sm text-muted-foreground">Total UN (referencia)</p>
