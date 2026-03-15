@@ -60,26 +60,28 @@ interface PIMEditItemsTableProps {
   molinoId?: string;
 }
 
+/** Weight units: stored in kg internally, displayed in tons. */
+const isWeightUnit = (u: string) => { const up = u.toUpperCase(); return up === 'KG' || up === 'TON'; };
+
 function toDisplayUnit(rawUnit: string, rawQty: number): { unit: string; qty: number } {
-  if (rawUnit.toUpperCase() === 'KG') return { unit: 't', qty: rawQty / 1000 };
-  if (rawUnit.toUpperCase() === 'TON') return { unit: 't', qty: rawQty };
+  if (isWeightUnit(rawUnit)) return { unit: 't', qty: rawQty / 1000 };
   return { unit: rawUnit, qty: rawQty };
 }
 
 function fromDisplayQty(rawUnit: string, displayQty: number): number {
-  if (rawUnit.toUpperCase() === 'KG') return displayQty * 1000;
+  if (isWeightUnit(rawUnit)) return displayQty * 1000;
   return displayQty;
 }
 
 /** Convert raw storage price (per KG) to display price (per TON). */
 function rawPriceToDisplayPrice(rawUnit: string, rawPrice: number): number {
-  if (rawUnit.toUpperCase() === 'KG') return rawPrice * 1000;
+  if (isWeightUnit(rawUnit)) return rawPrice * 1000;
   return rawPrice;
 }
 
 /** Convert display price (per TON) to raw storage price (per KG). */
 function displayPriceToRawPrice(rawUnit: string, displayPrice: number): number {
-  if (rawUnit.toUpperCase() === 'KG') return displayPrice / 1000;
+  if (isWeightUnit(rawUnit)) return displayPrice / 1000;
   return displayPrice;
 }
 
@@ -105,10 +107,10 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
         codigo_producto: product.codigo,
         descripcion: product.descripcion,
         unidad: product.unidad,
-        cantidad: product.unidad.toUpperCase() === 'KG' ? 1000 : 1,
+        cantidad: isWeightUnit(product.unidad) ? 1000 : 1, // 1 TON (=1000 kg) or 1 UND
         precio_unitario_usd: 0,
         total_usd: 0,
-        toneladas: product.unidad === 'KG' ? 1 : product.unidad === 'TON' ? 1 : 0,
+        toneladas: isWeightUnit(product.unidad) ? 1 : 0,
         molino_id: molinoId || null,
         isNew: true,
       };
@@ -137,8 +139,7 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
 
           if (field === 'displayQty') {
             const rawQty = fromDisplayQty(item.unidad, value as number);
-            const upperUnit = item.unidad.toUpperCase();
-            const toneladas = upperUnit === 'KG' ? rawQty / 1000 : upperUnit === 'TON' ? rawQty : 0;
+            const toneladas = isWeightUnit(item.unidad) ? rawQty / 1000 : 0;
             // Keep display price constant, recalculate total
             const currentDisplayPrice = rawPriceToDisplayPrice(item.unidad, item.precio_unitario_usd);
             const newDisplayQty = toDisplayUnit(item.unidad, rawQty).qty;

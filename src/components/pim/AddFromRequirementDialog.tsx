@@ -108,7 +108,7 @@ export function AddFromRequirementDialog({
       cantidad: item.kilos_disponibles,
       precio_unitario_usd: 0,
       total_usd: 0,
-      toneladas: item.unidad === 'KG' ? item.kilos_disponibles / 1000 : item.unidad === 'TON' ? item.kilos_disponibles : 0,
+      toneladas: (item.unidad === 'KG' || item.unidad === 'TON') ? item.kilos_disponibles / 1000 : 0,
       isNew: true,
     }));
     onItemsSelected(newItems);
@@ -117,7 +117,8 @@ export function AddFromRequirementDialog({
   };
 
   const formatQty = (qty: number, unit: string) => {
-    if (unit === 'KG') return `${(qty / 1000).toLocaleString('es-PE', { minimumFractionDigits: 2 })} t`;
+    const up = unit.toUpperCase();
+    if (up === 'KG' || up === 'TON') return `${(qty / 1000).toLocaleString('es-PE', { minimumFractionDigits: 2 })} t`;
     return `${qty.toLocaleString('es-PE', { minimumFractionDigits: 2 })} ${unit}`;
   };
 

@@ -120,8 +120,7 @@ export default function CreatePIMPage() {
   // Extra toneladas & unidades
   const extraToneladas = extraItems.reduce((sum, i) => {
     if (isCuadroPorUnidad(i.cuadro ?? '')) return sum;
-    if (i.unidad === 'KG') return sum + i.cantidad / 1000;
-    return sum + i.cantidad;
+    return sum + i.cantidad / 1000; // cantidad is always in kg for weight cuadros
   }, 0);
   const extraUnidades = extraItems.reduce((sum, i) => {
     if (!isCuadroPorUnidad(i.cuadro ?? '')) return sum;
@@ -130,8 +129,7 @@ export default function CreatePIMPage() {
 
   const totalToneladas = selections.reduce((sum, s) => {
     if (isCuadroPorUnidad(s.cuadroCodigo)) return sum;
-    if (s.unidad === 'KG') return sum + s.cantidadAConsumir / 1000;
-    return sum + s.cantidadAConsumir;
+    return sum + s.cantidadAConsumir / 1000; // cantidadAConsumir is always in kg
   }, 0);
 
   // Validation

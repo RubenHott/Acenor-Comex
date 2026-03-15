@@ -58,64 +58,49 @@ interface PIMItemSelectorProps {
 }
 
 /**
- * Returns the display unit and converts a raw quantity (stored in KG or original unit)
+ * Returns the display unit and converts a raw quantity (stored ALWAYS in KG for weight cuadros)
  * to the display unit. Weight-based cuadros always display in TON.
  */
 function toDisplayUnit(
   cuadroCodigo: string,
-  rawUnit: string,
+  _rawUnit: string,
   rawQty: number
 ): { displayUnit: string; displayQty: number } {
-  const porUnidad = isCuadroPorUnidad(cuadroCodigo);
-  const upperUnit = rawUnit.toUpperCase();
-  if (porUnidad) {
-    return { displayUnit: rawUnit, displayQty: rawQty };
+  if (isCuadroPorUnidad(cuadroCodigo)) {
+    return { displayUnit: _rawUnit, displayQty: rawQty };
   }
-  if (upperUnit === 'KG') {
-    return { displayUnit: 't', displayQty: rawQty / 1000 };
-  }
-  return { displayUnit: 't', displayQty: rawQty };
+  // Weight cuadros: raw is ALWAYS in kg → display in tons
+  return { displayUnit: 't', displayQty: rawQty / 1000 };
 }
 
-/** Convert display quantity back to storage quantity (KG for weight cuadros stored in KG). */
+/** Convert display quantity (tons or units) back to storage quantity (always kg for weight). */
 function fromDisplayQty(
   cuadroCodigo: string,
-  rawUnit: string,
+  _rawUnit: string,
   displayQty: number
 ): number {
-  const porUnidad = isCuadroPorUnidad(cuadroCodigo);
-  if (porUnidad) return displayQty;
-  if (rawUnit.toUpperCase() === 'KG') return displayQty * 1000;
-  return displayQty;
+  if (isCuadroPorUnidad(cuadroCodigo)) return displayQty;
+  return displayQty * 1000;
 }
 
-/**
- * Convert display price (per TON or per UND) to raw storage price (per KG or per UND).
- * In the DB we store precio_unitario_usd per raw unit (KG or UND).
- */
+/** Convert display price (per TON or per UND) to raw storage price (per KG or per UND). */
 function displayPriceToRawPrice(
   cuadroCodigo: string,
-  rawUnit: string,
+  _rawUnit: string,
   displayPrice: number
 ): number {
-  const porUnidad = isCuadroPorUnidad(cuadroCodigo);
-  if (porUnidad) return displayPrice;
-  if (rawUnit.toUpperCase() === 'KG') return displayPrice / 1000;
-  return displayPrice;
+  if (isCuadroPorUnidad(cuadroCodigo)) return displayPrice;
+  return displayPrice / 1000;
 }
 
-/**
- * Convert raw storage price (per KG or per UND) to display price (per TON or per UND).
- */
+/** Convert raw storage price (per KG or per UND) to display price (per TON or per UND). */
 function rawPriceToDisplayPrice(
   cuadroCodigo: string,
-  rawUnit: string,
+  _rawUnit: string,
   rawPrice: number
 ): number {
-  const porUnidad = isCuadroPorUnidad(cuadroCodigo);
-  if (porUnidad) return rawPrice;
-  if (rawUnit.toUpperCase() === 'KG') return rawPrice * 1000;
-  return rawPrice;
+  if (isCuadroPorUnidad(cuadroCodigo)) return rawPrice;
+  return rawPrice * 1000;
 }
 
 export function PIMItemSelector({

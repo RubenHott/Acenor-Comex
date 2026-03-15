@@ -146,10 +146,8 @@ export default function EditPIMPage() {
   // Computed totals
   const totalToneladas = useMemo(() =>
     editedItems.reduce((sum, item) => {
-      if (item.unidad === 'UND' || item.unidad === 'PZA') return sum;
-      if (item.unidad === 'KG') return sum + item.cantidad / 1000;
-      if (item.unidad === 'TON') return sum + item.cantidad;
-      return sum + item.toneladas;
+      if (item.unidad === 'UND' || item.unidad === 'PZA' || item.unidad === 'UN') return sum;
+      return sum + item.cantidad / 1000; // cantidad is always in kg for weight items
     }, 0),
     [editedItems]
   );
@@ -228,7 +226,8 @@ export default function EditPIMPage() {
 
       // 2. Update existing items & insert new ones
       for (const item of editedItems) {
-        const toneladas = item.unidad === 'KG' ? item.cantidad / 1000 : item.unidad === 'TON' ? item.cantidad : 0;
+        const up = item.unidad.toUpperCase();
+        const toneladas = (up === 'KG' || up === 'TON') ? item.cantidad / 1000 : 0;
 
         const molinoId = item.molino_id ?? (contractConditions.molinoId || null);
         if (item.isNew) {

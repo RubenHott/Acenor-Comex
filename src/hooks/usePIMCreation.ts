@@ -69,19 +69,19 @@ export function useCreatePIMWithItems() {
       const codigo = await generatePIMCode();
       const pimId = crypto.randomUUID();
 
-      // Calculate totals from requirement items
+      // Calculate totals from requirement items (cantidadAConsumir is always in kg)
       const totalToneladasReq = items.reduce((sum, item) => {
-        if (item.unidad.toUpperCase() === 'TON') return sum + item.cantidadAConsumir;
-        if (item.unidad.toUpperCase() === 'KG') return sum + item.cantidadAConsumir / 1000;
+        const up = item.unidad.toUpperCase();
+        if (up === 'TON' || up === 'KG') return sum + item.cantidadAConsumir / 1000;
         return sum;
       }, 0);
 
       const totalUsdReq = items.reduce((sum, item) => sum + item.totalUsd, 0);
 
-      // Calculate totals from extra items
+      // Calculate totals from extra items (cantidad is always in kg for weight)
       const totalToneladasExtra = extraItems.reduce((sum, item) => {
-        if (item.unidad.toUpperCase() === 'TON') return sum + item.cantidad;
-        if (item.unidad.toUpperCase() === 'KG') return sum + item.cantidad / 1000;
+        const up = item.unidad.toUpperCase();
+        if (up === 'TON' || up === 'KG') return sum + item.cantidad / 1000;
         return sum;
       }, 0);
 
@@ -141,12 +141,7 @@ export function useCreatePIMWithItems() {
           cantidad: item.cantidadAConsumir,
           precio_unitario_usd: item.precioUnitarioUsd ?? 0,
           total_usd: item.totalUsd,
-          toneladas:
-            item.unidad.toUpperCase() === 'TON'
-              ? item.cantidadAConsumir
-              : item.unidad.toUpperCase() === 'KG'
-              ? item.cantidadAConsumir / 1000
-              : 0,
+          toneladas: (() => { const up = item.unidad.toUpperCase(); return (up === 'TON' || up === 'KG') ? item.cantidadAConsumir / 1000 : 0; })(),
           molino_id: item.molinoId ?? molinoId,
         }));
 
@@ -259,12 +254,7 @@ export function useCreatePIMWithItems() {
           cantidad: item.cantidad,
           precio_unitario_usd: item.precioUnitarioUsd,
           total_usd: item.totalUsd,
-          toneladas:
-            item.unidad.toUpperCase() === 'TON'
-              ? item.cantidad
-              : item.unidad.toUpperCase() === 'KG'
-              ? item.cantidad / 1000
-              : 0,
+          toneladas: (() => { const up = item.unidad.toUpperCase(); return (up === 'TON' || up === 'KG') ? item.cantidad / 1000 : 0; })(),
           molino_id: item.molinoId ?? molinoId,
         }));
 
@@ -283,7 +273,7 @@ export function useCreatePIMWithItems() {
           cantidad: item.cantidadAConsumir,
           precio_unitario_usd: item.precioUnitarioUsd ?? 0,
           total_usd: item.totalUsd,
-          toneladas: item.unidad.toUpperCase() === 'TON' ? item.cantidadAConsumir : item.unidad.toUpperCase() === 'KG' ? item.cantidadAConsumir / 1000 : 0,
+          toneladas: (() => { const up = item.unidad.toUpperCase(); return (up === 'TON' || up === 'KG') ? item.cantidadAConsumir / 1000 : 0; })(),
           molino_id: item.molinoId ?? molinoId,
         })),
         ...extraItems.map((item) => ({
@@ -293,7 +283,7 @@ export function useCreatePIMWithItems() {
           cantidad: item.cantidad,
           precio_unitario_usd: item.precioUnitarioUsd,
           total_usd: item.totalUsd,
-          toneladas: item.unidad.toUpperCase() === 'TON' ? item.cantidad : item.unidad.toUpperCase() === 'KG' ? item.cantidad / 1000 : 0,
+          toneladas: (() => { const up = item.unidad.toUpperCase(); return (up === 'TON' || up === 'KG') ? item.cantidad / 1000 : 0; })(),
           molino_id: item.molinoId ?? molinoId,
         })),
       ];
