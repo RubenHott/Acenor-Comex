@@ -8,6 +8,7 @@ import type { PIMStatus } from '@/types/comex';
 interface PIMData {
   id: string;
   codigo: string;
+  codigo_correlativo?: string | null;
   descripcion: string;
   estado: string;
   proveedor_nombre: string | null;
@@ -114,7 +115,10 @@ export function PIMTrackingCard({ pim, tracking, isSelected, onClick }: Props) {
       {/* Row 1: Code, Status, Amount */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
-          <span className="font-mono font-semibold text-sm">{pim.codigo}</span>
+          <span className="font-mono font-semibold text-sm">{pim.codigo_correlativo || pim.codigo}</span>
+          {pim.codigo_correlativo && (
+            <span className="text-[10px] text-muted-foreground font-mono">{pim.codigo}</span>
+          )}
           <PIMStatusBadge status={pim.estado as PIMStatus} size="sm" />
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">

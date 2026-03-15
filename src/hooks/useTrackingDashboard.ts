@@ -169,7 +169,7 @@ export function useTrackingDashboard() {
           diasEnProceso,
           fechaInicio,
           responsable: currentStage?.responsable || null,
-          departamento: null,
+          departamento: currentStageDef?.primaryDepartment || null,
           slaStatus: allComplete ? 'verde' : slaStatus,
           slaDays,
           allComplete,

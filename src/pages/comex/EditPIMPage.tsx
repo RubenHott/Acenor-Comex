@@ -15,15 +15,48 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Ship, Save, FileText, Package } from 'lucide-react';
+import { ArrowLeft, Ship, Save, FileText, Package, ShieldAlert } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { canDo } from '@/lib/permissions';
+import type { UserRole } from '@/types/comex';
 
 export default function EditPIMPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canEditPIM = canDo(user?.role as UserRole | undefined, 'edit_pim');
+
+  // --- Permission guard ---
+  if (!canEditPIM) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header
+          title="Acceso denegado"
+          subtitle="No tienes permiso para editar PIMs"
+          backTo="/comex/pims"
+        />
+        <div className="max-w-2xl mx-auto p-8 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center">
+              <ShieldAlert className="h-8 w-8 text-red-500" />
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">Permisos insuficientes</h2>
+            <p className="text-sm text-muted-foreground">
+              Tu rol actual no tiene acceso a la edición de PIMs. Contacta a un administrador si necesitas realizar cambios.
+            </p>
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { data: pim, isLoading: isLoadingPIM } = usePIM(id);
   const { data: pimItems, isLoading: isLoadingItems } = usePIMItems(id);
@@ -38,6 +71,7 @@ export default function EditPIMPage() {
     modalidadPago: 'carta_credito',
     diasCredito: 90,
     porcentajeAnticipo: null,
+    codigoCorrelativo: '',
   });
 
   const [contractConditions, setContractConditions] = useState<ContractConditionsData>({
@@ -65,6 +99,7 @@ export default function EditPIMPage() {
         modalidadPago: (pim.modalidad_pago as PIMFormData['modalidadPago']) ?? 'carta_credito',
         diasCredito: pim.dias_credito ?? null,
         porcentajeAnticipo: pim.porcentaje_anticipo ?? null,
+        codigoCorrelativo: (pim as any).codigo_correlativo ?? '',
       });
 
       let fechaInicio: Date | undefined;
@@ -174,6 +209,7 @@ export default function EditPIMPage() {
           molino_id: contractConditions.molinoId || null,
           molino_nombre: molinoNombre,
           notas_pago: contractConditions.notasPago || null,
+          codigo_correlativo: formData.codigoCorrelativo?.trim() || null,
           total_toneladas: totalToneladas,
           total_usd: totalUsd,
         },
@@ -272,8 +308,8 @@ export default function EditPIMPage() {
   return (
     <div className="min-h-screen bg-background page-enter">
       <Header
-        title={`Editar ${pim.codigo}`}
-        subtitle={`Modificar datos del PIM — ${pim.proveedor_nombre ?? 'Sin proveedor'}`}
+        title={`Editar ${(pim as any).codigo_correlativo || pim.codigo}`}
+        subtitle={`${(pim as any).codigo_correlativo ? pim.codigo + ' — ' : ''}Modificar datos del PIM — ${pim.proveedor_nombre ?? 'Sin proveedor'}`}
       />
 
       <div className="p-6 space-y-6">

@@ -124,6 +124,7 @@ export function useCreatePIMWithItems() {
         molino_id: contractConditions?.molinoId || null,
         molino_nombre: molinoNombre,
         notas_pago: contractConditions?.notasPago || null,
+        codigo_correlativo: formData.codigoCorrelativo?.trim() || null,
       });
 
       if (pimError) throw pimError;

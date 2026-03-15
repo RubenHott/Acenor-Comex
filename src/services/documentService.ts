@@ -117,7 +117,10 @@ function buildDocFilename(
   if (!pimCodigo) return originalFilename;
   const docType = DOCUMENT_TYPES.find((d) => d.value === tipo);
   const typeLabel = docType
-    ? docType.label.replace(/\s+/g, '_').replace(/[()]/g, '')
+    ? docType.label
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // strip accents (é→e, ñ→n …)
+        .replace(/\s+/g, '_')
+        .replace(/[()]/g, '')
     : tipo;
   const ext = originalFilename.split('.').pop() || 'pdf';
   const versionSuffix = version && version > 1 ? `_v${version}` : '';

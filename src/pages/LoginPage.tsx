@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,14 +118,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          ¿No tienes cuenta?{' '}
-          <Link to="/register" className="text-primary hover:underline font-medium">
-            Crear una
-          </Link>
-        </p>
-
-        <p className="mt-2 text-center text-xs text-muted-foreground">
+        <p className="mt-4 text-center text-xs text-muted-foreground">
           Acenor COMEX &mdash; Sistema de Gestión de Importaciones
         </p>
       </div>

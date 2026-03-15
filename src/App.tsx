@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ComexLayout } from "@/components/layout/ComexLayout";
 import { WorkOrdersLayout } from "@/components/layout/WorkOrdersLayout";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
+// Public registration disabled — only admins can create accounts via /comex/users
 import UsersPage from "./pages/UsersPage";
 import ModulesPage from "./pages/ModulesPage";
 
@@ -47,7 +47,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/register" element={<Navigate to="/login" replace />} />
             <Route path="/" element={<ModulesPage />} />
             
             {/* COMEX Module Routes */}

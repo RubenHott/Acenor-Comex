@@ -50,6 +50,7 @@ export default function CreatePIMPage() {
     modalidadPago: 'carta_credito',
     diasCredito: 90,
     porcentajeAnticipo: null,
+    codigoCorrelativo: '',
   });
   const [contractConditions, setContractConditions] = useState<ContractConditionsData>({
     condicionPrecio: '',

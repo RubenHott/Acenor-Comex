@@ -23,9 +23,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Database, Trash2, Upload } from 'lucide-react';
+import { Database, Pencil, Trash2, Upload } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useCuadrosAll, useCreateCuadro, useDeleteCuadro } from '@/hooks/useCuadros';
-import { useProducts, useCreateProduct, useDeleteProduct, useBulkInsertProducts } from '@/hooks/useProducts';
+import { useProducts, useCreateProduct, useDeleteProduct, useUpdateProduct, useBulkInsertProducts } from '@/hooks/useProducts';
 import type { ProductInsert } from '@/hooks/useProducts';
 import { useSuppliers, useCreateSupplier, useDeleteSupplier, useBulkInsertSuppliers } from '@/hooks/useSuppliers';
 import type { SupplierInsert } from '@/hooks/useSuppliers';
@@ -52,7 +59,9 @@ export default function MaestrosPage() {
   const deleteCuadro = useDeleteCuadro();
   const createProduct = useCreateProduct();
   const deleteProduct = useDeleteProduct();
+  const updateProduct = useUpdateProduct();
   const bulkProducts = useBulkInsertProducts();
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const createSupplier = useCreateSupplier();
   const deleteSupplier = useDeleteSupplier();
   const bulkSuppliers = useBulkInsertSuppliers();
@@ -297,7 +306,51 @@ export default function MaestrosPage() {
                                 {tipoMaterialLabel(productTipoFromCategoria(p.categoria))}
                               </Badge>
                             </TableCell>
-                            <TableCell>{p.unidad}</TableCell>
+                            <TableCell>
+                              {editingUnitId === p.id ? (
+                                <Select
+                                  defaultValue={p.unidad}
+                                  onValueChange={(val) => {
+                                    if (val !== p.unidad) {
+                                      updateProduct.mutate(
+                                        { id: p.id, updates: { unidad: val } },
+                                        {
+                                          onSuccess: () => toast.success(`Unidad de ${p.codigo} actualizada a ${val}`),
+                                          onError: (err) => toast.error(err.message),
+                                        },
+                                      );
+                                    }
+                                    setEditingUnitId(null);
+                                  }}
+                                  open
+                                  onOpenChange={(open) => { if (!open) setEditingUnitId(null); }}
+                                >
+                                  <SelectTrigger className="h-7 w-[90px] text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="TON">TON</SelectItem>
+                                    <SelectItem value="KG">KG</SelectItem>
+                                    <SelectItem value="UN">UN</SelectItem>
+                                    <SelectItem value="PZA">PZA</SelectItem>
+                                    <SelectItem value="M">M</SelectItem>
+                                    <SelectItem value="ML">ML</SelectItem>
+                                    <SelectItem value="L">L</SelectItem>
+                                    <SelectItem value="GL">GL</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-sm hover:bg-muted transition-colors group"
+                                  onClick={() => setEditingUnitId(p.id)}
+                                  title="Clic para editar unidad"
+                                >
+                                  {p.unidad}
+                                  <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                              )}
+                            </TableCell>
                             <TableCell className="text-muted-foreground">{formatValue(p.sub_categoria)}</TableCell>
                             <TableCell className="text-muted-foreground">{formatValue(p.origen)}</TableCell>
                             <TableCell className="text-muted-foreground">{formatValue(p.cuadro)}</TableCell>

@@ -262,58 +262,52 @@ export function RequirementEntryForm({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-[200px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Código producto</TableHead>
-                <TableHead className="min-w-[140px] sticky top-0 bg-muted/80 backdrop-blur z-10">Descripción</TableHead>
-                <TableHead className="w-[110px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Tipo</TableHead>
-                <TableHead className="w-[70px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Unidad</TableHead>
-                <TableHead className="w-[95px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Últ. precio</TableHead>
-                <TableHead className="w-[95px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Últ. fecha imp.</TableHead>
-                <TableHead className="w-[100px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">
-                {esPorUnidad ? 'Cantidad' : 'Cantidad (ton)'}
-              </TableHead>
-                <TableHead className="w-[95px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">Subtotal USD</TableHead>
-                <TableHead className="w-[52px] sticky top-0 bg-muted/80 backdrop-blur z-10"></TableHead>
+                <TableHead className="sticky top-0 bg-muted/80 backdrop-blur z-10">Producto</TableHead>
+                <TableHead className="w-[60px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10 text-center">Und</TableHead>
+                <TableHead className="w-[100px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10 text-right">Precio USD</TableHead>
+                <TableHead className="w-[110px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">
+                  {esPorUnidad ? 'Cantidad' : 'Cantidad (ton)'}
+                </TableHead>
+                <TableHead className="w-[100px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10 text-right">Subtotal</TableHead>
+                <TableHead className="w-[44px] sticky top-0 bg-muted/80 backdrop-blur z-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {lines.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     Agregue al menos una línea con código y cantidad.
                   </TableCell>
                 </TableRow>
               ) : (
                 lines.map((line) => (
                   <TableRow key={line.tempId}>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <ProductAutocomplete
                         products={availableProducts}
                         value={line.product}
                         onSelect={(p) => handleProductSelect(line.tempId, p)}
                         disabled={busy}
-                        className="min-w-[200px]"
+                        className="min-w-[180px]"
                         showCuadroInfo={!cuadroId}
                       />
+                      {line.product && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5 pl-1 truncate">
+                          {tipoMaterialLabel(productTipoFromCategoria(line.product.categoria))}
+                          {line.product.ultima_fecha_importacion
+                            ? ` · Imp: ${formatDate(line.product.ultima_fecha_importacion)}`
+                            : ''}
+                        </p>
+                      )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                      {line.product?.descripcion ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {line.product ? tipoMaterialLabel(productTipoFromCategoria(line.product.categoria)) : '—'}
-                    </TableCell>
-                    <TableCell className="text-sm font-medium">
+                    <TableCell className="text-xs font-medium text-center">
                       {line.product?.unidad ?? '—'}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm text-right tabular-nums">
                       {line.product != null
                         ? line.product.ultimo_precio_usd != null
                           ? formatCurrency(line.product.ultimo_precio_usd)
-                          : 'Sin precio'
-                        : '—'}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {line.product?.ultima_fecha_importacion
-                        ? formatDate(line.product.ultima_fecha_importacion)
+                          : <span className="text-muted-foreground text-xs">Sin precio</span>
                         : '—'}
                     </TableCell>
                     <TableCell>
@@ -328,7 +322,7 @@ export function RequirementEntryForm({
                         placeholder={esPorUnidad ? undefined : 'ton'}
                       />
                     </TableCell>
-                    <TableCell className="text-sm font-medium">
+                    <TableCell className="text-sm font-medium text-right tabular-nums">
                       {line.product && line.cantidadRequerida > 0
                         ? formatCurrency(
                             line.cantidadRequerida * (line.product.ultimo_precio_usd ?? 0)

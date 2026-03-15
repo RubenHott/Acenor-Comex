@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Download } from 'lucide-react';
 import type { PIMTrackingInfo } from '@/hooks/useTrackingDashboard';
 
 interface PIMRow {
   id: string;
   codigo: string;
+  codigo_correlativo?: string | null;
   descripcion: string;
   estado: string;
   proveedor_nombre: string | null;
@@ -123,6 +126,7 @@ function fmtTon(n: number): string {
 
 interface FlatRow {
   pimId: string;
+  correlativo: string;
   pim: string;
   lote: string;
   proveedor: string;
@@ -171,6 +175,8 @@ interface FlatRow {
   sla: string;
   slaColor: string;
   allComplete: boolean;
+  responsable: string;
+  area: string;
   // For grouping
   isFirstOfPim: boolean;
   rowSpan: number;
@@ -195,6 +201,7 @@ export function PIMSpreadsheetView({ pims, trackingMap }: Props) {
 
       const pimBase = {
         pimId: pim.id,
+        correlativo: pim.codigo_correlativo || pim.codigo,
         pim: pim.codigo,
         proveedor: pim.proveedor_nombre || '—',
         estado: pim.estado,
@@ -230,6 +237,8 @@ export function PIMSpreadsheetView({ pims, trackingMap }: Props) {
         sla: tracking?.slaStatus || 'verde',
         slaColor: SLA_COLORS[tracking?.slaStatus || 'verde'],
         allComplete: tracking?.allComplete || false,
+        responsable: tracking?.responsable || '—',
+        area: tracking?.departamento || '—',
       };
 
       if (items.length === 0) {
@@ -277,7 +286,8 @@ export function PIMSpreadsheetView({ pims, trackingMap }: Props) {
   // Column definitions grouped like the Excel
   const columns = [
     // PIM Info
-    { key: 'pim', label: 'PIM', width: 80, sticky: true, pimLevel: true },
+    { key: 'correlativo', label: 'CORRELATIVO', width: 120, sticky: true, pimLevel: true },
+    { key: 'pim', label: 'PIM (AUTO)', width: 100, pimLevel: true },
     { key: 'estado', label: 'STATUS', width: 140, pimLevel: true },
     { key: 'proveedor', label: 'PROV', width: 130, pimLevel: true },
     { key: 'origen', label: 'ORIGEN', width: 90, pimLevel: true },
@@ -323,9 +333,66 @@ export function PIMSpreadsheetView({ pims, trackingMap }: Props) {
     { key: 'progreso', label: 'PROGRESO', width: 80, pimLevel: true },
     { key: 'diasProceso', label: 'DÍAS', width: 60, numeric: true, pimLevel: true },
     { key: 'sla', label: 'SLA', width: 50, pimLevel: true },
+    { key: 'responsable', label: 'RESPONSABLE', width: 140, pimLevel: true },
+    { key: 'area', label: 'ÁREA', width: 100, pimLevel: true },
   ] as const;
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const XLSX = await import('xlsx');
+
+      // Build rows with all data (no hidden PIM-level cells)
+      const exportData = flatRows.map((row) => {
+        const obj: Record<string, string | number | null> = {};
+        for (const col of columns) {
+          const raw = (row as any)[col.key];
+          if (col.key === 'sla') {
+            obj[col.label] = raw === 'verde' ? 'OK' : raw === 'amarillo' ? 'Atención' : raw === 'rojo' ? 'Alerta' : raw;
+          } else if (col.key === 'estado') {
+            obj[col.label] = ESTADO_LABELS[raw] || raw;
+          } else if (col.key === 'statusPago') {
+            obj[col.label] = PAYMENT_STATUS_LABELS[raw] || raw;
+          } else {
+            obj[col.label] = raw === '—' ? '' : raw;
+          }
+        }
+        return obj;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Auto-fit column widths
+      ws['!cols'] = columns.map((col) => ({ wch: Math.max(col.label.length + 2, col.width / 8) }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Status PIMs');
+
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `Estatus_PIMs_${today}.xlsx`);
+    } catch (err) {
+      console.error('Export error:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          disabled={exporting || flatRows.length === 0}
+          className="gap-2"
+        >
+          <Download className="h-4 w-4" />
+          {exporting ? 'Exportando...' : 'Exportar Excel'}
+        </Button>
+      </div>
     <div className="rounded-xl border bg-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-max min-w-full text-xs border-collapse">
@@ -391,7 +458,7 @@ export function PIMSpreadsheetView({ pims, trackingMap }: Props) {
                     const value = (row as any)[col.key];
 
                     // Special renderers
-                    if (col.key === 'pim') {
+                    if (col.key === 'correlativo') {
                       return (
                         <td
                           key={col.key}
@@ -399,6 +466,17 @@ export function PIMSpreadsheetView({ pims, trackingMap }: Props) {
                             'px-2 py-1.5 font-bold text-blue-700 sticky left-0 z-10 border-r border-border/20',
                             pimGroupBg
                           )}
+                        >
+                          {value}
+                        </td>
+                      );
+                    }
+
+                    if (col.key === 'pim') {
+                      return (
+                        <td
+                          key={col.key}
+                          className="px-2 py-1.5 text-xs text-muted-foreground font-mono border-r border-border/20"
                         >
                           {value}
                         </td>
@@ -578,6 +656,7 @@ export function PIMSpreadsheetView({ pims, trackingMap }: Props) {
           </tfoot>
         </table>
       </div>
+    </div>
     </div>
   );
 }

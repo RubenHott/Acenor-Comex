@@ -17,6 +17,7 @@ export interface PIMFormData {
   modalidadPago: 'carta_credito' | 'anticipo' | 'contado' | 'mixto';
   diasCredito: number | null;
   porcentajeAnticipo: number | null;
+  codigoCorrelativo: string;
 }
 
 interface PIMFormProps {
@@ -60,6 +61,18 @@ export function PIMForm({
 
   return (
     <div className="space-y-6">
+      {/* Correlativo Empresa */}
+      <div className="space-y-2">
+        <Label htmlFor="codigoCorrelativo">Correlativo Empresa</Label>
+        <Input
+          id="codigoCorrelativo"
+          placeholder="Ej: OC-2025-042, IMP-389"
+          value={formData.codigoCorrelativo}
+          onChange={(e) => handleChange('codigoCorrelativo', e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">Número o código interno de la empresa para este proceso.</p>
+      </div>
+
       {/* Descripción */}
       <div className="space-y-2">
         <Label htmlFor="descripcion">Descripción del PIM *</Label>

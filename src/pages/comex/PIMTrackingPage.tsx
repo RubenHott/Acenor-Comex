@@ -274,8 +274,8 @@ export default function PIMTrackingPage() {
   return (
     <div className="min-h-screen bg-background page-enter">
       <Header
-        title={`Seguimiento ${pim.codigo}`}
-        subtitle={pim.descripcion}
+        title={`Seguimiento ${pim.codigo_correlativo || pim.codigo}`}
+        subtitle={`${pim.codigo_correlativo ? pim.codigo + ' — ' : ''}${pim.descripcion}`}
       />
 
       <div className="p-6 space-y-6">

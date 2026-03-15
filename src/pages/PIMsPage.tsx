@@ -77,10 +77,12 @@ export default function PIMsPage() {
   // Filter + sort PIMs
   const filteredPIMs = useMemo(() => {
     let result = (pims || []).filter((pim) => {
+      const term = searchTerm.toLowerCase();
       const matchesSearch =
-        pim.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pim.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (pim.proveedor_nombre || '').toLowerCase().includes(searchTerm.toLowerCase());
+        pim.codigo.toLowerCase().includes(term) ||
+        ((pim as any).codigo_correlativo || '').toLowerCase().includes(term) ||
+        pim.descripcion.toLowerCase().includes(term) ||
+        (pim.proveedor_nombre || '').toLowerCase().includes(term);
       const matchesStatus = statusFilter === 'all' || pim.estado === statusFilter;
 
       let matchesStage = true;
@@ -237,7 +239,7 @@ export default function PIMsPage() {
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por código, descripción o proveedor..."
+                  placeholder="Buscar por correlativo, código, descripción o proveedor..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -395,6 +397,7 @@ export default function PIMsPage() {
             pims={filteredPIMs.map((pim) => ({
               id: pim.id,
               codigo: pim.codigo,
+              codigo_correlativo: (pim as any).codigo_correlativo || null,
               descripcion: pim.descripcion,
               estado: pim.estado,
               proveedor_nombre: pim.proveedor_nombre || null,
@@ -434,6 +437,7 @@ export default function PIMsPage() {
                 pim={{
                   id: pim.id,
                   codigo: pim.codigo,
+                  codigo_correlativo: (pim as any).codigo_correlativo || null,
                   descripcion: pim.descripcion,
                   estado: pim.estado,
                   proveedor_nombre: pim.proveedor_nombre || null,
@@ -445,6 +449,7 @@ export default function PIMsPage() {
                   fecha_creacion: pim.fecha_creacion || null,
                 }}
                 tracking={trackingMap?.get(pim.id)}
+                canEdit={perms.canEditPIM}
                 canDelete={perms.canDeletePIM}
                 onDelete={handleDeletePIM}
               />

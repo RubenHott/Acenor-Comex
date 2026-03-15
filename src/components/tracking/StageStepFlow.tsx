@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { CheckCircle, Circle, Clock, SkipForward, Lock } from 'lucide-react';
 import { useStageSteps, useInitializeSteps, type StageStep } from '@/hooks/useStageSteps';
 import { getStageSteps, type StageStepDef } from '@/lib/stageStepDefinitions';
+import { canCompleteStep } from '@/lib/permissions';
 import { StepRecepcionContrato } from './steps/StepRecepcionContrato';
 import { StepRecepcionCierreCompra } from './steps/StepRecepcionCierreCompra';
 import { StepDeclaracionNC } from './steps/StepDeclaracionNC';
@@ -130,6 +131,25 @@ export function StageStepFlow({
       return (
         <div className="text-sm text-muted-foreground italic py-2">
           Paso saltado — {(step.datos as any)?.motivo || 'Sin no conformidad'}
+        </div>
+      );
+    }
+
+    // Defense-in-depth: block interactive content for active steps when user
+    // does not belong to the required department (admin/manager/gerente bypass).
+    if (
+      step.status === 'en_progreso' &&
+      def.requiredDepartment &&
+      def.requiredDepartment.length > 0 &&
+      !canCompleteStep(userRole, userDepartment, stageKey, step.step_key)
+    ) {
+      const deptLabel = def.requiredDepartment.map((d) => d.toUpperCase()).join(' / ');
+      return (
+        <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+          <Lock className="h-4 w-4 flex-shrink-0" />
+          <span>
+            Este paso debe ser completado por <strong>{deptLabel}</strong>. Solo lectura para tu departamento.
+          </span>
         </div>
       );
     }

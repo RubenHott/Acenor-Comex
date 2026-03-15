@@ -27,6 +27,7 @@ import type { PIMStatus } from '@/types/comex';
 interface PIMData {
   id: string;
   codigo: string;
+  codigo_correlativo?: string | null;
   descripcion: string;
   estado: string;
   proveedor_nombre: string | null;
@@ -41,6 +42,7 @@ interface PIMData {
 interface Props {
   pim: PIMData;
   tracking: PIMTrackingInfo | undefined;
+  canEdit?: boolean;
   canDelete?: boolean;
   onDelete?: (id: string) => void;
 }
@@ -156,7 +158,7 @@ function StageTimeline({ tracking }: { tracking: PIMTrackingInfo | undefined }) 
   );
 }
 
-export function PIMFullCard({ pim, tracking, canDelete, onDelete }: Props) {
+export function PIMFullCard({ pim, tracking, canEdit, canDelete, onDelete }: Props) {
   const navigate = useNavigate();
   const [showDocs, setShowDocs] = useState(false);
   const status = statusConfig[pim.estado] || statusConfig.creado;
@@ -190,8 +192,11 @@ export function PIMFullCard({ pim, tracking, canDelete, onDelete }: Props) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1">
                 <h3 className="font-mono font-bold text-base text-foreground">
-                  {pim.codigo}
+                  {pim.codigo_correlativo || pim.codigo}
                 </h3>
+                {pim.codigo_correlativo && (
+                  <span className="text-xs text-muted-foreground font-mono">{pim.codigo}</span>
+                )}
                 <span className="text-muted-foreground/40">/</span>
                 <p className="text-sm text-foreground/80 truncate font-medium">
                   {pim.descripcion}
@@ -390,17 +395,19 @@ export function PIMFullCard({ pim, tracking, canDelete, onDelete }: Props) {
               <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
               Seguimiento
             </Button>
-            <Button
-              size="sm"
-              className="text-xs h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/comex/pim/editar/${pim.id}`);
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5 mr-1.5" />
-              Editar
-            </Button>
+            {canEdit !== false && (
+              <Button
+                size="sm"
+                className="text-xs h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/comex/pim/editar/${pim.id}`);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Editar
+              </Button>
+            )}
             {canDelete && onDelete && (
               <Button
                 size="sm"

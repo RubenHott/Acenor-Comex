@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Pencil } from 'lucide-react';
+import { CheckCircle, Pencil, Lock } from 'lucide-react';
 import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
 import { useStageDocumentStatus } from '@/hooks/usePIMDocuments';
+import { canCompleteStep, getStepDepartmentLabel } from '@/lib/permissions';
 import { toast } from 'sonner';
 import type { UserRole } from '@/types/comex';
 
@@ -28,7 +29,7 @@ interface UseStepBaseConfig {
 }
 
 export function useStepBase(props: StepBaseProps, config: UseStepBaseConfig) {
-  const { step, pimId, stageKey, userId, userName, userRole } = props;
+  const { step, pimId, stageKey, userId, userName, userRole, userDepartment } = props;
   const { stepKey, stepName, successMessage, requiredDocTypes } = config;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -40,6 +41,9 @@ export function useStepBase(props: StepBaseProps, config: UseStepBaseConfig) {
   );
 
   const canEdit = userRole === 'admin' || userRole === 'manager';
+  const canComplete = canCompleteStep(userRole, userDepartment, stageKey, stepKey);
+  const deptLabel = getStepDepartmentLabel(stageKey, stepKey);
+
   const allDocsUploaded = requiredDocTypes
     ? (docStatus?.missingTypes?.length ?? requiredDocTypes.length) === 0
     : true;
@@ -50,6 +54,10 @@ export function useStepBase(props: StepBaseProps, config: UseStepBaseConfig) {
   /** Call to complete the step. Pass optional `datos` for extra JSONB data. */
   const handleComplete = useCallback(
     (datos?: Record<string, unknown>) => {
+      if (!canComplete) {
+        toast.error(`No tienes permiso para completar este paso (requiere ${deptLabel})`);
+        return;
+      }
       completeStep.mutate(
         {
           stepId: step.id,
@@ -70,7 +78,7 @@ export function useStepBase(props: StepBaseProps, config: UseStepBaseConfig) {
         },
       );
     },
-    [step.id, pimId, stageKey, stepKey, stepName, userId, userName, successMessage, completeStep],
+    [step.id, pimId, stageKey, stepKey, stepName, userId, userName, successMessage, completeStep, canComplete, deptLabel],
   );
 
   /** Green check + "Modificar" button for completed state header */
@@ -110,25 +118,36 @@ export function useStepBase(props: StepBaseProps, config: UseStepBaseConfig) {
 
   /** Standard "Complete Step" button (disabled while pending or if docs missing) */
   const CompleteButton = useCallback(
-    ({ datos, label, disabled }: { datos?: Record<string, unknown>; label?: string; disabled?: boolean }) => (
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          onClick={() => handleComplete(datos)}
-          disabled={completeStep.isPending || disabled}
-        >
-          <CheckCircle className="h-4 w-4 mr-1" />
-          {completeStep.isPending ? 'Completando...' : label || 'Continuar al siguiente paso'}
-        </Button>
-      </div>
-    ),
-    [handleComplete, completeStep.isPending],
+    ({ datos, label, disabled }: { datos?: Record<string, unknown>; label?: string; disabled?: boolean }) => {
+      if (!canComplete) {
+        return (
+          <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2.5">
+            <Lock className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>Este paso debe ser completado por <strong>{deptLabel}</strong>.</span>
+          </div>
+        );
+      }
+      return (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={() => handleComplete(datos)}
+            disabled={completeStep.isPending || disabled}
+          >
+            <CheckCircle className="h-4 w-4 mr-1" />
+            {completeStep.isPending ? 'Completando...' : label || 'Continuar al siguiente paso'}
+          </Button>
+        </div>
+      );
+    },
+    [handleComplete, completeStep.isPending, canComplete, deptLabel],
   );
 
   return {
     isEditing,
     setIsEditing,
     canEdit,
+    canComplete,
     isCompleted,
     showCompletedView,
     completeStep,
