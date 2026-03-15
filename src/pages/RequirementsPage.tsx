@@ -529,16 +529,10 @@ export default function RequirementsPage() {
                               </p>
                             </div>
                           ) : (
-                            <>
-                              <div>
-                                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Toneladas</p>
-                                <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{selectedRequirement.total_toneladas || 0} t</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Total Kilos</p>
-                                <p className="text-xl font-bold">{(selectedRequirement.total_kilos || 0).toLocaleString()} kg</p>
-                              </div>
-                            </>
+                            <div>
+                              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Toneladas</p>
+                              <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{(selectedRequirement.total_toneladas || 0).toLocaleString('es-PE')} t</p>
+                            </div>
                           )}
                           <div>
                             <p className="text-sm text-muted-foreground">PIMs</p>
@@ -560,12 +554,12 @@ export default function RequirementsPage() {
                           ) : (
                             <>
                               <div className="p-4 rounded-lg border border-success/30 bg-success/5">
-                                <p className="text-sm text-muted-foreground">Kilos Disponibles</p>
-                                <p className="text-xl font-bold text-success">{(selectedRequirement.kilos_disponibles || 0).toLocaleString()} kg</p>
+                                <p className="text-sm text-muted-foreground">Toneladas Disponibles</p>
+                                <p className="text-xl font-bold text-success">{((selectedRequirement.kilos_disponibles || 0) / 1000).toLocaleString('es-PE')} t</p>
                               </div>
                               <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
-                                <p className="text-sm text-muted-foreground">Kilos Consumidos</p>
-                                <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString()} kg</p>
+                                <p className="text-sm text-muted-foreground">Toneladas Consumidas</p>
+                                <p className="text-xl font-bold text-warning">{((selectedRequirement.kilos_consumidos || 0) / 1000).toLocaleString('es-PE')} t</p>
                               </div>
                             </>
                           )}
@@ -582,8 +576,8 @@ export default function RequirementsPage() {
                                 <TableHead>Descripción</TableHead>
                                 <TableHead className="text-right">Cantidad</TableHead>
                                 <TableHead className="text-right">Unidad</TableHead>
-                                <TableHead className="text-right">{esPorUnidad ? 'Unid. consumidas' : 'Kg consumidos'}</TableHead>
-                                <TableHead className="text-right">{esPorUnidad ? 'Unid. disponibles' : 'Kg disponibles'}</TableHead>
+                                <TableHead className="text-right">{esPorUnidad ? 'Unid. consumidas' : 'Ton consumidas'}</TableHead>
+                                <TableHead className="text-right">{esPorUnidad ? 'Unid. disponibles' : 'Ton disponibles'}</TableHead>
                                 <TableHead className="text-right">Precio unit. USD</TableHead>
                                 <TableHead className="text-right">Total USD</TableHead>
                               </TableRow>
@@ -605,10 +599,14 @@ export default function RequirementsPage() {
                                     </TableCell>
                                     <TableCell className="text-right text-muted-foreground">{item.unidad}</TableCell>
                                     <TableCell className="text-right text-muted-foreground">
-                                      {(item.kilos_consumidos ?? 0).toLocaleString('es-PE')}
+                                      {esPorUnidad
+                                        ? (item.kilos_consumidos ?? 0).toLocaleString('es-PE')
+                                        : ((item.kilos_consumidos ?? 0) / 1000).toLocaleString('es-PE')}
                                     </TableCell>
                                     <TableCell className="text-right font-medium">
-                                      {(item.kilos_disponibles ?? 0).toLocaleString('es-PE')}
+                                      {esPorUnidad
+                                        ? (item.kilos_disponibles ?? 0).toLocaleString('es-PE')
+                                        : ((item.kilos_disponibles ?? 0) / 1000).toLocaleString('es-PE')}
                                     </TableCell>
                                     <TableCell className="text-right text-muted-foreground">
                                       {item.precio_unitario_usd != null ? formatCurrency(item.precio_unitario_usd) : '—'}
