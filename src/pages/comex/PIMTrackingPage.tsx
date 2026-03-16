@@ -508,7 +508,7 @@ export default function PIMTrackingPage() {
               requiredDocTypes={requiredDocs}
               usuario={currentUser}
               readOnly={!perms.canUploadDocument}
-              pimCodigo={pim.codigo}
+              pimCodigo={pim.codigo_correlativo || pim.codigo}
             />
 
             </>
@@ -551,7 +551,7 @@ export default function PIMTrackingPage() {
         open={showSplitDialog}
         onOpenChange={setShowSplitDialog}
         pimId={id!}
-        pimCodigo={pim.codigo}
+        pimCodigo={pim.codigo_correlativo || pim.codigo}
         onSplit={handleSplit}
         isSplitting={splitPIM.isPending}
       />
