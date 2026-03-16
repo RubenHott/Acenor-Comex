@@ -29,19 +29,19 @@ export default function WorkOrderDetailPage() {
   const { data: order, isLoading, error } = useWorkOrder(id);
 
   if (isLoading) {
-    return <div className="p-6 space-y-6"><Skeleton className="h-12 w-64" /><Skeleton className="h-64 w-full" /></div>;
+    return <div className="p-4 md:p-6 space-y-6"><Skeleton className="h-12 w-64" /><Skeleton className="h-64 w-full" /></div>;
   }
 
   if (!order || error) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card><CardContent className="p-8 text-center"><p className="text-muted-foreground">Orden de trabajo no encontrada</p><Button asChild className="mt-4"><Link to="/work-orders/orders">Volver al listado</Link></Button></CardContent></Card>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild><Link to="/work-orders/orders"><ArrowLeft className="w-5 h-5" /></Link></Button>
         <div className="flex-1">

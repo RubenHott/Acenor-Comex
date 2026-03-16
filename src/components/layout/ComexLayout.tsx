@@ -1,6 +1,7 @@
 import { Outlet, Navigate } from 'react-router-dom';
 import { ComexSidebar } from './ComexSidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { MobileSidebarProvider } from '@/contexts/MobileSidebarContext';
 
 export function ComexLayout() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -18,11 +19,13 @@ export function ComexLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <ComexSidebar />
-      <main className="flex-1 overflow-y-auto">
-        <Outlet />
-      </main>
-    </div>
+    <MobileSidebarProvider>
+      <div className="flex h-screen bg-background overflow-hidden">
+        <ComexSidebar />
+        <main className="flex-1 overflow-y-auto w-full">
+          <Outlet />
+        </main>
+      </div>
+    </MobileSidebarProvider>
   );
 }

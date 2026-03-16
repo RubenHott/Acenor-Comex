@@ -48,7 +48,7 @@ export default function SuppliersPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="Proveedores" subtitle="Gestión de proveedores y fábricas" />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>Error al cargar proveedores: {error.message}</AlertDescription>
@@ -65,7 +65,7 @@ export default function SuppliersPage() {
         subtitle="Gestión de proveedores y fábricas" 
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="relative flex-1 max-w-md">

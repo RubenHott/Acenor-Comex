@@ -244,7 +244,7 @@ export default function PIMTrackingPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="Seguimiento de PIM" subtitle="Cargando..." />
-        <div className="p-6 space-y-4">
+        <div className="p-4 md:p-6 space-y-4">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
@@ -256,7 +256,7 @@ export default function PIMTrackingPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="PIM no encontrado" subtitle="" />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Button variant="outline" onClick={() => navigate('/comex/pims')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver a PIMs
@@ -278,7 +278,7 @@ export default function PIMTrackingPage() {
         subtitle={`${pim.codigo_correlativo ? pim.codigo + ' — ' : ''}${pim.descripcion}`}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Top bar */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <Button variant="outline" size="sm" onClick={() => navigate('/comex/pims')}>

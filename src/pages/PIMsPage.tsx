@@ -147,7 +147,7 @@ export default function PIMsPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="Gestión de PIMs" subtitle="Control y seguimiento de importaciones" />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>Error al cargar PIMs: {error.message}</AlertDescription>
@@ -164,9 +164,9 @@ export default function PIMsPage() {
         subtitle="Control y seguimiento de importaciones"
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 md:p-6 space-y-5">
         {/* Summary Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
             <div className="p-2 rounded-lg bg-blue-50">
               <Ship className="h-4 w-4 text-blue-600" />
@@ -277,7 +277,7 @@ export default function PIMsPage() {
           {/* Filters row */}
           <div className="flex flex-wrap gap-2 items-center">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs">
+              <SelectTrigger className="w-full sm:w-[160px] h-8 text-xs">
                 <Filter className="h-3 w-3 mr-1" />
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
@@ -293,7 +293,7 @@ export default function PIMsPage() {
             </Select>
 
             <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger className="w-[200px] h-8 text-xs">
+              <SelectTrigger className="w-full sm:w-[200px] h-8 text-xs">
                 <Package className="h-3 w-3 mr-1" />
                 <SelectValue placeholder="Etapa" />
               </SelectTrigger>
@@ -310,7 +310,7 @@ export default function PIMsPage() {
             </Select>
 
             <Select value={cuadroFilter} onValueChange={setCuadroFilter}>
-              <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectTrigger className="w-full sm:w-[180px] h-8 text-xs">
                 <Grid3X3 className="h-3 w-3 mr-1" />
                 <SelectValue placeholder="Cuadro" />
               </SelectTrigger>
@@ -324,7 +324,7 @@ export default function PIMsPage() {
               </SelectContent>
             </Select>
 
-            <div className="relative w-[180px]">
+            <div className="relative w-full sm:w-[180px]">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
               <Input
                 placeholder="Buscar artículo..."
@@ -335,7 +335,7 @@ export default function PIMsPage() {
             </div>
 
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-              <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectTrigger className="w-full sm:w-[180px] h-8 text-xs">
                 <ArrowUpDown className="h-3 w-3 mr-1" />
                 <SelectValue placeholder="Ordenar" />
               </SelectTrigger>

@@ -240,7 +240,7 @@ export default function ProcessDiagramsPage() {
         subtitle="Diagramas BPMN de los 4 procesos de importación según modalidad de pago"
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 md:p-6 space-y-5">
         {/* Legend */}
         <div className="rounded-xl border bg-card p-4">
           <h4 className="text-sm font-semibold mb-3">Leyenda de colores</h4>

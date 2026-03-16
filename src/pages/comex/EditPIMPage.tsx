@@ -284,7 +284,7 @@ export default function EditPIMPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="Editar PIM" subtitle="Cargando datos..." />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Skeleton className="h-[400px] w-full" />
         </div>
       </div>
@@ -295,7 +295,7 @@ export default function EditPIMPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="PIM no encontrado" subtitle="" />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Volver
           </Button>
@@ -311,7 +311,7 @@ export default function EditPIMPage() {
         subtitle={`${(pim as any).codigo_correlativo ? pim.codigo + ' — ' : ''}Modificar datos del PIM — ${pim.proveedor_nombre ?? 'Sin proveedor'}`}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
           <ArrowLeft className="h-4 w-4 mr-2" /> Volver
         </Button>

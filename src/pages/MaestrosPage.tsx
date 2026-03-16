@@ -155,7 +155,7 @@ export default function MaestrosPage() {
         subtitle="Gestione las tablas maestras: cuadros de importación, productos, proveedores y fábricas/molinos."
       />
 
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import { Bell, Search, Settings } from 'lucide-react';
+import { Bell, Menu, Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,6 +17,7 @@ import {
   useNotificacionesRealtime,
 } from '@/hooks/useNotifications';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMobileSidebar } from '@/contexts/MobileSidebarContext';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
@@ -27,16 +28,17 @@ interface HeaderProps {
 }
 
 const TIPO_ICONS: Record<string, string> = {
-  stage_advance: '🔄',
-  responsable_change: '👤',
-  nc_created: '⚠️',
-  dhl_arrived: '📦',
-  nc_resolved: '✅',
+  stage_advance: '\uD83D\uDD04',
+  responsable_change: '\uD83D\uDC64',
+  nc_created: '\u26A0\uFE0F',
+  dhl_arrived: '\uD83D\uDCE6',
+  nc_resolved: '\u2705',
 };
 
 export function Header({ title, subtitle }: HeaderProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { setOpen } = useMobileSidebar();
   const userId = user?.id;
   const { data: notifications, isLoading } = useNotifications(userId);
   const { data: unreadCount } = useUnreadNotificationsCount(userId);
@@ -60,14 +62,26 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   return (
-    <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm px-6 flex items-center justify-between">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">{title}</h1>
-        {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+    <header className="h-14 md:h-16 border-b border-border bg-card/50 backdrop-blur-sm px-4 md:px-6 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Hamburger menu - mobile only */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden h-9 w-9 shrink-0"
+          onClick={() => setOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        <div className="min-w-0">
+          <h1 className="text-base md:text-xl font-semibold text-foreground truncate">{title}</h1>
+          {subtitle && <p className="text-xs md:text-sm text-muted-foreground truncate">{subtitle}</p>}
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Search */}
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
+        {/* Search - desktop only */}
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -79,7 +93,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative h-9 w-9">
               <Bell className="h-5 w-5" />
               {(unreadCount ?? 0) > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
@@ -88,7 +102,7 @@ export function Header({ title, subtitle }: HeaderProps) {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80">
             <DropdownMenuLabel className="flex items-center justify-between">
               <span>Notificaciones</span>
               {(unreadCount ?? 0) > 0 && (
@@ -125,7 +139,7 @@ export function Header({ title, subtitle }: HeaderProps) {
                 >
                   <div className="flex items-center gap-2 w-full">
                     <span className="text-sm">
-                      {TIPO_ICONS[notification.tipo] || '🔔'}
+                      {TIPO_ICONS[notification.tipo] || '\uD83D\uDD14'}
                     </span>
                     <span className={cn('text-sm flex-1 truncate', !notification.leido && 'font-medium')}>
                       {notification.titulo}
@@ -153,8 +167,8 @@ export function Header({ title, subtitle }: HeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Settings */}
-        <Button variant="ghost" size="icon">
+        {/* Settings - hidden on small mobile */}
+        <Button variant="ghost" size="icon" className="hidden sm:inline-flex h-9 w-9">
           <Settings className="h-5 w-5" />
         </Button>
       </div>

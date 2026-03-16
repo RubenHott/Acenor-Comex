@@ -205,7 +205,7 @@ export default function CreatePIMPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="Crear PIM" subtitle="Nuevo proceso de importación" />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Skeleton className="h-[400px] w-full" />
         </div>
       </div>
@@ -216,7 +216,7 @@ export default function CreatePIMPage() {
     <div className="min-h-screen bg-background page-enter">
       <Header title="Crear PIM" subtitle="Nuevo proceso de importación - Multi-Cuadro" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Back button */}
         <Button
           variant="ghost"

@@ -320,7 +320,7 @@ export default function RequirementsPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="Requerimientos Mensuales" subtitle="Ingreso de requerimiento mensual por Mes/Año y Cuadro" />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>Error al cargar requerimientos: {error.message}</AlertDescription>
@@ -337,7 +337,7 @@ export default function RequirementsPage() {
         subtitle="Ingreso de requerimiento mensual por Mes/Año y Cuadro"
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">

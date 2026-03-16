@@ -45,7 +45,7 @@ export default function WorkOrdersListPage() {
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-foreground">Órdenes de Trabajo</h1><p className="text-muted-foreground">Listado completo de órdenes de trabajo</p></div>
         <Button asChild className="bg-emerald-600 hover:bg-emerald-700"><Link to="/work-orders/create"><Plus className="w-4 h-4 mr-2" />Nueva OT</Link></Button>

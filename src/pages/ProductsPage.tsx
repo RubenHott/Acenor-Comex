@@ -61,7 +61,7 @@ export default function ProductsPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header title="Productos" subtitle="Catálogo de productos y materias primas" />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>Error al cargar productos: {error.message}</AlertDescription>
@@ -75,7 +75,7 @@ export default function ProductsPage() {
     <div className="min-h-screen bg-background page-enter">
       <Header title="Productos" subtitle="Catálogo de productos y materias primas" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex flex-1 gap-3 w-full sm:w-auto">

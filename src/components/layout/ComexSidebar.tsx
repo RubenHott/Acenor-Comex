@@ -20,12 +20,19 @@ import {
   GitBranch,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMobileSidebar } from '@/contexts/MobileSidebarContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from '@/components/ui/sheet';
 
 interface NavItem {
   label: string;
@@ -63,14 +70,22 @@ export function ComexSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const isMobile = useIsMobile();
+  const { open, setOpen } = useMobileSidebar();
 
-  const renderNavItem = (item: NavItem) => {
+  const handleNavClick = () => {
+    if (isMobile) setOpen(false);
+  };
+
+  const renderNavItem = (item: NavItem, forceExpanded = false) => {
     const isActive = location.pathname === item.href;
     const Icon = item.icon;
+    const showLabel = forceExpanded || !collapsed;
 
     const linkContent = (
       <NavLink
         to={item.href}
+        onClick={handleNavClick}
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
           'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -79,7 +94,7 @@ export function ComexSidebar() {
         )}
       >
         <Icon className={cn('h-5 w-5 flex-shrink-0', isActive && 'text-sidebar-primary')} />
-        {!collapsed && (
+        {showLabel && (
           <>
             <span className="flex-1">{item.label}</span>
             {item.badge && (
@@ -92,7 +107,7 @@ export function ComexSidebar() {
       </NavLink>
     );
 
-    if (collapsed) {
+    if (!forceExpanded && collapsed) {
       return (
         <Tooltip key={item.href} delayDuration={0}>
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
@@ -111,10 +126,109 @@ export function ComexSidebar() {
     return <div key={item.href}>{linkContent}</div>;
   };
 
+  const renderNavSections = (forceExpanded = false) => {
+    const showLabel = forceExpanded || !collapsed;
+    return (
+      <>
+        {/* Main Section */}
+        <div className="space-y-1">
+          {showLabel && (
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
+              Principal
+            </p>
+          )}
+          {mainNavItems.map((item) => renderNavItem(item, forceExpanded))}
+        </div>
+
+        {/* Catalogs Section */}
+        <div className="space-y-1">
+          {showLabel && (
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
+              Catálogos
+            </p>
+          )}
+          {catalogNavItems.map((item) => renderNavItem(item, forceExpanded))}
+        </div>
+
+        {/* Maestros */}
+        <div className="space-y-1">
+          {showLabel && (
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
+              Maestros
+            </p>
+          )}
+          {mastersNavItems.map((item) => renderNavItem(item, forceExpanded))}
+        </div>
+
+        {/* System Section */}
+        <div className="space-y-1">
+          {showLabel && (
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
+              Sistema
+            </p>
+          )}
+          {systemNavItems.map((item) => renderNavItem(item, forceExpanded))}
+        </div>
+      </>
+    );
+  };
+
+  // ── Mobile: Sheet overlay ──
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="left" className="w-72 p-0 bg-sidebar">
+          <SheetTitle className="sr-only">Menu de navegacion</SheetTitle>
+          {/* Logo */}
+          <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-accent shadow-md">
+                <Ship className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold text-sidebar-foreground">COMEX</span>
+                <span className="text-[10px] text-sidebar-foreground/60 -mt-1">Trade Management</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto p-3 space-y-6">
+            {renderNavSections(true)}
+          </nav>
+
+          {/* User & Logout */}
+          <div className="border-t border-sidebar-border p-3">
+            {user && (
+              <div className="flex items-center gap-3 px-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-foreground font-semibold text-sm">
+                  {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
+                  <p className="text-[10px] text-sidebar-foreground/60 truncate">{user.email}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                  onClick={() => { logout(); setOpen(false); }}
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // ── Desktop: Fixed sidebar ──
   return (
     <aside
       className={cn(
-        'flex flex-col h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300',
+        'hidden md:flex flex-col h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
@@ -150,45 +264,7 @@ export function ComexSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-6">
-        {/* Main Section */}
-        <div className="space-y-1">
-          {!collapsed && (
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
-              Principal
-            </p>
-          )}
-          {mainNavItems.map(renderNavItem)}
-        </div>
-
-        {/* Catalogs Section */}
-        <div className="space-y-1">
-          {!collapsed && (
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
-              Catálogos
-            </p>
-          )}
-          {catalogNavItems.map(renderNavItem)}
-        </div>
-
-        {/* Maestros: carga masiva y CRUD */}
-        <div className="space-y-1">
-          {!collapsed && (
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
-              Maestros
-            </p>
-          )}
-          {mastersNavItems.map(renderNavItem)}
-        </div>
-
-        {/* System Section */}
-        <div className="space-y-1">
-          {!collapsed && (
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
-              Sistema
-            </p>
-          )}
-          {systemNavItems.map(renderNavItem)}
-        </div>
+        {renderNavSections()}
       </nav>
 
       {/* User & Collapse */}
