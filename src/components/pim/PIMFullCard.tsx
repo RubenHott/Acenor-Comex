@@ -186,18 +186,18 @@ export function PIMFullCard({ pim, tracking, canEdit, canDelete, onDelete }: Pro
     >
       <CardContent className="p-0">
         {/* Row 1: Header - Code, Description, Priority Badge, Time, ETA */}
-        <div className="px-5 pt-4 pb-3">
-          <div className="flex items-start justify-between gap-4">
+        <div className="px-4 md:px-5 pt-4 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
             {/* Left: Code + Description */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
                 <h3 className="font-mono font-bold text-base text-foreground">
                   {pim.codigo_correlativo || pim.codigo}
                 </h3>
                 {pim.codigo_correlativo && (
                   <span className="text-xs text-muted-foreground font-mono">{pim.codigo}</span>
                 )}
-                <span className="text-muted-foreground/40">/</span>
+                <span className="hidden sm:inline text-muted-foreground/40">/</span>
                 <p className="text-sm text-foreground/80 truncate font-medium">
                   {pim.descripcion}
                 </p>
@@ -215,13 +215,13 @@ export function PIMFullCard({ pim, tracking, canEdit, canDelete, onDelete }: Pro
             </div>
 
             {/* Right: Time in process + USD */}
-            <div className="flex items-center gap-5 shrink-0">
+            <div className="flex items-center gap-4 sm:gap-5 shrink-0">
               {tracking && !isCompleted && (
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">
                     Tiempo en proceso
                   </p>
-                  <div className="flex items-center gap-1.5 justify-end">
+                  <div className="flex items-center gap-1.5 sm:justify-end">
                     <BarChart3 className="h-4 w-4 text-blue-500" />
                     <span className="text-lg font-bold text-foreground">
                       {tracking.diasEnProceso}d
@@ -229,7 +229,7 @@ export function PIMFullCard({ pim, tracking, canEdit, canDelete, onDelete }: Pro
                   </div>
                 </div>
               )}
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">
                   Monto
                 </p>
@@ -242,7 +242,7 @@ export function PIMFullCard({ pim, tracking, canEdit, canDelete, onDelete }: Pro
         </div>
 
         {/* Row 2: Origin → Destination, Proveedor, Tons */}
-        <div className="px-5 pb-3 flex items-center gap-6 text-sm">
+        <div className="px-4 md:px-5 pb-3 flex flex-wrap items-center gap-3 sm:gap-6 text-sm">
           {/* Origin */}
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
@@ -295,13 +295,13 @@ export function PIMFullCard({ pim, tracking, canEdit, canDelete, onDelete }: Pro
         </div>
 
         {/* Row 3: Timeline */}
-        <div className={cn('px-5 py-3 border-t border-b', isClosed ? 'bg-gray-50/50' : 'bg-blue-50/30')}>
+        <div className={cn('px-4 md:px-5 py-3 border-t border-b', isClosed ? 'bg-gray-50/50' : 'bg-blue-50/30')}>
           <StageTimeline tracking={tracking} />
         </div>
 
         {/* Row 4: Process Health, Liaison, Action Buttons */}
-        <div className="px-5 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
+        <div className="px-4 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6">
             {/* Process Health */}
             {tracking && !isCompleted && (
               <div className="flex items-center gap-2">
@@ -370,7 +370,7 @@ export function PIMFullCard({ pim, tracking, canEdit, canDelete, onDelete }: Pro
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
