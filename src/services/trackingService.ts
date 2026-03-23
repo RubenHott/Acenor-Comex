@@ -521,11 +521,15 @@ export async function advanceStage(params: AdvanceStageParams) {
   }
 
   // Notifications
-  if (nextStageKey) {
-    const nextDef = TRACKING_STAGES[currentIdx + 1];
-    const { data: pimData } = await supabase.from('pims').select('codigo').eq('id', pimId).single();
-    const pimCodigo = pimData?.codigo || pimId;
+  const nextDef = nextStageKey ? TRACKING_STAGES[currentIdx + 1] : null;
+  const { data: pimData } = await supabase
+    .from('pims')
+    .select('codigo, codigo_correlativo')
+    .eq('id', pimId)
+    .single();
+  const pimCodigo = pimData?.codigo || pimId;
 
+  if (nextStageKey && nextDef) {
     const { data: allDeptUsers } = await supabase
       .from('user_profiles')
       .select('id, department')
@@ -548,6 +552,37 @@ export async function advanceStage(params: AdvanceStageParams) {
         }))
       );
     }
+  }
+
+  // Send email notification to all active users (fire-and-forget)
+  const { data: allUsers } = await supabase
+    .from('user_profiles')
+    .select('email')
+    .eq('active', true);
+
+  const emails = allUsers?.map((u) => u.email).filter(Boolean) || [];
+  if (emails.length > 0) {
+    const deptNames: Record<string, string> = {
+      comex: 'COMEX',
+      finanzas: 'Finanzas',
+      gerencia: 'Gerencia',
+    };
+    supabase.functions
+      .invoke('send-stage-email', {
+        body: {
+          pimCodigo,
+          pimCodigoCorrelativo: pimData?.codigo_correlativo || null,
+          etapaCompletada: currentStageDef.name,
+          etapaSiguiente: nextDef?.name || null,
+          quienAvanzo: usuario,
+          responsableSiguiente: nextDef
+            ? nextDef.departments.map((d) => deptNames[d] || d).join(', ')
+            : null,
+          departamentoSiguiente: nextDef?.departments || null,
+          destinatarios: emails,
+        },
+      })
+      .catch((err) => console.error('Error sending stage email:', err));
   }
 
   // Mark PIM as cerrado when last stage completes
