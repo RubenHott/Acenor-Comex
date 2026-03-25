@@ -192,10 +192,17 @@ export default function CreatePIMPage() {
       });
 
       navigate('/comex/pims');
-    } catch (error) {
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message: unknown }).message)
+            : JSON.stringify(error);
+      console.error('Error al crear PIM:', error);
       toast({
         title: 'Error al crear PIM',
-        description: error instanceof Error ? error.message : 'Error desconocido',
+        description: msg || 'Error desconocido',
         variant: 'destructive',
       });
     }
