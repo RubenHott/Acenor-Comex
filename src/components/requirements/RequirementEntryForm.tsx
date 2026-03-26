@@ -24,7 +24,7 @@ import { ProductAutocomplete, productTipoFromCategoria, tipoMaterialLabel } from
 import type { Product } from '@/hooks/useProducts';
 import type { Cuadro } from '@/hooks/useCuadros';
 import type { RequirementLinePayload } from '@/hooks/useRequirements';
-import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
+import { isCuadroPorUnidad, isCuadroPorKilo } from '@/lib/cuadrosUnidad';
 import { Badge } from '@/components/ui/badge';
 
 export interface RequirementLine {
@@ -115,6 +115,7 @@ export function RequirementEntryForm({
   const availableProducts = cuadroId ? (filteredProducts ?? []) : (products ?? []);
   const selectedCuadro = cuadros?.find((c) => c.id === cuadroId);
   const esPorUnidad = isCuadroPorUnidad(selectedCuadro?.codigo);
+  const esPorKilo = isCuadroPorKilo(selectedCuadro?.codigo);
 
   const addLine = () => {
     onLinesChange([
@@ -137,14 +138,17 @@ export function RequirementEntryForm({
     updateLine(tempId, { product, cantidadRequerida: product ? 1 : 0 });
   };
 
-  // Para cuadros por peso: el usuario ingresa en TONELADAS. Convertir según unidad del producto.
+  // Para cuadros por peso: el usuario ingresa en TONELADAS (o KG para cuadros por kilo).
+  // Convertir según unidad del producto.
   const toDisplayCantidad = (cantidad: number, unidad: string | null | undefined): number => {
-    if (!esPorUnidad && unidad?.toUpperCase() === 'KG') return cantidad / 1000;
+    if (esPorUnidad || esPorKilo) return cantidad; // no conversion for units or kilo cuadros
+    if (unidad?.toUpperCase() === 'KG') return cantidad / 1000;
     return cantidad;
   };
-  const fromDisplayCantidad = (inputTon: number, unidad: string | null | undefined): number => {
-    if (!esPorUnidad && unidad?.toUpperCase() === 'KG') return inputTon * 1000;
-    return inputTon;
+  const fromDisplayCantidad = (inputVal: number, unidad: string | null | undefined): number => {
+    if (esPorUnidad || esPorKilo) return inputVal; // no conversion for units or kilo cuadros
+    if (unidad?.toUpperCase() === 'KG') return inputVal * 1000;
+    return inputVal;
   };
 
   const handleCantidadChange = (tempId: string, value: string, product: Product | null) => {
@@ -160,13 +164,14 @@ export function RequirementEntryForm({
     const precio = l.product.ultimo_precio_usd ?? 0;
     return sum + l.cantidadRequerida * precio;
   }, 0);
-  const totalTon = consolidated.reduce((sum, l) => {
+  const totalKg = consolidated.reduce((sum, l) => {
     if (!l.product) return sum;
     const u = (l.product.unidad || '').toUpperCase();
-    if (u === 'TON') return sum + l.cantidadRequerida;
-    if (u === 'KG') return sum + l.cantidadRequerida / 1000;
+    if (u === 'KG') return sum + l.cantidadRequerida;
+    if (u === 'TON') return sum + l.cantidadRequerida * 1000;
     return sum;
   }, 0);
+  const totalTon = totalKg / 1000;
   const totalUn = consolidated
     .filter((l) => l.product?.unidad === 'UN')
     .reduce((sum, l) => sum + l.cantidadRequerida, 0);
@@ -213,9 +218,9 @@ export function RequirementEntryForm({
             {selectedCuadro && (
               <Badge
                 variant={esPorUnidad ? 'default' : 'secondary'}
-                className={esPorUnidad ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-600 hover:bg-amber-700 text-white'}
+                className={esPorUnidad ? 'bg-blue-600 hover:bg-blue-700' : esPorKilo ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white'}
               >
-                {esPorUnidad ? 'En UNIDADES' : 'En TONELADAS'}
+                {esPorUnidad ? 'En UNIDADES' : esPorKilo ? 'En KILOS' : 'En TONELADAS'}
               </Badge>
             )}
           </div>
@@ -266,7 +271,7 @@ export function RequirementEntryForm({
                 <TableHead className="w-[60px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10 text-center">Und</TableHead>
                 <TableHead className="w-[100px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10 text-right">Precio USD</TableHead>
                 <TableHead className="w-[110px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10">
-                  {esPorUnidad ? 'Cantidad' : 'Cantidad (ton)'}
+                  {esPorUnidad ? 'Cantidad' : esPorKilo ? 'Cantidad (kg)' : 'Cantidad (ton)'}
                 </TableHead>
                 <TableHead className="w-[100px] whitespace-nowrap sticky top-0 bg-muted/80 backdrop-blur z-10 text-right">Subtotal</TableHead>
                 <TableHead className="w-[44px] sticky top-0 bg-muted/80 backdrop-blur z-10"></TableHead>
@@ -314,12 +319,12 @@ export function RequirementEntryForm({
                       <Input
                         type="number"
                         min={0}
-                        step={esPorUnidad ? 1 : 0.001}
+                        step={esPorUnidad ? 1 : esPorKilo ? 1 : 0.001}
                         value={line.product ? toDisplayCantidad(line.cantidadRequerida, line.product.unidad) || '' : line.cantidadRequerida || ''}
                         onChange={(e) => handleCantidadChange(line.tempId, e.target.value, line.product)}
                         disabled={busy}
                         className="w-24"
-                        placeholder={esPorUnidad ? undefined : 'ton'}
+                        placeholder={esPorUnidad ? undefined : esPorKilo ? 'kg' : 'ton'}
                       />
                     </TableCell>
                     <TableCell className="text-sm font-medium text-right tabular-nums">
@@ -349,10 +354,10 @@ export function RequirementEntryForm({
         </div>
       </div>
 
-      {/* Totales: destacar según cuadro en UN o TON */}
+      {/* Totales: destacar según cuadro en UN, KG o TON */}
       <div className={cn(
         'flex flex-wrap gap-6 p-4 rounded-lg border-2',
-        esPorUnidad ? 'bg-blue-500/10 border-blue-500/30' : 'bg-amber-500/10 border-amber-500/30'
+        esPorUnidad ? 'bg-blue-500/10 border-blue-500/30' : esPorKilo ? 'bg-green-500/10 border-green-500/30' : 'bg-amber-500/10 border-amber-500/30'
       )}>
         <div className="order-2">
           <p className="text-sm text-muted-foreground">Total USD estimado</p>
@@ -367,6 +372,13 @@ export function RequirementEntryForm({
             <div className="order-3">
               <p className="text-sm text-muted-foreground">Total t (referencia)</p>
               <p className="text-lg font-semibold text-muted-foreground">{totalTon.toLocaleString('es-PE')} t</p>
+            </div>
+          </>
+        ) : esPorKilo ? (
+          <>
+            <div className="order-1">
+              <p className="text-sm font-medium text-green-700 dark:text-green-400">Total KILOS</p>
+              <p className="text-2xl font-bold text-green-700 dark:text-green-400">{totalKg.toLocaleString('es-PE')} kg</p>
             </div>
           </>
         ) : (

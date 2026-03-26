@@ -52,6 +52,18 @@ export const DOCUMENT_TYPES = [
   { value: 'acta_recepcion', label: 'Acta de Recepcion' },
   { value: 'dus', label: 'DUS (Declaracion Unica de Salida)' },
   { value: 'alzamiento', label: 'Alzamiento' },
+  { value: 'resumen_lc', label: 'Resumen LC' },
+  { value: 'portada_lc', label: 'Portada LC' },
+  { value: 'orden_compra_final', label: 'Orden de Compra Final' },
+  { value: 'factura_gastos_puerto', label: 'Factura Gastos Puerto' },
+  { value: 'detalle_pim', label: 'Detalle PIM' },
+  { value: 'seguro_chubb', label: 'Seguro Chubb' },
+  { value: 'set_doc_bl', label: 'BL Original (Set Doc)' },
+  { value: 'set_doc_factura', label: 'Factura Comercial (Set Doc)' },
+  { value: 'set_doc_packing', label: 'Packing List (Set Doc)' },
+  { value: 'set_doc_cert_origen', label: 'Certificado de Origen (Set Doc)' },
+  { value: 'set_doc_cert_calidad', label: 'Certificado de Calidad (Set Doc)' },
+  { value: 'set_doc_otros', label: 'Otros Documentos (Set Doc)' },
   { value: 'otro', label: 'Otro' },
 ] as const;
 

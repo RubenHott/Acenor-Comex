@@ -143,6 +143,9 @@ export function useCreatePIMWithItems() {
           total_usd: item.totalUsd,
           toneladas: (() => { const up = item.unidad.toUpperCase(); return (up === 'TON' || up === 'KG') ? item.cantidadAConsumir / 1000 : 0; })(),
           molino_id: item.molinoId ?? molinoId,
+          cantidad_bultos: item.cantidadBultos ?? null,
+          piezas_por_bulto: item.piezasPorBulto ?? null,
+          cantidad_total_piezas: item.cantidadBultos && item.piezasPorBulto ? item.cantidadBultos * item.piezasPorBulto : null,
         }));
 
         const { error: itemsError } = await supabase.from('pim_items').insert(pimItems);
@@ -256,6 +259,9 @@ export function useCreatePIMWithItems() {
           total_usd: item.totalUsd,
           toneladas: (() => { const up = item.unidad.toUpperCase(); return (up === 'TON' || up === 'KG') ? item.cantidad / 1000 : 0; })(),
           molino_id: item.molinoId ?? molinoId,
+          cantidad_bultos: item.cantidadBultos ?? null,
+          piezas_por_bulto: item.piezasPorBulto ?? null,
+          cantidad_total_piezas: item.cantidadBultos && item.piezasPorBulto ? item.cantidadBultos * item.piezasPorBulto : null,
         }));
 
         const { error: extraItemsError } = await supabase

@@ -35,7 +35,7 @@ import {
 import { Plus, Trash2, Search, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActiveMolinos } from '@/hooks/useMolinos';
-import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
+import { isCuadroPorUnidad, isCuadroPorKilo, isAlambreSoldadura } from '@/lib/cuadrosUnidad';
 import type { Product } from '@/hooks/useProducts';
 
 export interface PIMExtraItem {
@@ -49,6 +49,9 @@ export interface PIMExtraItem {
   precioUnitarioUsd: number;
   totalUsd: number;
   molinoId?: string | null;
+  pesoProducto?: number | null;
+  cantidadBultos?: number | null;
+  piezasPorBulto?: number | null;
 }
 
 interface PIMExtraProductSelectorProps {
@@ -58,26 +61,30 @@ interface PIMExtraProductSelectorProps {
   molinoId?: string;
 }
 
-/** Display quantity in TON for weight-based products. Raw is ALWAYS in kg for weight cuadros. */
+/** Display quantity for products. Raw is ALWAYS in kg for weight cuadros. */
 function toDisplayExtra(cuadro: string | null, rawUnit: string, rawQty: number) {
   if (isCuadroPorUnidad(cuadro ?? '')) return { displayUnit: rawUnit, displayQty: rawQty };
+  if (isCuadroPorKilo(cuadro ?? '')) return { displayUnit: 'kg', displayQty: rawQty };
   return { displayUnit: 't', displayQty: rawQty / 1000 };
 }
 
 function fromDisplayExtra(cuadro: string | null, _rawUnit: string, displayQty: number) {
   if (isCuadroPorUnidad(cuadro ?? '')) return displayQty;
+  if (isCuadroPorKilo(cuadro ?? '')) return displayQty; // already in kg
   return displayQty * 1000;
 }
 
-/** Convert display price (per TON or per UND) to raw storage price (per KG or per UND). */
+/** Convert display price to raw storage price (per KG or per UND). */
 function displayPriceToRawPrice(cuadro: string | null, _rawUnit: string, displayPrice: number): number {
   if (isCuadroPorUnidad(cuadro ?? '')) return displayPrice;
+  if (isCuadroPorKilo(cuadro ?? '')) return displayPrice; // already per kg
   return displayPrice / 1000;
 }
 
-/** Convert raw storage price to display price (per TON or per UND). */
+/** Convert raw storage price to display price. */
 function rawPriceToDisplayPrice(cuadro: string | null, _rawUnit: string, rawPrice: number): number {
   if (isCuadroPorUnidad(cuadro ?? '')) return rawPrice;
+  if (isCuadroPorKilo(cuadro ?? '')) return rawPrice; // already per kg
   return rawPrice * 1000;
 }
 
@@ -107,6 +114,9 @@ export function PIMExtraProductSelector({
         return;
       }
 
+      // Default quantity: 1 UND, 1 kg for kilo cuadros, or 1 TON (=1000 kg) for ton cuadros
+      const defaultCantidad = isCuadroPorUnidad(product.cuadro) ? 1 : isCuadroPorKilo(product.cuadro) ? 1 : 1000;
+
       const newItem: PIMExtraItem = {
         tempId: crypto.randomUUID(),
         productoId: product.id,
@@ -114,10 +124,11 @@ export function PIMExtraProductSelector({
         descripcion: product.descripcion,
         unidad: product.unidad,
         cuadro: product.cuadro,
-        cantidad: isCuadroPorUnidad(product.cuadro) ? 1 : 1000, // 1 UND or 1 TON (=1000 kg internal)
+        cantidad: defaultCantidad,
         precioUnitarioUsd: 0,
         totalUsd: 0,
         molinoId: molinoId || null,
+        pesoProducto: product.peso ?? null,
       };
 
       onExtraItemsChange([...extraItems, newItem]);
@@ -199,15 +210,17 @@ export function PIMExtraProductSelector({
   const totalUsd = extraItems.reduce((sum, i) => sum + i.totalUsd, 0);
 
   const totalToneladas = extraItems.reduce((sum, i) => {
-    const porUnidad = isCuadroPorUnidad(i.cuadro ?? '');
-    if (porUnidad) return sum;
-    const { displayQty } = toDisplayExtra(i.cuadro, i.unidad, i.cantidad);
-    return sum + displayQty;
+    if (isCuadroPorUnidad(i.cuadro ?? '') || isCuadroPorKilo(i.cuadro ?? '')) return sum;
+    return sum + i.cantidad / 1000;
+  }, 0);
+
+  const totalKilos = extraItems.reduce((sum, i) => {
+    if (!isCuadroPorKilo(i.cuadro ?? '')) return sum;
+    return sum + i.cantidad;
   }, 0);
 
   const totalUnidades = extraItems.reduce((sum, i) => {
-    const porUnidad = isCuadroPorUnidad(i.cuadro ?? '');
-    if (!porUnidad) return sum;
+    if (!isCuadroPorUnidad(i.cuadro ?? '')) return sum;
     return sum + i.cantidad;
   }, 0);
 
@@ -271,6 +284,9 @@ export function PIMExtraProductSelector({
         </div>
       ) : (
         <>
+          {(() => {
+            const showRollos = extraItems.some((i) => isAlambreSoldadura(i.codigoProducto));
+            return (
           <div className="rounded-lg border overflow-hidden">
             <Table>
               <TableHeader>
@@ -278,8 +294,14 @@ export function PIMExtraProductSelector({
                   <TableHead>Código</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-center">Cantidad</TableHead>
+                  {showRollos && (
+                    <TableHead className="text-right">Rollos</TableHead>
+                  )}
                   <TableHead className="text-right">Precio / Unidad</TableHead>
                   <TableHead className="text-right">Total USD</TableHead>
+                  <TableHead className="text-center">Bultos</TableHead>
+                  <TableHead className="text-center">Pzas/Bulto</TableHead>
+                  <TableHead className="text-center">Total Uds.</TableHead>
                   <TableHead>Fábrica/Molino</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
@@ -292,6 +314,10 @@ export function PIMExtraProductSelector({
                     item.cantidad
                   );
                   const displayPrice = rawPriceToDisplayPrice(item.cuadro, item.unidad, item.precioUnitarioUsd);
+                  const pesoRollo = item.pesoProducto;
+                  const rollos = (isAlambreSoldadura(item.codigoProducto) && pesoRollo && pesoRollo > 0)
+                    ? Math.round(item.cantidad / pesoRollo)
+                    : null;
 
                   return (
                     <TableRow key={item.tempId}>
@@ -318,6 +344,11 @@ export function PIMExtraProductSelector({
                           className="w-24 text-center"
                         />
                       </TableCell>
+                      {showRollos && (
+                        <TableCell className="text-right text-sm text-muted-foreground">
+                          {rollos != null ? rollos : '-'}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Input
                           type="number"
@@ -332,6 +363,39 @@ export function PIMExtraProductSelector({
                       </TableCell>
                       <TableCell className="text-right text-sm font-medium">
                         {formatCurrency(item.totalUsd)}
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={item.cantidadBultos ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value ? parseInt(e.target.value) : null;
+                            onExtraItemsChange(extraItems.map((ei) => ei.tempId === item.tempId ? { ...ei, cantidadBultos: val } : ei));
+                          }}
+                          className="w-20 text-center"
+                          placeholder="-"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={item.piezasPorBulto ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value ? parseInt(e.target.value) : null;
+                            onExtraItemsChange(extraItems.map((ei) => ei.tempId === item.tempId ? { ...ei, piezasPorBulto: val } : ei));
+                          }}
+                          className="w-20 text-center"
+                          placeholder="-"
+                        />
+                      </TableCell>
+                      <TableCell className="text-center text-sm font-medium">
+                        {item.cantidadBultos && item.piezasPorBulto
+                          ? (item.cantidadBultos * item.piezasPorBulto).toLocaleString()
+                          : '-'}
                       </TableCell>
                       <TableCell>
                         <Select
@@ -382,6 +446,8 @@ export function PIMExtraProductSelector({
               </TableBody>
             </Table>
           </div>
+            );
+          })()}
 
           <div className="flex justify-end">
             <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-accent/50 min-w-[300px]">
@@ -389,6 +455,12 @@ export function PIMExtraProductSelector({
                 <div>
                   <Label className="text-xs text-muted-foreground">Toneladas Extras</Label>
                   <p className="text-lg font-bold">{formatNumber(totalToneladas)} t</p>
+                </div>
+              )}
+              {totalKilos > 0 && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Kilos Extras</Label>
+                  <p className="text-lg font-bold">{formatNumber(totalKilos, 0)} kg</p>
                 </div>
               )}
               {totalUnidades > 0 && (

@@ -83,7 +83,6 @@ export const REVISION_CONTRATO_STEPS: StageStepDef[] = [
     name: "Borrador Carta de Crédito",
     description: "Carga del borrador de carta de crédito por COMEX",
     requiredDepartment: ["comex"],
-    requiredDocuments: ["borrador_lc"],
     applicablePaymentModes: ["carta_credito", "mixto"],
   },
   {

@@ -26,6 +26,18 @@ export type DocumentType =
   | "acta_recepcion"
   | "dus"
   | "alzamiento"
+  | "resumen_lc"
+  | "portada_lc"
+  | "orden_compra_final"
+  | "factura_gastos_puerto"
+  | "detalle_pim"
+  | "seguro_chubb"
+  | "set_doc_bl"
+  | "set_doc_factura"
+  | "set_doc_packing"
+  | "set_doc_cert_origen"
+  | "set_doc_cert_calidad"
+  | "set_doc_otros"
   | "otro";
 
 export interface ChecklistItemDef {

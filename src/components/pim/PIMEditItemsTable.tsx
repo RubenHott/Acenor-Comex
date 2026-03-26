@@ -49,6 +49,9 @@ export interface EditableItem {
   toneladas: number;
   molino_id?: string | null;
   isNew?: boolean; // marks items added during edit
+  cantidad_bultos?: number | null;
+  piezas_por_bulto?: number | null;
+  cantidad_total_piezas?: number | null;
 }
 
 interface PIMEditItemsTableProps {
@@ -129,6 +132,22 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
       onItemsChange(items.filter((i) => i.id !== itemId));
     },
     [items, onItemsChange, removedItemIds, onRemovedItemIdsChange]
+  );
+
+  const updateBulkField = useCallback(
+    (id: string, field: 'cantidad_bultos' | 'piezas_por_bulto', value: number | null) => {
+      onItemsChange(
+        items.map((item) => {
+          if (item.id !== id) return item;
+          const updated = { ...item, [field]: value };
+          const bultos = updated.cantidad_bultos ?? 0;
+          const piezas = updated.piezas_por_bulto ?? 0;
+          updated.cantidad_total_piezas = bultos > 0 && piezas > 0 ? bultos * piezas : null;
+          return updated;
+        })
+      );
+    },
+    [items, onItemsChange]
   );
 
   const updateItem = useCallback(
@@ -241,6 +260,9 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
                 <TableHead className="text-center">Cantidad</TableHead>
                 <TableHead className="text-right">Precio / Unidad</TableHead>
                 <TableHead className="text-right">Total USD</TableHead>
+                <TableHead className="text-center">Bultos</TableHead>
+                <TableHead className="text-center">Pzas/Bulto</TableHead>
+                <TableHead className="text-center">Total Uds.</TableHead>
                 <TableHead>Fábrica/Molino</TableHead>
                 <TableHead className="w-10"></TableHead>
               </TableRow>
@@ -286,6 +308,31 @@ export function PIMEditItemsTable({ items, onItemsChange, removedItemIds, onRemo
                     </TableCell>
                     <TableCell className="text-right text-sm font-medium">
                       {formatCurrency(item.total_usd)}
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={item.cantidad_bultos ?? ''}
+                        onChange={(e) => updateBulkField(item.id, 'cantidad_bultos', e.target.value ? parseInt(e.target.value) : null)}
+                        className="w-20 text-center"
+                        placeholder="-"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={item.piezas_por_bulto ?? ''}
+                        onChange={(e) => updateBulkField(item.id, 'piezas_por_bulto', e.target.value ? parseInt(e.target.value) : null)}
+                        className="w-20 text-center"
+                        placeholder="-"
+                      />
+                    </TableCell>
+                    <TableCell className="text-center text-sm font-medium">
+                      {item.cantidad_total_piezas != null ? item.cantidad_total_piezas.toLocaleString() : '-'}
                     </TableCell>
                     <TableCell>
                       <Select

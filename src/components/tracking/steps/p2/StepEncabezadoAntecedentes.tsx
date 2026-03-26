@@ -41,7 +41,17 @@ export function StepEncabezadoAntecedentes({ step, pimId, stageKey, pim, userId,
             Información del PIM
           </h5>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-            <div><span className="text-muted-foreground">Código:</span> <strong>{pim?.codigo || 'N/A'}</strong></div>
+            <div>
+              <span className="text-muted-foreground">Código:</span>{' '}
+              {pim?.codigo_correlativo ? (
+                <>
+                  <strong>{pim.codigo_correlativo}</strong>{' '}
+                  <span className="text-xs text-muted-foreground">({pim?.codigo || 'N/A'})</span>
+                </>
+              ) : (
+                <strong>{pim?.codigo || 'N/A'}</strong>
+              )}
+            </div>
             <div><span className="text-muted-foreground">Proveedor:</span> {pim?.proveedor_nombre || 'N/A'}</div>
             <div><span className="text-muted-foreground">Modalidad de pago:</span> {pim?.modalidad_pago || 'N/A'}</div>
             <div><span className="text-muted-foreground">Estado:</span> {pim?.estado || 'N/A'}</div>

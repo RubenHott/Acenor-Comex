@@ -4,7 +4,8 @@ import { Header } from '@/components/layout/Header';
 import { useRequirementsWithItems } from '@/hooks/useRequirements';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useCuadros } from '@/hooks/useCuadros';
-import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
+import { isCuadroPorUnidad, isCuadroPorKilo } from '@/lib/cuadrosUnidad';
+import { useProducts } from '@/hooks/useProducts';
 import { useCreatePIMWithItems } from '@/hooks/usePIMCreation';
 import {
   PIMItemSelector,
@@ -35,6 +36,7 @@ export default function CreatePIMPage() {
   const { data: requirements, isLoading: isLoadingReqs } = useRequirementsWithItems();
   const { data: suppliers, isLoading: isLoadingSuppliers } = useSuppliers();
   const { data: cuadros } = useCuadros();
+  const { data: products } = useProducts();
 
   const createPIM = useCreatePIMWithItems();
 
@@ -77,14 +79,21 @@ export default function CreatePIMPage() {
     return (requirements ?? []).filter((req) => req.kilos_disponibles > 0);
   }, [requirements]);
 
+  // Peso lookup by producto_id for BBOXMIG rollos calculation
+  const pesoByProductoId = useMemo(() => {
+    const m: Record<string, number | null> = {};
+    (products ?? []).forEach((p) => { m[p.id] = p.peso ?? null; });
+    return m;
+  }, [products]);
+
   // Convert selected requirements' items to flat list with context
   const allAvailableItems = useMemo(() => {
     const items: RequirementItemWithContext[] = [];
-    
+
     selectedReqIds.forEach((reqId) => {
       const req = requirements?.find((r) => r.id === reqId);
       if (!req) return;
-      
+
       const reqItems = ((req as { items?: RequirementItem[] }).items ?? [])
         .filter((item) => item.kilos_disponibles > 0)
         .map((item) => ({
@@ -93,13 +102,14 @@ export default function CreatePIMPage() {
           cuadroId: req.cuadro_id,
           cuadroCodigo: cuadroById[req.cuadro_id]?.codigo ?? 'N/A',
           requerimientoMes: req.mes,
+          pesoProducto: pesoByProductoId[item.producto_id] ?? null,
         }));
-      
+
       items.push(...reqItems);
     });
-    
+
     return items;
-  }, [selectedReqIds, requirements, cuadroById]);
+  }, [selectedReqIds, requirements, cuadroById, pesoByProductoId]);
 
   // Toggle requirement selection
   const toggleRequirement = useCallback((reqId: string, checked: boolean) => {
@@ -117,10 +127,14 @@ export default function CreatePIMPage() {
   const totalExtraUsd = extraItems.reduce((sum, i) => sum + i.totalUsd, 0);
   const totalUsd = totalReqUsd + totalExtraUsd;
 
-  // Extra toneladas & unidades
+  // Extra toneladas, kilos & unidades
   const extraToneladas = extraItems.reduce((sum, i) => {
-    if (isCuadroPorUnidad(i.cuadro ?? '')) return sum;
-    return sum + i.cantidad / 1000; // cantidad is always in kg for weight cuadros
+    if (isCuadroPorUnidad(i.cuadro ?? '') || isCuadroPorKilo(i.cuadro ?? '')) return sum;
+    return sum + i.cantidad / 1000;
+  }, 0);
+  const extraKilos = extraItems.reduce((sum, i) => {
+    if (!isCuadroPorKilo(i.cuadro ?? '')) return sum;
+    return sum + i.cantidad;
   }, 0);
   const extraUnidades = extraItems.reduce((sum, i) => {
     if (!isCuadroPorUnidad(i.cuadro ?? '')) return sum;
@@ -128,8 +142,13 @@ export default function CreatePIMPage() {
   }, 0);
 
   const totalToneladas = selections.reduce((sum, s) => {
-    if (isCuadroPorUnidad(s.cuadroCodigo)) return sum;
-    return sum + s.cantidadAConsumir / 1000; // cantidadAConsumir is always in kg
+    if (isCuadroPorUnidad(s.cuadroCodigo) || isCuadroPorKilo(s.cuadroCodigo)) return sum;
+    return sum + s.cantidadAConsumir / 1000;
+  }, 0);
+
+  const totalKilos = selections.reduce((sum, s) => {
+    if (!isCuadroPorKilo(s.cuadroCodigo)) return sum;
+    return sum + s.cantidadAConsumir;
   }, 0);
 
   // Validation
@@ -370,6 +389,7 @@ export default function CreatePIMPage() {
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="pt-6">
                 <div className="grid grid-cols-2 gap-4">
+                  {(totalToneladas + extraToneladas) > 0 && (
                   <div>
                     <Label className="text-xs text-muted-foreground">Total Toneladas</Label>
                     <p className="text-xl font-bold">
@@ -381,6 +401,20 @@ export default function CreatePIMPage() {
                       </p>
                     )}
                   </div>
+                  )}
+                  {(totalKilos + extraKilos) > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Total Kilos</Label>
+                    <p className="text-xl font-bold">
+                      {(totalKilos + extraKilos).toLocaleString('es-PE', { maximumFractionDigits: 0 })} kg
+                    </p>
+                    {extraKilos > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        ({extraKilos.toLocaleString('es-PE', { maximumFractionDigits: 0 })} kg extras)
+                      </p>
+                    )}
+                  </div>
+                  )}
                   <div>
                     <Label className="text-xs text-muted-foreground">Total Unidades</Label>
                     <p className="text-xl font-bold">

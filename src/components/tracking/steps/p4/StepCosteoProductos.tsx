@@ -43,7 +43,7 @@ export function StepCosteoProductos({ step, pimId, stageKey, pim, userId, userNa
           pimId={pimId}
           stageKey={stageKey}
           stageName="Costeo de Productos"
-          requiredDocTypes={['costeo']}
+          requiredDocTypes={['costeo', 'orden_compra_final', 'factura_gastos_puerto', 'detalle_pim']}
           usuario={userName}
           pimCodigo={pim.codigo}
           readOnly={true}
@@ -92,7 +92,7 @@ export function StepCosteoProductos({ step, pimId, stageKey, pim, userId, userNa
         pimId={pimId}
         stageKey={stageKey}
         stageName="Costeo de Productos"
-        requiredDocTypes={['costeo']}
+        requiredDocTypes={['costeo', 'orden_compra_final', 'factura_gastos_puerto', 'detalle_pim']}
         usuario={userName}
         pimCodigo={pim.codigo}
         readOnly={false}

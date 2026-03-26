@@ -22,7 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActiveMolinos } from '@/hooks/useMolinos';
-import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
+import { isCuadroPorUnidad, isCuadroPorKilo, isAlambreSoldadura } from '@/lib/cuadrosUnidad';
 import type { RequirementItem } from '@/hooks/useRequirements';
 
 export interface PIMItemSelection {
@@ -40,6 +40,9 @@ export interface PIMItemSelection {
   totalUsd: number;
   exceedsLimit: boolean;
   molinoId?: string | null;
+  pesoProducto?: number | null;
+  cantidadBultos?: number | null;
+  piezasPorBulto?: number | null;
 }
 
 export interface RequirementItemWithContext extends RequirementItem {
@@ -47,6 +50,7 @@ export interface RequirementItemWithContext extends RequirementItem {
   cuadroId: string;
   cuadroCodigo: string;
   requerimientoMes: string;
+  pesoProducto?: number | null;
 }
 
 interface PIMItemSelectorProps {
@@ -59,7 +63,10 @@ interface PIMItemSelectorProps {
 
 /**
  * Returns the display unit and converts a raw quantity (stored ALWAYS in KG for weight cuadros)
- * to the display unit. Weight-based cuadros always display in TON.
+ * to the display unit.
+ * - Cuadros por unidad: display as-is (UND)
+ * - Cuadros por kilo (SOLD): display in KG (no conversion)
+ * - Other weight cuadros: display in TON (divide by 1000)
  */
 function toDisplayUnit(
   cuadroCodigo: string,
@@ -69,37 +76,43 @@ function toDisplayUnit(
   if (isCuadroPorUnidad(cuadroCodigo)) {
     return { displayUnit: _rawUnit, displayQty: rawQty };
   }
+  if (isCuadroPorKilo(cuadroCodigo)) {
+    return { displayUnit: 'kg', displayQty: rawQty };
+  }
   // Weight cuadros: raw is ALWAYS in kg → display in tons
   return { displayUnit: 't', displayQty: rawQty / 1000 };
 }
 
-/** Convert display quantity (tons or units) back to storage quantity (always kg for weight). */
+/** Convert display quantity back to storage quantity (always kg for weight). */
 function fromDisplayQty(
   cuadroCodigo: string,
   _rawUnit: string,
   displayQty: number
 ): number {
   if (isCuadroPorUnidad(cuadroCodigo)) return displayQty;
+  if (isCuadroPorKilo(cuadroCodigo)) return displayQty; // already in kg
   return displayQty * 1000;
 }
 
-/** Convert display price (per TON or per UND) to raw storage price (per KG or per UND). */
+/** Convert display price to raw storage price (per KG or per UND). */
 function displayPriceToRawPrice(
   cuadroCodigo: string,
   _rawUnit: string,
   displayPrice: number
 ): number {
   if (isCuadroPorUnidad(cuadroCodigo)) return displayPrice;
+  if (isCuadroPorKilo(cuadroCodigo)) return displayPrice; // already per kg
   return displayPrice / 1000;
 }
 
-/** Convert raw storage price (per KG or per UND) to display price (per TON or per UND). */
+/** Convert raw storage price to display price. */
 function rawPriceToDisplayPrice(
   cuadroCodigo: string,
   _rawUnit: string,
   rawPrice: number
 ): number {
   if (isCuadroPorUnidad(cuadroCodigo)) return rawPrice;
+  if (isCuadroPorKilo(cuadroCodigo)) return rawPrice; // already per kg
   return rawPrice * 1000;
 }
 
@@ -136,6 +149,7 @@ export function PIMItemSelector({
           totalUsd: 0,
           exceedsLimit: false,
           molinoId: molinoId || null,
+          pesoProducto: item.pesoProducto ?? null,
         };
         onSelectionsChange([...selections, newSel]);
       } else {
@@ -206,6 +220,18 @@ export function PIMItemSelector({
     [selections, onSelectionsChange, molinoId]
   );
 
+  const updateBulk = useCallback(
+    (itemId: string, field: 'cantidadBultos' | 'piezasPorBulto', value: number | null) => {
+      onSelectionsChange(
+        selections.map((s) => {
+          if (s.itemId !== itemId) return s;
+          return { ...s, [field]: value };
+        })
+      );
+    },
+    [selections, onSelectionsChange]
+  );
+
   const formatNumber = (n: number, decimals = 2) =>
     new Intl.NumberFormat('es-PE', {
       minimumFractionDigits: decimals,
@@ -232,9 +258,13 @@ export function PIMItemSelector({
 
   // Totals
   const totalToneladas = selections.reduce((sum, s) => {
-    const { displayQty } = toDisplayUnit(s.cuadroCodigo, s.unidad, s.cantidadAConsumir);
-    if (isCuadroPorUnidad(s.cuadroCodigo)) return sum; // don't add units to toneladas
-    return sum + displayQty;
+    if (isCuadroPorUnidad(s.cuadroCodigo) || isCuadroPorKilo(s.cuadroCodigo)) return sum;
+    return sum + s.cantidadAConsumir / 1000;
+  }, 0);
+
+  const totalKilos = selections.reduce((sum, s) => {
+    if (!isCuadroPorKilo(s.cuadroCodigo)) return sum;
+    return sum + s.cantidadAConsumir;
   }, 0);
 
   const totalUnidades = selections.reduce((sum, s) => {
@@ -270,6 +300,10 @@ export function PIMItemSelector({
       {Object.entries(groupedItems).map(([groupKey, groupItems]) => {
         const [cuadroCodigo, mes] = groupKey.split('|');
         const porUnidad = isCuadroPorUnidad(cuadroCodigo);
+        const porKilo = isCuadroPorKilo(cuadroCodigo);
+        const unitLabel = porUnidad ? 'UND' : porKilo ? 'kg' : 't';
+        const badgeLabel = porUnidad ? 'Unidades' : porKilo ? 'Kilos' : 'Toneladas';
+        const showRollos = porKilo && groupItems.some((it) => isAlambreSoldadura(it.codigo_producto));
 
         return (
           <div key={groupKey} className="space-y-2">
@@ -279,10 +313,10 @@ export function PIMItemSelector({
               </Badge>
               <span className="text-sm text-muted-foreground">{mes}</span>
               <Badge variant="outline" className="text-xs">
-                {porUnidad ? 'Unidades' : 'Toneladas'}
+                {badgeLabel}
               </Badge>
             </div>
-            
+
             <div className="rounded-lg border overflow-hidden">
               <Table>
                 <TableHeader>
@@ -291,15 +325,21 @@ export function PIMItemSelector({
                     <TableHead>Código</TableHead>
                     <TableHead>Descripción</TableHead>
                     <TableHead className="text-right">
-                      Disponible ({porUnidad ? 'UND' : 't'})
+                      Disponible ({unitLabel})
                     </TableHead>
                     <TableHead className="text-right">
-                      A Consumir ({porUnidad ? 'UND' : 't'})
+                      A Consumir ({unitLabel})
                     </TableHead>
+                    {showRollos && (
+                      <TableHead className="text-right">Rollos</TableHead>
+                    )}
                     <TableHead className="text-right">
-                      Precio / {porUnidad ? 'UND' : 't'}
+                      Precio / {unitLabel}
                     </TableHead>
                     <TableHead className="text-right">Total USD</TableHead>
+                    <TableHead className="text-center">Bultos</TableHead>
+                    <TableHead className="text-center">Pzas/Bulto</TableHead>
+                    <TableHead className="text-center">Total Uds.</TableHead>
                     <TableHead>Fábrica/Molino</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -319,7 +359,13 @@ export function PIMItemSelector({
                       ? toDisplayUnit(item.cuadroCodigo, item.unidad, sel.cantidadAConsumir).displayQty
                       : 0;
 
-                    // Display price (per TON or per UND)
+                    // Rollos calculation for BBOXMIG wire products
+                    const pesoRollo = item.pesoProducto ?? sel?.pesoProducto;
+                    const rollos = (selected && sel && isAlambreSoldadura(item.codigo_producto) && pesoRollo && pesoRollo > 0)
+                      ? Math.round(sel.cantidadAConsumir / pesoRollo)
+                      : null;
+
+                    // Display price
                     const displayPrice =
                       sel && sel.precioUnitarioUsd != null
                         ? rawPriceToDisplayPrice(item.cuadroCodigo, item.unidad, sel.precioUnitarioUsd)
@@ -376,6 +422,11 @@ export function PIMItemSelector({
                             <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
+                        {showRollos && (
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {rollos != null ? rollos : '-'}
+                          </TableCell>
+                        )}
                         <TableCell className="text-right">
                           {selected ? (
                             <Input
@@ -400,6 +451,37 @@ export function PIMItemSelector({
                         <TableCell className="text-right text-sm font-medium">
                           {selected && sel
                             ? formatCurrency(sel.totalUsd)
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {selected ? (
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={sel?.cantidadBultos ?? ''}
+                              onChange={(e) => updateBulk(item.id, 'cantidadBultos', e.target.value ? parseInt(e.target.value) : null)}
+                              className="w-20 text-center"
+                              placeholder="-"
+                            />
+                          ) : <span className="text-muted-foreground text-center">-</span>}
+                        </TableCell>
+                        <TableCell>
+                          {selected ? (
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={sel?.piezasPorBulto ?? ''}
+                              onChange={(e) => updateBulk(item.id, 'piezasPorBulto', e.target.value ? parseInt(e.target.value) : null)}
+                              className="w-20 text-center"
+                              placeholder="-"
+                            />
+                          ) : <span className="text-muted-foreground text-center">-</span>}
+                        </TableCell>
+                        <TableCell className="text-center text-sm font-medium">
+                          {sel?.cantidadBultos && sel?.piezasPorBulto
+                            ? (sel.cantidadBultos * sel.piezasPorBulto).toLocaleString()
                             : '-'}
                         </TableCell>
                         <TableCell>
@@ -456,6 +538,12 @@ export function PIMItemSelector({
             <div>
               <Label className="text-xs text-muted-foreground">Total Toneladas</Label>
               <p className="text-lg font-bold">{formatNumber(totalToneladas)} t</p>
+            </div>
+          )}
+          {totalKilos > 0 && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Total Kilos</Label>
+              <p className="text-lg font-bold">{formatNumber(totalKilos, 0)} kg</p>
             </div>
           )}
           {totalUnidades > 0 && (

@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/table';
 import { Plus, Calendar, Package, DollarSign, TrendingUp, Edit, ChevronRight, AlertCircle, Trash2, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isCuadroPorUnidad } from '@/lib/cuadrosUnidad';
+import { isCuadroPorUnidad, isCuadroPorKilo } from '@/lib/cuadrosUnidad';
 import type { Requirement, RequirementItem } from '@/hooks/useRequirements';
 import {
   RequirementEntryForm,
@@ -309,9 +309,10 @@ export default function RequirementsPage() {
     return styles[estado] || styles.borrador;
   };
 
-  // Solo sumar toneladas de cuadros por peso; excluir cuadros en unidades (DISCOS, etc.)
+  // Solo sumar toneladas de cuadros por peso; excluir cuadros en unidades y en kilos
   const totalToneladas = requirements?.reduce((acc, r) => {
-    if (isCuadroPorUnidad(cuadroCodigoById[r.cuadro_id])) return acc;
+    const codigo = cuadroCodigoById[r.cuadro_id];
+    if (isCuadroPorUnidad(codigo) || isCuadroPorKilo(codigo)) return acc;
     return acc + (r.total_toneladas || 0);
   }, 0) || 0;
   const totalUSD = requirements?.reduce((acc, r) => acc + (r.total_usd || 0), 0) || 0;
@@ -421,14 +422,14 @@ export default function RequirementsPage() {
                             <Badge className={getStatusBadge(req.estado)}>{req.estado}</Badge>
                             <Badge
                               variant="outline"
-                              className={isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'border-blue-500 text-blue-700' : 'border-amber-500 text-amber-700'}
+                              className={isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'border-blue-500 text-blue-700' : isCuadroPorKilo(cuadroCodigoById[req.cuadro_id]) ? 'border-green-500 text-green-700' : 'border-amber-500 text-amber-700'}
                             >
-                              {isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'UN' : 't'}
+                              {isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'UN' : isCuadroPorKilo(cuadroCodigoById[req.cuadro_id]) ? 'kg' : 't'}
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
                             {cuadroNameById[req.cuadro_id] ?? req.cuadro_id} •{' '}
-                            {isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'En unidades' : `${req.total_toneladas || 0} t`}
+                            {isCuadroPorUnidad(cuadroCodigoById[req.cuadro_id]) ? 'En unidades' : isCuadroPorKilo(cuadroCodigoById[req.cuadro_id]) ? `${(req.total_kilos || 0).toLocaleString('es-PE')} kg` : `${req.total_toneladas || 0} t`}
                           </p>
                           <p className="text-sm font-medium text-primary mt-1">
                             {formatCurrency(req.total_usd || 0)}
@@ -454,9 +455,9 @@ export default function RequirementsPage() {
                       </CardTitle>
                       <Badge
                         variant={isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'default' : 'secondary'}
-                        className={isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'bg-blue-600' : 'bg-amber-600'}
+                        className={isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'bg-blue-600' : isCuadroPorKilo(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'bg-green-600' : 'bg-amber-600'}
                       >
-                        {isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'En UNIDADES' : 'En TONELADAS'}
+                        {isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'En UNIDADES' : isCuadroPorKilo(cuadroCodigoById[selectedRequirement.cuadro_id]) ? 'En KILOS' : 'En TONELADAS'}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -511,11 +512,12 @@ export default function RequirementsPage() {
                 <CardContent>
                   {(() => {
                     const esPorUnidad = isCuadroPorUnidad(cuadroCodigoById[selectedRequirement.cuadro_id]);
+                    const esPorKilo = isCuadroPorKilo(cuadroCodigoById[selectedRequirement.cuadro_id]);
                     return (
                       <>
                         <div className={cn(
                           'grid gap-4 p-4 rounded-lg border-2 mb-6',
-                          esPorUnidad ? 'bg-blue-500/10 border-blue-500/30 grid-cols-3' : 'bg-amber-500/10 border-amber-500/30 grid-cols-4'
+                          esPorUnidad ? 'bg-blue-500/10 border-blue-500/30 grid-cols-3' : esPorKilo ? 'bg-green-500/10 border-green-500/30 grid-cols-4' : 'bg-amber-500/10 border-amber-500/30 grid-cols-4'
                         )}>
                           <div>
                             <p className="text-sm text-muted-foreground">Total USD</p>
@@ -527,6 +529,11 @@ export default function RequirementsPage() {
                               <p className="text-xl font-bold text-blue-700 dark:text-blue-400">
                                 {totalUnidadesSelected.toLocaleString('es-PE')}
                               </p>
+                            </div>
+                          ) : esPorKilo ? (
+                            <div>
+                              <p className="text-sm font-medium text-green-700 dark:text-green-400">Kilos</p>
+                              <p className="text-xl font-bold text-green-700 dark:text-green-400">{(selectedRequirement.total_kilos || 0).toLocaleString('es-PE')} kg</p>
                             </div>
                           ) : (
                             <div>
@@ -549,6 +556,17 @@ export default function RequirementsPage() {
                               <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
                                 <p className="text-sm text-muted-foreground">Unidades Consumidas</p>
                                 <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString('es-PE')}</p>
+                              </div>
+                            </>
+                          ) : esPorKilo ? (
+                            <>
+                              <div className="p-4 rounded-lg border border-success/30 bg-success/5">
+                                <p className="text-sm text-muted-foreground">Kilos Disponibles</p>
+                                <p className="text-xl font-bold text-success">{(selectedRequirement.kilos_disponibles || 0).toLocaleString('es-PE')} kg</p>
+                              </div>
+                              <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
+                                <p className="text-sm text-muted-foreground">Kilos Consumidos</p>
+                                <p className="text-xl font-bold text-warning">{(selectedRequirement.kilos_consumidos || 0).toLocaleString('es-PE')} kg</p>
                               </div>
                             </>
                           ) : (
@@ -576,8 +594,8 @@ export default function RequirementsPage() {
                                 <TableHead>Descripción</TableHead>
                                 <TableHead className="text-right">Cantidad</TableHead>
                                 <TableHead className="text-right">Unidad</TableHead>
-                                <TableHead className="text-right">{esPorUnidad ? 'Unid. consumidas' : 'Ton consumidas'}</TableHead>
-                                <TableHead className="text-right">{esPorUnidad ? 'Unid. disponibles' : 'Ton disponibles'}</TableHead>
+                                <TableHead className="text-right">{esPorUnidad ? 'Unid. consumidas' : esPorKilo ? 'Kg consumidos' : 'Ton consumidas'}</TableHead>
+                                <TableHead className="text-right">{esPorUnidad ? 'Unid. disponibles' : esPorKilo ? 'Kg disponibles' : 'Ton disponibles'}</TableHead>
                                 <TableHead className="text-right">Precio unit. USD</TableHead>
                                 <TableHead className="text-right">Total USD</TableHead>
                               </TableRow>
@@ -599,12 +617,12 @@ export default function RequirementsPage() {
                                     </TableCell>
                                     <TableCell className="text-right text-muted-foreground">{item.unidad}</TableCell>
                                     <TableCell className="text-right text-muted-foreground">
-                                      {esPorUnidad
+                                      {esPorUnidad || esPorKilo
                                         ? (item.kilos_consumidos ?? 0).toLocaleString('es-PE')
                                         : ((item.kilos_consumidos ?? 0) / 1000).toLocaleString('es-PE')}
                                     </TableCell>
                                     <TableCell className="text-right font-medium">
-                                      {esPorUnidad
+                                      {esPorUnidad || esPorKilo
                                         ? (item.kilos_disponibles ?? 0).toLocaleString('es-PE')
                                         : ((item.kilos_disponibles ?? 0) / 1000).toLocaleString('es-PE')}
                                     </TableCell>

@@ -6,8 +6,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { CheckCircle, FileStack, Pencil, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useCompleteStep, type StageStep } from '@/hooks/useStageSteps';
+import { RequiredDocumentsPanel } from '../../RequiredDocumentsPanel';
 import { toast } from 'sonner';
 import type { Department, UserRole } from '@/types/comex';
+import type { DocumentType } from '@/lib/trackingChecklists';
 
 interface Props {
   step: StageStep;
@@ -26,7 +28,18 @@ const CHECKLIST_ITEMS = [
   'Packing list',
   'Certificado de origen (si aplica)',
   'Certificado de calidad (si aplica)',
+  'Seguro Chubb',
   'Otros documentos requeridos por agente',
+];
+
+const SET_DOC_TYPES: DocumentType[] = [
+  'set_doc_bl',
+  'set_doc_factura',
+  'set_doc_packing',
+  'set_doc_cert_origen',
+  'set_doc_cert_calidad',
+  'seguro_chubb',
+  'set_doc_otros',
 ];
 
 export function StepPreparacionSetDocumental({ step, pimId, stageKey, pim, userId, userName, userRole, userDepartment }: Props) {
@@ -65,6 +78,16 @@ export function StepPreparacionSetDocumental({ step, pimId, stageKey, pim, userI
             <p className="mt-1">{datos.observaciones}</p>
           </div>
         )}
+
+        <RequiredDocumentsPanel
+          pimId={pimId}
+          stageKey={stageKey}
+          stageName="Set Documental"
+          requiredDocTypes={SET_DOC_TYPES}
+          usuario={userName}
+          readOnly
+          pimCodigo={pim?.codigo}
+        />
       </div>
     );
   }
@@ -162,6 +185,16 @@ export function StepPreparacionSetDocumental({ step, pimId, stageKey, pim, userI
           Esperando que COMEX prepare el set documental.
         </div>
       )}
+
+      {/* Document upload panel for set documental */}
+      <RequiredDocumentsPanel
+        pimId={pimId}
+        stageKey={stageKey}
+        stageName="Set Documental"
+        requiredDocTypes={SET_DOC_TYPES}
+        usuario={userName}
+        pimCodigo={pim?.codigo}
+      />
     </div>
   );
 }

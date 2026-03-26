@@ -573,6 +573,9 @@ export type Database = {
           dhl_tracking_code: string | null
           dias_credito: number | null
           estado: string
+          tracking_planta: string | null
+          tracking_cerrillos: string | null
+          tracking_banco: string | null
           fabricas_origen: string | null
           fecha_cierre: string | null
           fecha_contrato: string | null
@@ -609,6 +612,9 @@ export type Database = {
           dhl_tracking_code?: string | null
           dias_credito?: number | null
           estado: string
+          tracking_planta?: string | null
+          tracking_cerrillos?: string | null
+          tracking_banco?: string | null
           fabricas_origen?: string | null
           fecha_cierre?: string | null
           fecha_contrato?: string | null
@@ -645,6 +651,9 @@ export type Database = {
           dhl_tracking_code?: string | null
           dias_credito?: number | null
           estado?: string
+          tracking_planta?: string | null
+          tracking_cerrillos?: string | null
+          tracking_banco?: string | null
           fabricas_origen?: string | null
           fecha_cierre?: string | null
           fecha_contrato?: string | null
