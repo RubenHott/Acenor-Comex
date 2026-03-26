@@ -105,14 +105,27 @@ export function StepSubsanacionNCCosteo({ step, pimId, stageKey, pim, userId, us
                   <p className="text-green-700">{nc.resolucion}</p>
                 </div>
               )}
-              {nc.evidencia_url && (
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                  <a href={nc.evidencia_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
-                    Ver archivo corregido
-                  </a>
-                </div>
-              )}
+              {(() => {
+                const stepDatos = step.datos as any;
+                const urls: string[] = stepDatos?.evidencia_urls || (nc.evidencia_url ? [nc.evidencia_url] : []);
+                const types: string[] = stepDatos?.doc_types || [];
+                return urls.length > 0 ? (
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Documentos corregidos:</span>
+                    {urls.map((url: string, i: number) => {
+                      const typeLabel = DOCUMENT_TYPES.find((dt) => dt.value === types[i])?.label || types[i] || 'Archivo';
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                            {typeLabel}
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null;
+              })()}
               {nc.fecha_resolucion && (
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(nc.fecha_resolucion).toLocaleDateString('es-CL')}</span>
