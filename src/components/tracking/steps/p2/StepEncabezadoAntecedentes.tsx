@@ -99,40 +99,83 @@ export function StepEncabezadoAntecedentes({ step, pimId, stageKey, pim, userId,
         </Card>
       )}
 
-      {/* Documents — only those WITHOUT non-conformity observations */}
+      {/* Documents — separated into current (latest version per type) and replaced (older/NC versions) */}
       {documents && documents.length > 0 && (() => {
-        const validDocs = documents.filter((doc: any) => !doc.observaciones);
-        return validDocs.length > 0 ? (
-          <Card>
-            <CardContent className="py-3 px-4">
-              <h5 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Documentos Disponibles ({validDocs.length})
-              </h5>
-              <div className="space-y-1.5">
-                {validDocs.map((doc: any) => (
-                  <div key={doc.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-3.5 w-3.5 text-blue-500" />
-                      <span>{doc.nombre || doc.tipo}</span>
-                      <Badge variant="outline" className="text-[10px]">{doc.tipo}</Badge>
-                      {doc.version > 1 && <Badge variant="secondary" className="text-[10px]">v{doc.version}</Badge>}
-                    </div>
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                    >
-                      <Download className="h-3 w-3" />
-                      Descargar
-                    </a>
+        // Group by tipo, keep latest version per type as "vigente"
+        const byType: Record<string, any[]> = {};
+        for (const doc of documents) {
+          if (!byType[doc.tipo]) byType[doc.tipo] = [];
+          byType[doc.tipo].push(doc);
+        }
+
+        const vigentes: any[] = [];
+        const reemplazados: any[] = [];
+
+        for (const tipo of Object.keys(byType)) {
+          const sorted = byType[tipo].sort((a: any, b: any) => (b.version || 1) - (a.version || 1));
+          vigentes.push(sorted[0]); // latest version
+          for (let i = 1; i < sorted.length; i++) {
+            reemplazados.push(sorted[i]);
+          }
+        }
+
+        return (
+          <>
+            {vigentes.length > 0 && (
+              <Card>
+                <CardContent className="py-3 px-4">
+                  <h5 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Documentos Vigentes ({vigentes.length})
+                  </h5>
+                  <div className="space-y-1.5">
+                    {vigentes.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3.5 w-3.5 text-blue-500" />
+                          <span>{doc.nombre || doc.tipo}</span>
+                          <Badge variant="outline" className="text-[10px]">{doc.tipo}</Badge>
+                          {doc.version > 1 && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200" variant="outline">v{doc.version} — Corregido</Badge>}
+                        </div>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                          <Download className="h-3 w-3" />
+                          Descargar
+                        </a>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ) : null;
+                </CardContent>
+              </Card>
+            )}
+
+            {reemplazados.length > 0 && (
+              <Card className="border-orange-200 bg-orange-50/30">
+                <CardContent className="py-3 px-4">
+                  <h5 className="text-sm font-semibold mb-2 flex items-center gap-2 text-orange-700">
+                    <FileText className="h-4 w-4" />
+                    Documentos Reemplazados por NC ({reemplazados.length})
+                  </h5>
+                  <div className="space-y-1.5">
+                    {reemplazados.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0 opacity-60">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3.5 w-3.5 text-orange-400" />
+                          <span className="line-through">{doc.nombre || doc.tipo}</span>
+                          <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600">{doc.tipo}</Badge>
+                          {doc.version && <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-500">v{doc.version}</Badge>}
+                        </div>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-orange-500 hover:underline">
+                          <Download className="h-3 w-3" />
+                          Ver original
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        );
       })()}
 
       {/* Bank Account */}
