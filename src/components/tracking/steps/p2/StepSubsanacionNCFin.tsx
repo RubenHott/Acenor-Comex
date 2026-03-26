@@ -11,13 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CheckCircle, Upload, Clock, User, FileText, Calendar, Pencil } from 'lucide-react';
+import { CheckCircle, Upload, Clock, User, FileText, Calendar, Pencil, Plus, X } from 'lucide-react';
 import { useCompleteStep, useStageSteps, type StageStep } from '@/hooks/useStageSteps';
 import { useNCsByStage, useResolveNC } from '@/hooks/useNoConformidades';
 import { usePIMDocuments, useUploadDocument } from '@/hooks/usePIMDocuments';
 import { DOCUMENT_TYPES } from '@/services/documentService';
 import { toast } from 'sonner';
 import type { Department, UserRole } from '@/types/comex';
+
+interface DocEntry {
+  docType: string;
+  file: File | null;
+}
 
 interface Props {
   step: StageStep;
@@ -32,8 +37,7 @@ interface Props {
 
 export function StepSubsanacionNCFin({ step, pimId, stageKey, pim, userId, userName, userRole, userDepartment }: Props) {
   const [resolucion, setResolucion] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedDocType, setSelectedDocType] = useState('');
+  const [docEntries, setDocEntries] = useState<DocEntry[]>([{ docType: '', file: null }]);
   const [uploading, setUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -62,6 +66,12 @@ export function StepSubsanacionNCFin({ step, pimId, stageKey, pim, userId, userN
   const availableDocTypes = DOCUMENT_TYPES.filter(
     (dt) => existingDocTypes.includes(dt.value) || dt.value === 'otro'
   );
+
+  const addDocEntry = () => setDocEntries((prev) => [...prev, { docType: '', file: null }]);
+  const removeDocEntry = (idx: number) => setDocEntries((prev) => prev.filter((_, i) => i !== idx));
+  const updateDocEntry = (idx: number, field: keyof DocEntry, value: any) => {
+    setDocEntries((prev) => prev.map((e, i) => (i === idx ? { ...e, [field]: value } : e)));
+  };
 
   if (step.status === 'completado' && !isEditing) {
     return (
@@ -143,24 +153,35 @@ export function StepSubsanacionNCFin({ step, pimId, stageKey, pim, userId, userN
       toast.error('Ingrese la descripción de la corrección realizada');
       return;
     }
-    if (selectedFile && !selectedDocType) {
-      toast.error('Seleccione el tipo de documento que está subsanando');
+
+    // Validate entries that have files
+    const validEntries = docEntries.filter((e) => e.file);
+    for (const entry of validEntries) {
+      if (!entry.docType) {
+        toast.error('Seleccione el tipo de documento para cada archivo');
+        return;
+      }
+    }
+
+    if (validEntries.length === 0) {
+      toast.error('Debe adjuntar al menos un documento corregido');
       return;
     }
 
-    let evidenciaUrl: string | undefined;
+    setUploading(true);
+    const uploadedUrls: string[] = [];
+    const uploadedTypes: string[] = [];
 
-    if (selectedFile && selectedDocType) {
-      setUploading(true);
-      try {
-        const existingDoc = existingDocs?.find((d: any) => d.tipo === selectedDocType);
+    try {
+      for (const entry of validEntries) {
+        const existingDoc = existingDocs?.find((d: any) => d.tipo === entry.docType);
         const versionGroup = existingDoc?.version_group || undefined;
         const nextVersion = existingDoc ? (existingDoc.version || 1) + 1 : 1;
 
         const result = await uploadDoc.mutateAsync({
           pimId,
-          file: selectedFile,
-          tipo: selectedDocType,
+          file: entry.file!,
+          tipo: entry.docType,
           stageKey,
           observaciones: undefined,
           usuario: userName,
@@ -173,14 +194,17 @@ export function StepSubsanacionNCFin({ step, pimId, stageKey, pim, userId, userN
         const { data: newDoc } = await import('@/integrations/supabase/client').then(
           (m) => m.supabase.from('pim_documentos').select('url').eq('id', result.docId).single()
         );
-        evidenciaUrl = newDoc?.url;
-      } catch (err: any) {
-        toast.error(`Error al subir archivo: ${err.message}`);
-        setUploading(false);
-        return;
+        if (newDoc?.url) uploadedUrls.push(newDoc.url);
+        uploadedTypes.push(entry.docType);
       }
+    } catch (err: any) {
+      toast.error(`Error al subir archivo: ${err.message}`);
       setUploading(false);
+      return;
     }
+    setUploading(false);
+
+    const evidenciaUrl = uploadedUrls[0]; // First URL for NC evidence
 
     resolveNC.mutate(
       {
@@ -204,7 +228,12 @@ export function StepSubsanacionNCFin({ step, pimId, stageKey, pim, userId, userN
               stepName: 'Subsanación de NC',
               userId,
               userName,
-              datos: { nc_id: nc.id, resolucion, evidencia_url: evidenciaUrl, doc_type: selectedDocType || null },
+              datos: {
+                nc_id: nc.id,
+                resolucion,
+                evidencia_urls: uploadedUrls,
+                doc_types: uploadedTypes,
+              },
             },
             {
               onSuccess: () => {
@@ -253,29 +282,39 @@ export function StepSubsanacionNCFin({ step, pimId, stageKey, pim, userId, userN
         <div className="space-y-3 p-4 bg-blue-50/50 border border-blue-200 rounded-lg">
           <h5 className="text-sm font-semibold text-blue-800">Subsanar No Conformidad</h5>
 
-          <div>
-            <Label className="text-xs">Tipo de documento a subsanar *</Label>
-            <Select value={selectedDocType} onValueChange={setSelectedDocType}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Seleccione el documento que está corrigiendo..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableDocTypes.map((dt) => (
-                  <SelectItem key={dt.value} value={dt.value}>{dt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="text-xs">Archivo corregido *</Label>
-            <div className="mt-1">
-              <input
-                type="file"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-              />
-            </div>
+          {/* Multi-document entries */}
+          <div className="space-y-3">
+            <Label className="text-xs font-semibold">Documentos corregidos</Label>
+            {docEntries.map((entry, idx) => (
+              <div key={idx} className="flex items-start gap-2 p-3 bg-white border rounded-lg">
+                <div className="flex-1 space-y-2">
+                  <Select value={entry.docType} onValueChange={(v) => updateDocEntry(idx, 'docType', v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Tipo de documento..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableDocTypes.map((dt) => (
+                        <SelectItem key={dt.value} value={dt.value}>{dt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <input
+                    type="file"
+                    onChange={(e) => updateDocEntry(idx, 'file', e.target.files?.[0] || null)}
+                    className="text-xs file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                  />
+                </div>
+                {docEntries.length > 1 && (
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive shrink-0" onClick={() => removeDocEntry(idx)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button size="sm" variant="outline" className="text-xs h-7" onClick={addDocEntry}>
+              <Plus className="h-3 w-3 mr-1" />
+              Agregar otro documento
+            </Button>
           </div>
 
           <div>
@@ -296,7 +335,7 @@ export function StepSubsanacionNCFin({ step, pimId, stageKey, pim, userId, userN
               disabled={resolveNC.isPending || completeStep.isPending || uploading}
             >
               <Upload className="h-4 w-4 mr-1" />
-              {uploading ? 'Subiendo archivo...' : resolveNC.isPending ? 'Enviando...' : 'Enviar Subsanación'}
+              {uploading ? 'Subiendo archivos...' : resolveNC.isPending ? 'Enviando...' : 'Enviar Subsanación'}
             </Button>
           </div>
         </div>
