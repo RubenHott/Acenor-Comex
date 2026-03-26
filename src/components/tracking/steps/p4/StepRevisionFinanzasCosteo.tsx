@@ -9,6 +9,7 @@ import { useCompleteStep, useReactivateStep, useStageSteps, type StageStep } fro
 import { useNCsByStage, useUpdateNCStatus, useReopenNC } from '@/hooks/useNoConformidades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { DOCUMENT_TYPES } from '@/services/documentService';
 import type { Department, UserRole } from '@/types/comex';
 
 function generateId() { return crypto.randomUUID(); }
@@ -77,14 +78,27 @@ export function StepRevisionFinanzasCosteo({ step, pimId, stageKey, pim, userId,
                   <p className="text-green-700">{nc.resolucion}</p>
                 </div>
               )}
-              {nc.evidencia_url && (
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                  <a href={nc.evidencia_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
-                    Ver archivo corregido
-                  </a>
-                </div>
-              )}
+              {(() => {
+                const subStep = allSteps?.find((s) => s.step_key === 'subsanacion_nc_costeo');
+                const subDatos = subStep?.datos as any;
+                const urls: string[] = subDatos?.evidencia_urls || (nc.evidencia_url ? [nc.evidencia_url] : []);
+                const types: string[] = subDatos?.doc_types || [];
+                if (urls.length === 0) return null;
+                return (
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Documentos corregidos:</span>
+                    {urls.map((url: string, i: number) => {
+                      const typeLabel = DOCUMENT_TYPES.find((dt) => dt.value === types[i])?.label || types[i] || 'Archivo';
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">{typeLabel}</a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         )}
@@ -250,14 +264,27 @@ export function StepRevisionFinanzasCosteo({ step, pimId, stageKey, pim, userId,
               </div>
             )}
 
-            {nc.evidencia_url && (
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-600" />
-                <a href={nc.evidencia_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
-                  Ver archivo corregido
-                </a>
-              </div>
-            )}
+            {(() => {
+              const subStep = allSteps?.find((s) => s.step_key === 'subsanacion_nc_costeo');
+              const subDatos = subStep?.datos as any;
+              const urls: string[] = subDatos?.evidencia_urls || (nc.evidencia_url ? [nc.evidencia_url] : []);
+              const types: string[] = subDatos?.doc_types || [];
+              if (urls.length === 0) return null;
+              return (
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">Documentos corregidos:</span>
+                  {urls.map((url: string, i: number) => {
+                    const typeLabel = DOCUMENT_TYPES.find((dt) => dt.value === types[i])?.label || types[i] || 'Archivo';
+                    return (
+                      <div key={i} className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-blue-600" />
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">{typeLabel}</a>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {nc.fecha_resolucion && (
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
