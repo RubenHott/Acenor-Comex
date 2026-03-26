@@ -88,8 +88,8 @@ export function StepEncabezadoAntecedentes({ step, pimId, stageKey, pim, userId,
                     <tr key={item.id} className="border-b last:border-0">
                       <td className="py-1.5 pr-4">{item.producto_nombre || item.descripcion || 'N/A'}</td>
                       <td className="text-right py-1.5 pr-4">{item.cantidad?.toLocaleString('es-CL') || '-'}</td>
-                      <td className="text-right py-1.5 pr-4">{item.precio_unitario ? `$${item.precio_unitario.toLocaleString('es-CL')}` : '-'}</td>
-                      <td className="text-right py-1.5">{item.total_usd ? `$${item.total_usd.toLocaleString('es-CL')}` : '-'}</td>
+                      <td className="text-right py-1.5 pr-4">{item.precio_unitario_usd ? `$${Number(item.precio_unitario_usd).toLocaleString('es-CL')}` : '-'}</td>
+                      <td className="text-right py-1.5">{item.total_usd ? `$${Number(item.total_usd).toLocaleString('es-CL')}` : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -99,38 +99,41 @@ export function StepEncabezadoAntecedentes({ step, pimId, stageKey, pim, userId,
         </Card>
       )}
 
-      {/* Documents */}
-      {documents && documents.length > 0 && (
-        <Card>
-          <CardContent className="py-3 px-4">
-            <h5 className="text-sm font-semibold mb-2 flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Documentos Disponibles ({documents.length})
-            </h5>
-            <div className="space-y-1.5">
-              {documents.map((doc: any) => (
-                <div key={doc.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-blue-500" />
-                    <span>{doc.nombre || doc.tipo}</span>
-                    <Badge variant="outline" className="text-[10px]">{doc.tipo}</Badge>
-                    {doc.version > 1 && <Badge variant="secondary" className="text-[10px]">v{doc.version}</Badge>}
+      {/* Documents — only those WITHOUT non-conformity observations */}
+      {documents && documents.length > 0 && (() => {
+        const validDocs = documents.filter((doc: any) => !doc.observaciones);
+        return validDocs.length > 0 ? (
+          <Card>
+            <CardContent className="py-3 px-4">
+              <h5 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Documentos Disponibles ({validDocs.length})
+              </h5>
+              <div className="space-y-1.5">
+                {validDocs.map((doc: any) => (
+                  <div key={doc.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-blue-500" />
+                      <span>{doc.nombre || doc.tipo}</span>
+                      <Badge variant="outline" className="text-[10px]">{doc.tipo}</Badge>
+                      {doc.version > 1 && <Badge variant="secondary" className="text-[10px]">v{doc.version}</Badge>}
+                    </div>
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                    >
+                      <Download className="h-3 w-3" />
+                      Descargar
+                    </a>
                   </div>
-                  <a
-                    href={doc.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                  >
-                    <Download className="h-3 w-3" />
-                    Descargar
-                  </a>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null;
+      })()}
 
       {/* Bank Account */}
       {cuentaVigente && (
